@@ -262,6 +262,13 @@
     const {data,error} = await client.rpc('get_platform_account_deletion_requests');
     if (error) { host.textContent = 'Deletion workflow unavailable: ' + error.message + '. Run migration 008 first.'; return; }
     const requests = Array.isArray(data) ? data : [];
+    const pendingUsers = new Set(requests.filter(d => d.status === 'pending').map(d => d.target_user_id));
+    document.querySelectorAll('#wlDevAccounts [data-account-user]').forEach(button => {
+      if (pendingUsers.has(button.dataset.accountUser) && button.dataset.accountActive === 'false') {
+        button.disabled = true;
+        button.title = 'Cancel the pending deletion request before restoring access';
+      }
+    });
     host.innerHTML = requests.map(d => {
       const due = d.scheduled_for ? new Date(d.scheduled_for) : null;
       const remaining = due ? Math.max(0,Math.ceil((due.getTime()-Date.now())/86400000)) : 0;
