@@ -27,7 +27,7 @@
     const box=document.createElement('section');box.id='wlOpsPanel';
     box.innerHTML=`
       <h3>OPERATIONS CONTROL CENTRE</h3>
-      <div id="wlOpsStatus" class="ops-muted">Connect a business workspace to load operations.</div>
+      <div id="wlOpsStatus" class="ops-muted">Connect a business workspace to load operations.</div><details><summary>Cloud sync conflicts</summary><div id="wlOpsConflicts" class="ops-muted">No conflicts loaded.</div></details>
       <details open><summary>Stock transfers & approvals</summary>
         <div class="ops-grid"><select id="wlOpsSource"></select><select id="wlOpsDestination"></select><select id="wlOpsProduct"></select><input id="wlOpsTransferQty" type="number" min="0.001" step="0.001" placeholder="Quantity"></div>
         <input id="wlOpsTransferNote" placeholder="Transfer note (optional)"><button id="wlOpsTransferCreate">Submit transfer request</button>
@@ -90,8 +90,36 @@
     const prodOpts=products.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.sku?' · '+esc(x.sku):'')+'</option>').join('');
     ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct','wlOpsBarcodeProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
-    await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments(),renderPendingCount()]);
+    await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts()]);
     say('Operations controls loaded for '+business.name+'.');
+  }
+  async function renderConflicts(){
+    const el=document.getElementById('wlOpsConflicts');if(!el)return;
+    const rows=[];
+    for(const type of ['products','customers','suppliers','expenses']){
+      for(const row of await all(type))if(row.cloudConflictSnapshot)rows.push({type,row});
+    }
+    el.innerHTML=rows.length?rows.map(x=>'<div class="ops-row"><strong>'+esc(x.type.slice(0,-1))+' · '+esc(x.row.name||x.row.description||x.row.sku||x.row.id)+'</strong><div class="ops-muted">Cloud record changed after this device last synced it. Choose which copy to keep.</div><button data-conflict-cloud="'+esc(x.row.id)+'" data-conflict-type="'+esc(x.type)+'">Use cloud copy</button><button data-conflict-local="'+esc(x.row.id)+'" data-conflict-type="'+esc(x.type)+'">Keep this device copy</button></div>').join(''):'No unresolved cloud conflicts.';
+    el.querySelectorAll('[data-conflict-cloud]').forEach(b=>b.onclick=()=>resolveConflict(b.dataset.conflictType,b.dataset.conflictCloud,'cloud'));
+    el.querySelectorAll('[data-conflict-local]').forEach(b=>b.onclick=()=>resolveConflict(b.dataset.conflictType,b.dataset.conflictLocal,'local'));
+  }
+  async function resolveConflict(type,id,choice){
+    const rows=await all(type),row=rows.find(x=>String(x.id)===String(id));if(!row||!row.cloudConflictSnapshot)return;
+    if(choice==='cloud'){
+      Object.assign(row,row.cloudConflictSnapshot.fields||{});
+      if(type==='products'&&row.cloudConflictSnapshot.branchId){
+        const branchId=row.cloudConflictSnapshot.branchId;
+        await put('branchInventory',{id:String(branchId)+'|'+String(row.id),branchId,productId:row.id,quantity:Number(row.stock||0)});
+      }
+      row.cloudSyncedFor=business.id;row.cloudSyncedAt=new Date().toISOString();
+    }else{
+      row.cloudSyncedFor=null;
+      row.cloudSyncResult='local_copy_selected_for_upload';
+    }
+    delete row.cloudConflictSnapshot;delete row.cloudConflictAt;
+    await put(type,row);
+    say(choice==='cloud'?'Cloud copy accepted.':'Local copy selected; upload it to replace the cloud version.');
+    await renderConflicts();
   }
   async function renderPendingCount(){
     const [sales,purchases]=await Promise.all([all('sales'),all('purchases')]);
