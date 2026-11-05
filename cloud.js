@@ -462,16 +462,16 @@
     if (!client || !activeBusiness) return say('Select a business before downloading cloud records.');
     const button=$('wlDownloadNow'); if(button)button.disabled=true;
     syncStatus('Downloading cloud records…');
-    let added=0,updated=0,skipped=0;
+    let added=0,updated=0,skipped=0,conflicts=0;
     try {
       const businessId=activeBusiness.id;
       const localProducts=await all('products'), localCustomers=await all('customers'),
         localSuppliers=await all('suppliers'), localExpenses=await all('expenses'),
         localSales=await all('sales'), localPurchases=await all('purchases');
       const [pRes,cRes,sRes,eRes]=await Promise.all([
-        client.from('products').select('id,client_record_id,sku,name,category,unit,cost_price,selling_price,reorder_level,is_active,barcode').eq('business_id',businessId),
-        client.from('customers').select('id,client_record_id,name,phone,email,address,notes').eq('business_id',businessId),
-        client.from('suppliers').select('id,client_record_id,name,phone,email,address,notes').eq('business_id',businessId),
+        client.from('products').select('id,client_record_id,sku,name,category,unit,cost_price,selling_price,reorder_level,is_active,barcode,updated_at').eq('business_id',businessId),
+        client.from('customers').select('id,client_record_id,name,phone,email,address,notes,updated_at').eq('business_id',businessId),
+        client.from('suppliers').select('id,client_record_id,name,phone,email,address,notes,updated_at').eq('business_id',businessId),
         client.from('expenses').select('id,client_record_id,category,description,amount,payment_method,expense_date').eq('business_id',businessId)
       ]);
       for(const [label,result] of [['products',pRes],['customers',cRes],['suppliers',sRes],['expenses',eRes]]) if(result.error)throw new Error('Could not download '+label+': '+result.error.message);
@@ -485,6 +485,7 @@
         const old=localProducts.find(x=>x.cloudClientRecordId===cloud.client_record_id);
         if(old)productMap.set(cloud.id,old.id);
         if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
+        if(old&&old.cloudSyncedAt&&cloud.updated_at&&Date.parse(cloud.updated_at)>Date.parse(old.cloudSyncedAt)+1500){old.cloudConflictSnapshot={fields:{name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',cost:Number(cloud.cost_price||0),price:Number(cloud.selling_price||0),reorder:Number(cloud.reorder_level||0),barcode:cloud.barcode||'',stock:selectedStock.get(cloud.id)||0},updatedAt:cloud.updated_at,branchId:selectedBranch?.id||null};old.cloudConflictAt=new Date().toISOString();await put('products',old);conflicts++;continue;}
         const row={...(old||{}),id:old?.id||('cloud-product-'+cloud.client_record_id),
           cloudClientRecordId:cloud.client_record_id,cloudSyncedFor:businessId,cloudSyncedAt:new Date().toISOString(),
           name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',
@@ -496,6 +497,7 @@
         for(const cloud of rows||[]){
           const old=localRows.find(x=>x.cloudClientRecordId===cloud.client_record_id);
           if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
+          if(old&&old.cloudSyncedAt&&cloud.updated_at&&Date.parse(cloud.updated_at)>Date.parse(old.cloudSyncedAt)+1500){old.cloudConflictSnapshot={fields:mapRow(cloud),updatedAt:cloud.updated_at};old.cloudConflictAt=new Date().toISOString();await put(type,old);conflicts++;continue;}
           const row={...(old||{}),id:old?.id||('cloud-'+type+'-'+cloud.client_record_id),
             cloudClientRecordId:cloud.client_record_id,cloudSyncedFor:businessId,
             cloudSyncedAt:new Date().toISOString(),...mapRow(cloud)};
@@ -537,7 +539,7 @@
       };
       await importTransactions('sales',saleRes.data,saleItemsRes.data||[]);
       await importTransactions('purchases',purchaseRes.data,purchaseItemsRes.data||[]);
-      syncStatus('Download complete: '+added+' new, '+updated+' refreshed, '+skipped+' local unsynced records preserved.');
+      syncStatus('Download complete: '+added+' new, '+updated+' refreshed, '+skipped+' local unsynced records preserved, '+conflicts+' conflicts awaiting your choice.');
       say('Cloud download completed. Local unsynced records were preserved.');
       window.dispatchEvent(new CustomEvent('whiteLionCloudDownloaded'));
     } catch(error) {
