@@ -122,6 +122,36 @@ drop policy if exists branch_stock_transfer_items_member_read on public.branch_s
 create policy branch_stock_transfer_items_member_read on public.branch_stock_transfer_items
   for select to authenticated using (public.is_business_member(business_id));
 
+
+create or replace function public.create_business_branch(
+  p_business_id uuid,
+  p_name text,
+  p_address text default null
+) returns jsonb
+language plpgsql security definer
+set search_path = ''
+as $
+declare
+  v_branch uuid;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_business_role(p_business_id, array['owner','admin','manager']::public.business_role[]) then
+    raise exception 'Only an owner, admin, or manager can create a branch';
+  end if;
+  if coalesce(length(trim(p_name)),0)<2 then raise exception 'Branch name must contain at least two characters'; end if;
+
+  insert into public.branches(business_id,name,address,is_active)
+  values(p_business_id,trim(p_name),nullif(trim(p_address),''),true)
+  returning id into v_branch;
+
+  insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+  values(p_business_id,auth.uid(),'branch_created','branches',v_branch::text,
+    jsonb_build_object('name',trim(p_name),'address',nullif(trim(p_address),'')));
+
+  return jsonb_build_object('status','created','branch_id',v_branch);
+end;
+$;
+
 create or replace function public.set_branch_member_access(
   p_business_id uuid,
   p_branch_id uuid,
@@ -310,10 +340,12 @@ begin
 end;
 $$;
 
+revoke all on function public.create_business_branch(uuid,text,text) from public;
 revoke all on function public.set_branch_member_access(uuid,uuid,uuid,boolean) from public;
 revoke all on function public.request_branch_stock_transfer(uuid,uuid,uuid,jsonb,text) from public;
 revoke all on function public.approve_branch_stock_transfer(uuid) from public;
 revoke all on function public.cancel_branch_stock_transfer(uuid) from public;
+grant execute on function public.create_business_branch(uuid,text,text) to authenticated;
 grant execute on function public.set_branch_member_access(uuid,uuid,uuid,boolean) to authenticated;
 grant execute on function public.request_branch_stock_transfer(uuid,uuid,uuid,jsonb,text) to authenticated;
 grant execute on function public.approve_branch_stock_transfer(uuid) to authenticated;
