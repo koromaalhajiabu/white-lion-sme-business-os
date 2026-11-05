@@ -31,7 +31,7 @@
       <details open><summary>Stock transfers & approvals</summary>
         <div class="ops-grid"><select id="wlOpsSource"></select><select id="wlOpsDestination"></select><select id="wlOpsProduct"></select><input id="wlOpsTransferQty" type="number" min="0.001" step="0.001" placeholder="Quantity"></div>
         <input id="wlOpsTransferNote" placeholder="Transfer note (optional)"><button id="wlOpsTransferCreate">Submit transfer request</button>
-        <div id="wlOpsTransfers" class="ops-muted"></div>
+        <div id="wlOpsTransfers" class="ops-muted"></div><h4>Assign older offline transactions</h4><div class="ops-muted">Use this only when you know which branch handled transactions recorded before signing in. This does not change their totals.</div><select id="wlOpsPendingBranch"></select><button id="wlOpsAssignPending">Assign unassigned pending transactions</button><div id="wlOpsPendingCount" class="ops-muted"></div>
       </details>
       <details><summary>Financial management & accounting</summary>
         <div id="wlOpsFinanceSummary" class="ops-summary"></div>
@@ -60,7 +60,7 @@
     `;
     work.appendChild(box);
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
-    bind('wlOpsTransferCreate',createTransfer);bind('wlOpsCashSave',saveCashbook);
+    bind('wlOpsTransferCreate',createTransfer);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
     bind('wlOpsObligationSave',saveObligation);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
@@ -79,7 +79,7 @@
     if(p.error)return say(p.error.message,true);if(b.error)return say(b.error.message,true);
     products=p.data||[];
     const branches=b.data||branchRows;
-    const opts=branches.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+    const opts=branches.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');document.getElementById('wlOpsPendingBranch').innerHTML=opts;
     ['wlOpsSource','wlOpsDestination'].forEach(id=>document.getElementById(id).innerHTML=opts);
     const current=api.getSelectedBranch?.()?.id;
     if(current)document.getElementById('wlOpsSource').value=current;
@@ -87,8 +87,23 @@
     const prodOpts=products.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.sku?' · '+esc(x.sku):'')+'</option>').join('');
     ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct','wlOpsBarcodeProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
-    await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments()]);
+    await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments(),renderPendingCount()]);
     say('Operations controls loaded for '+business.name+'.');
+  }
+  async function renderPendingCount(){
+    const [sales,purchases]=await Promise.all([all('sales'),all('purchases')]);
+    const pending=[...sales.filter(x=>!x.cloudSyncedFor&&!x.branchId),...purchases.filter(x=>!x.cloudSyncedFor&&!x.branchId)];
+    const localMain=[...sales.filter(x=>!x.cloudSyncedFor&&x.branchId==='local-main'),...purchases.filter(x=>!x.cloudSyncedFor&&x.branchId==='local-main')];
+    const el=document.getElementById('wlOpsPendingCount');if(el)el.textContent=pending.length+' unassigned and '+localMain.length+' local-main pending transaction(s).';
+  }
+  async function assignPendingTransactions(){
+    const branchId=document.getElementById('wlOpsPendingBranch').value;if(!branchId)return say('Choose the destination branch first.',true);
+    if(!confirm('Assign all unassigned and local-main unsynced sales and purchases to this branch?'))return;
+    let changed=0;
+    for(const type of ['sales','purchases'])for(const row of await all(type)){
+      if(!row.cloudSyncedFor&&(!row.branchId||row.branchId==='local-main')){row.branchId=branchId;await put(type,row);changed++;}
+    }
+    say(changed+' pending transaction(s) assigned to the selected branch.');await renderPendingCount();
   }
   async function createTransfer(){
     const source=document.getElementById('wlOpsSource').value,dest=document.getElementById('wlOpsDestination').value;
