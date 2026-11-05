@@ -40,13 +40,15 @@ create table if not exists public.financial_obligations (
 create table if not exists public.financial_obligation_payments (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
-  obligation_id uuid not null references public.financial_obligations(id) on delete cascade,
+  obligation_id uuid not null,
   amount numeric(14,2) not null check (amount > 0),
   payment_date date not null default current_date,
   payment_method text not null default 'cash',
   reference text null,
   created_by uuid null default auth.uid() references auth.users(id) on delete set null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint financial_payment_obligation_business_fk foreign key(obligation_id,business_id)
+    references public.financial_obligations(id,business_id) on delete cascade
 );
 create index if not exists obligation_payments_obligation_idx
   on public.financial_obligation_payments(obligation_id,payment_date desc);
