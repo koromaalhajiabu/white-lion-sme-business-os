@@ -65,7 +65,9 @@
       <div id="wlDevBusinesses"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
-      <div class="dev-meta" style="margin-top:10px">Account suspension blocks access to all business workspaces but preserves the Supabase login and existing records. Permanent deletion is not performed here.</div>
+      <div class="dev-meta" style="margin-top:10px">Deletion requests suspend access immediately. Accounts remain recoverable for 30 days. Business owners and developer accounts are protected. Permanent deletion is only available after the recovery period through the secure server-side function.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px"><h3 style="margin:0">30-day deletion &amp; recovery</h3><button id="wlDevDeletionRefresh">Refresh requests</button></div>
+      <div id="wlDevDeletions" class="dev-meta">Deletion requests load after developer verification.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:18px"><h3 style="margin:0">Platform activity &amp; audit log</h3><button id="wlDevAuditRefresh">Refresh activity</button></div>
       <input id="wlDevAuditSearch" type="search" placeholder="Search actions, accounts, workspaces…" aria-label="Search platform audit log" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #52627b;border-radius:8px;background:#101b31;color:#fff;margin:8px 0">
       <div id="wlDevAudit" class="dev-meta">Recent platform activity will appear here.</div>
@@ -76,6 +78,7 @@
     $('wlDevFreeze').onclick = toggleMaintenance;
     $('wlDevAssign').onclick = manageBusinessAccess;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
+    $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
     $('wlDevAuditSearch').oninput = renderDeveloperActivity;
     $('wlSignIn').onclick = () => authenticate(false);
@@ -175,6 +178,7 @@
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
     await loadDeveloperAccounts();
+    await loadDeveloperDeletionRequests();
     await loadDeveloperActivity();
   }
   async function loadDeveloperActivity() {
@@ -214,8 +218,26 @@
       const active = a.is_active !== false;
       const name = a.full_name || 'Name not provided';
       const last = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString() : 'Never signed in';
-      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(name) + '</strong><div class="dev-meta">' + escapeHtml(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + escapeHtml(last) + '</div></div><div class="dev-actions"><button data-account-user="' + escapeHtml(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (a.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com' ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button></div></div>';
+      const protectedAccount = a.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(name) + '</strong><div class="dev-meta">' + escapeHtml(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + escapeHtml(last) + '</div></div><div class="dev-actions"><button data-account-user="' + escapeHtml(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (protectedAccount ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button>' + (!protectedAccount ? '<button class="danger" data-account-delete="' + escapeHtml(a.user_id) + '" data-account-email="' + escapeHtml(a.email || '') + '">Request deletion</button>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No registered accounts found.</div>';
+    host.querySelectorAll('[data-account-delete]').forEach(button => {
+      button.onclick = async () => {
+        const email = button.dataset.accountEmail || '';
+        const confirmation = prompt('This will suspend the account immediately and start a 30-day recovery period. Type the exact account email to confirm:', '');
+        if (confirmation === null) return;
+        if (confirmation.trim().toLowerCase() !== email.toLowerCase()) { say('Email confirmation did not match. No deletion request was created.'); return; }
+        if (!confirm('Confirm deletion request for ' + email + '? The account remains recoverable for 30 days.')) return;
+        button.disabled = true;
+        const result = await client.rpc('request_platform_account_deletion', {
+          p_user_id:button.dataset.accountDelete,p_confirm_email:confirmation.trim()
+        });
+        if (result.error) { say(result.error.message); button.disabled = false; return; }
+        say('Deletion request created. Access suspended; 30-day recovery period started.');
+        await loadDeveloperAccounts();
+        await loadDeveloperDeletionRequests();
+      };
+    });
     host.querySelectorAll('[data-account-user]').forEach(button => {
       button.onclick = async () => {
         const suspend = button.dataset.accountActive === 'true';
@@ -233,6 +255,42 @@
     });
   }
 
+  async function loadDeveloperDeletionRequests() {
+    const host = $('wlDevDeletions');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading deletion requests…';
+    const {data,error} = await client.rpc('get_platform_account_deletion_requests');
+    if (error) { host.textContent = 'Deletion workflow unavailable: ' + error.message + '. Run migration 008 first.'; return; }
+    const requests = Array.isArray(data) ? data : [];
+    host.innerHTML = requests.map(d => {
+      const due = d.scheduled_for ? new Date(d.scheduled_for) : null;
+      const remaining = due ? Math.max(0,Math.ceil((due.getTime()-Date.now())/86400000)) : 0;
+      const pending = d.status === 'pending';
+      const dueLabel = due ? due.toLocaleString() : 'Unknown';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(d.target_email) + '</strong><div class="dev-meta">' + escapeHtml(d.status.toUpperCase()) + ' · ' + (pending && remaining > 0 ? remaining + ' days remaining' : pending ? 'Eligible for permanent deletion' : 'Closed') + '</div><div class="dev-meta">Scheduled: ' + escapeHtml(dueLabel) + '</div><div class="dev-meta">Request: ' + escapeHtml(d.id) + '</div>' + (d.failure_note ? '<div class="dev-meta">Note: ' + escapeHtml(d.failure_note) + '</div>' : '') + '</div><div class="dev-actions">' + (pending && remaining > 0 ? '<button data-cancel-deletion="' + escapeHtml(d.id) + '">Cancel &amp; restore</button>' : '') + (pending && remaining <= 0 ? '<button class="danger" data-process-deletion="' + escapeHtml(d.id) + '">Permanently delete</button>' : '') + '</div></div>';
+    }).join('') || '<div class="dev-meta">No account deletion requests.</div>';
+    host.querySelectorAll('[data-cancel-deletion]').forEach(button => {
+      button.onclick = async () => {
+        if (!confirm('Cancel this deletion request and restore the account to its previous access state?')) return;
+        button.disabled = true;
+        const result = await client.rpc('cancel_platform_account_deletion',{p_request_id:button.dataset.cancelDeletion});
+        if (result.error) { say(result.error.message); button.disabled = false; return; }
+        say('Deletion request cancelled. Previous account access state restored.');
+        await loadDeveloperAccounts(); await loadDeveloperDeletionRequests();
+      };
+    });
+    host.querySelectorAll('[data-process-deletion]').forEach(button => {
+      button.onclick = async () => {
+        const requestId = button.dataset.processDeletion;
+        if (!confirm('PERMANENTLY DELETE this account from Supabase Auth? The 30-day recovery period has ended. This cannot be undone. Business-owner accounts are blocked.')) return;
+        button.disabled = true; button.textContent = 'Processing…';
+        const {data,error} = await client.functions.invoke('process-account-deletions',{body:{request_id:requestId}});
+        if (error) { say('Secure deletion function error: ' + error.message + '. Confirm the Edge Function is deployed.'); button.disabled = false; button.textContent = 'Permanently delete'; return; }
+        say(data?.message || 'Deletion function completed.');
+        await loadDeveloperAccounts(); await loadDeveloperDeletionRequests(); await loadDeveloperActivity();
+      };
+    });
+  }
   async function toggleMaintenance() {
     const dashboard = await client.rpc('get_platform_dashboard');
     if (dashboard.error) { $('wlDevStatus').textContent = dashboard.error.message; return; }
