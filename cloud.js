@@ -23,7 +23,7 @@
     if (typeof window.toast === 'function') window.toast(message);
   }
   function addPanel() {
-    const host = document.querySelector('.business-switch');
+    const host = document.querySelector('.content');
     if (!host || $('wlCloudBox')) return;
     const box = document.createElement('section');
     box.id = 'wlCloudBox';
@@ -41,7 +41,7 @@
         <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSignOut">Sign out</button></div>
         <details><summary>Business modules</summary><div id="wlModules" class="muted">Select a business to view modules.</div></details>
       </div>`;
-    host.insertAdjacentElement('afterend', box);
+    host.insertAdjacentElement('afterbegin', box);
     $('wlSignIn').onclick = () => authenticate(false);
     $('wlSignUp').onclick = () => authenticate(true);
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; showSignedOut(); };
