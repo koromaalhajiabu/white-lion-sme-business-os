@@ -59,7 +59,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select
     (
       public.is_platform_developer()
@@ -78,7 +78,7 @@ as $
         and m.is_active=true
         and b.is_suspended=false
     );
-$;
+$$;
 
 create or replace function public.has_business_role(
   p_business_id uuid,
@@ -89,7 +89,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select
     (
       public.is_platform_developer()
@@ -109,7 +109,7 @@ as $
         and b.is_suspended=false
         and m.role=any(p_roles)
     );
-$;
+$$;
 
 revoke all on function public.is_business_member(uuid) from public;
 revoke all on function public.has_business_role(uuid,public.business_role[]) from public;
