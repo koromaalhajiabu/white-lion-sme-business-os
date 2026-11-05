@@ -37,6 +37,29 @@ create table if not exists public.financial_obligations (
     references public.branches(id,business_id) on delete set null
 );
 
+create table if not exists public.financial_obligation_payments (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  obligation_id uuid not null references public.financial_obligations(id) on delete cascade,
+  amount numeric(14,2) not null check (amount > 0),
+  payment_date date not null default current_date,
+  payment_method text not null default 'cash',
+  reference text null,
+  created_by uuid null default auth.uid() references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists obligation_payments_obligation_idx
+  on public.financial_obligation_payments(obligation_id,payment_date desc);
+alter table public.financial_obligation_payments enable row level security;
+drop policy if exists obligation_payments_member_read on public.financial_obligation_payments;
+create policy obligation_payments_member_read on public.financial_obligation_payments
+for select to authenticated using(public.is_business_member(business_id));
+drop policy if exists obligation_payments_finance_write on public.financial_obligation_payments;
+create policy obligation_payments_finance_write on public.financial_obligation_payments
+for insert to authenticated with check(
+ public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
+);
+
 create table if not exists public.product_batches (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
@@ -199,6 +222,43 @@ begin
 end; $$;
 
 
+create or replace function public.record_obligation_payment(
+ p_obligation_id uuid,p_amount numeric,p_payment_method text default 'cash',
+ p_payment_date date default current_date,p_reference text default null
+) returns jsonb language plpgsql security definer set search_path=''
+as $
+declare v public.financial_obligations%rowtype; v_role public.business_role; v_payment uuid; v_new_paid numeric; v_cash_type text;
+begin
+ if auth.uid() is null then raise exception 'Authentication required'; end if;
+ select * into v from public.financial_obligations where id=p_obligation_id for update;
+ if not found then raise exception 'Receivable or payable record not found'; end if;
+ select role into v_role from public.business_members
+ where business_id=v.business_id and user_id=auth.uid() and is_active;
+ if not found or v_role not in ('owner','admin','manager','accountant') then
+   raise exception 'Not authorised to record financial payments';
+ end if;
+ if p_amount is null or p_amount<=0 or p_amount>v.amount-v.amount_paid then
+   raise exception 'Payment must be positive and cannot exceed the outstanding balance';
+ end if;
+ v_new_paid:=v.amount_paid+p_amount;
+ insert into public.financial_obligation_payments(business_id,obligation_id,amount,payment_date,payment_method,reference)
+ values(v.business_id,v.id,p_amount,coalesce(p_payment_date,current_date),coalesce(nullif(p_payment_method,''),'cash'),nullif(trim(coalesce(p_reference,'')),''))
+ returning id into v_payment;
+ update public.financial_obligations set amount_paid=v_new_paid,
+ status=case when v_new_paid>=amount then 'settled' else 'part_paid' end
+ where id=v.id;
+ v_cash_type:=case when v.obligation_type='receivable' then 'income' else 'expense' end;
+ insert into public.cashbook_entries(business_id,branch_id,entry_type,category,description,amount,payment_method,entry_date,reference)
+ values(v.business_id,v.branch_id,v_cash_type,
+   case when v.obligation_type='receivable' then 'Receivable payment' else 'Payable payment' end,
+   v.party_name||' · '||v.description,p_amount,coalesce(nullif(p_payment_method,''),'cash'),
+   coalesce(p_payment_date,current_date),coalesce(nullif(trim(coalesce(p_reference,'')),''),'PAY-'||v_payment::text));
+ insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+ values(v.business_id,auth.uid(),'financial_obligation_payment_recorded','financial_obligations',v.id::text,
+ jsonb_build_object('payment_id',v_payment,'amount',p_amount,'amount_paid',v_new_paid,'status',case when v_new_paid>=v.amount then 'settled' else 'part_paid' end));
+ return jsonb_build_object('status',case when v_new_paid>=v.amount then 'settled' else 'part_paid' end,'payment_id',v_payment,'amount_paid',v_new_paid);
+end; $;
+
 create or replace function public.receive_product_batch(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_batch_number text,
  p_expiry_date date,p_quantity numeric,p_unit_cost numeric
@@ -236,6 +296,8 @@ begin
  return jsonb_build_object('status','received','batch_id',v_batch);
 end; $;
 
+revoke all on function public.record_obligation_payment(uuid,numeric,text,date,text) from public;
+grant execute on function public.record_obligation_payment(uuid,numeric,text,date,text) to authenticated;
 revoke all on function public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric) from public;
 grant execute on function public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric) to authenticated;
 revoke all on function public.request_stock_adjustment(uuid,uuid,uuid,text,numeric,text) from public;
