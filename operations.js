@@ -1,7 +1,7 @@
 /* White Lion SME OS — branch transfers, finance registers and advanced inventory controls. */
 (() => {
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let api,client,business,scannerStream=null,products=[];
+  let api,client,business,memberRole=null,scannerStream=null,products=[];
   const css=document.createElement('style');
   css.textContent=`
     #wlOpsPanel{margin-top:12px;padding:14px;background:#14233b;border:1px solid #52627b;border-radius:12px;color:#fff;font-size:12px}
@@ -33,7 +33,7 @@
         <input id="wlOpsTransferNote" placeholder="Transfer note (optional)"><button id="wlOpsTransferCreate">Submit transfer request</button>
         <div id="wlOpsTransfers" class="ops-muted"></div><h4>Assign older offline transactions</h4><div class="ops-muted">Use this only when you know which branch handled transactions recorded before signing in. This does not change their totals.</div><select id="wlOpsPendingBranch"></select><button id="wlOpsAssignPending">Assign unassigned pending transactions</button><div id="wlOpsPendingCount" class="ops-muted"></div>
       </details>
-      <details><summary>Financial management & accounting</summary>
+      <details id="wlOpsFinance"><summary>Financial management & accounting</summary>
         <div id="wlOpsFinanceSummary" class="ops-summary"></div>
         <h4>Cashbook entry</h4>
         <div class="ops-grid"><select id="wlOpsCashType"><option value="income">Income</option><option value="expense">Expense</option></select><input id="wlOpsCashCategory" placeholder="Category"></div>
@@ -72,6 +72,9 @@
     if(!client||!business)return;
     host();say('Loading branch operations…');
     const branchRows=api.getBranches?.()||[];
+    const {data:membership,error:membershipError}=await client.from('business_members').select('role').eq('business_id',business.id).eq('user_id',api.getSession?.()?.user?.id).eq('is_active',true).maybeSingle();
+    if(membershipError)return say(membershipError.message,true);memberRole=membership?.role||null;
+    const finance=document.getElementById('wlOpsFinance');if(finance)finance.hidden=!['owner','admin','manager','accountant'].includes(memberRole);
     const [p,b]=await Promise.all([
       client.from('products').select('id,name,sku,barcode,client_record_id').eq('business_id',business.id).eq('is_active',true).order('name'),
       client.from('branches').select('id,name,is_active').eq('business_id',business.id).eq('is_active',true).order('created_at')
@@ -120,7 +123,7 @@
     if(error){el.textContent=error.message;return;}
     const branches=api.getBranches?.()||[];
     const names=new Map(branches.map(b=>[b.id,b.name]));
-    el.innerHTML=(data||[]).map(t=>'<div class="ops-row"><strong>'+esc(names.get(t.source_branch_id)||'Source')+' → '+esc(names.get(t.destination_branch_id)||'Destination')+'</strong><div class="ops-muted">'+esc(t.status)+' · '+new Date(t.requested_at).toLocaleString()+' · '+esc(t.note||'')+'</div>'+(t.status==='pending'?'<button data-ops-approve="'+esc(t.id)+'">Approve</button><button data-ops-reject="'+esc(t.id)+'">Reject</button><button data-ops-cancel="'+esc(t.id)+'">Cancel</button>':'')+'</div>').join('')||'No transfer requests.';
+    el.innerHTML=(data||[]).map(t=>'<div class="ops-row"><strong>'+esc(names.get(t.source_branch_id)||'Source')+' → '+esc(names.get(t.destination_branch_id)||'Destination')+'</strong><div class="ops-muted">'+esc(t.status)+' · '+new Date(t.requested_at).toLocaleString()+' · '+esc(t.note||'')+'</div>'+(t.status==='pending'?(['owner','admin','manager'].includes(memberRole)?'<button data-ops-approve="'+esc(t.id)+'">Approve</button><button data-ops-reject="'+esc(t.id)+'">Reject</button>':'')+'<button data-ops-cancel="'+esc(t.id)+'">Cancel</button>':'')+'</div>').join('')||'No transfer requests.';
     el.querySelectorAll('[data-ops-approve]').forEach(b=>b.onclick=()=>transferDecision(b.dataset.opsApprove,'approve'));
     el.querySelectorAll('[data-ops-reject]').forEach(b=>b.onclick=()=>transferDecision(b.dataset.opsReject,'reject'));
     el.querySelectorAll('[data-ops-cancel]').forEach(b=>b.onclick=()=>transferDecision(b.dataset.opsCancel,'cancel'));
@@ -212,7 +215,7 @@
     const {data,error}=await client.from('stock_adjustments').select('id,product_id,adjustment_type,quantity,reason,status,created_at').eq('business_id',business.id).eq('branch_id',branch.id).order('created_at',{ascending:false}).limit(30);
     if(error){el.textContent=error.message;return;}
     const names=new Map(products.map(p=>[p.id,p.name]));
-    el.innerHTML=(data||[]).map(x=>'<div class="ops-row"><strong>'+esc(names.get(x.product_id)||'Product')+' · '+esc(x.adjustment_type)+' '+Number(x.quantity).toLocaleString()+'</strong><div class="ops-muted">'+esc(x.reason)+' · '+esc(x.status)+'</div>'+(x.status==='pending'?'<button data-ops-adjust-approve="'+esc(x.id)+'">Approve</button><button data-ops-adjust-reject="'+esc(x.id)+'">Reject</button>':'')+'</div>').join('')||'No stock adjustments.';
+    el.innerHTML=(data||[]).map(x=>'<div class="ops-row"><strong>'+esc(names.get(x.product_id)||'Product')+' · '+esc(x.adjustment_type)+' '+Number(x.quantity).toLocaleString()+'</strong><div class="ops-muted">'+esc(x.reason)+' · '+esc(x.status)+'</div>'+(x.status==='pending'&&['owner','admin','manager'].includes(memberRole)?'<button data-ops-adjust-approve="'+esc(x.id)+'">Approve</button><button data-ops-adjust-reject="'+esc(x.id)+'">Reject</button>':'')+'</div>').join('')||'No stock adjustments.';
     el.querySelectorAll('[data-ops-adjust-approve]').forEach(b=>b.onclick=()=>decideAdjustment(b.dataset.opsAdjustApprove,true));
     el.querySelectorAll('[data-ops-adjust-reject]').forEach(b=>b.onclick=()=>decideAdjustment(b.dataset.opsAdjustReject,false));
   }
