@@ -1,5 +1,4 @@
-/* White Lion SME OS — Supabase account and workspace foundation.
-   This layer does not sync local IndexedDB records yet. */
+/* White Lion SME OS — Supabase workspace, master-data and atomic transaction sync. */
 (() => {
   const SUPABASE_URL = 'https://nclncqlgnxnijlumznnt.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
@@ -222,17 +221,18 @@
       const rows = await all(name);
       pending += rows.filter(row => !row.cloudSyncedFor || row.cloudSyncedFor !== activeBusiness.id).length;
     }
-    const unsupported = (await all('sales')).length + (await all('purchases')).length;
-    syncStatus(pending + ' local master/expense records pending for this workspace. Sales and purchases are waiting for the next transaction-sync phase (' + unsupported + ' local transactions).');
+    const txRows = [...await all('sales'), ...await all('purchases')];
+    const txPending = txRows.filter(row => row.cloudSyncedFor !== activeBusiness.id).length;
+    syncStatus(pending + ' master/expense records and ' + txPending + ' sales/purchases pending for this workspace.');
   }
   async function syncLocalRecords() {
     if (!client || !session || !activeBusiness) return say('Sign in and select a business workspace first.');
     if (!navigator.onLine) { syncStatus('Offline. Records remain safely on this device; reconnect to sync.'); return; }
-    if (!confirm('Upload this device’s local products, customers, suppliers and expenses into “' + activeBusiness.name + '”? This does not upload sales or purchases. Continue only if these local records belong in this workspace.')) return;
+    if (!confirm('Upload this device’s local products, customers, suppliers, expenses, sales and purchases into “' + activeBusiness.name + '”? Continue only if ALL these local records belong in this workspace.')) return;
     const button = $('wlSyncNow');
     if (button) { button.disabled = true; button.textContent = 'Syncing…'; }
     const types = ['products','customers','suppliers','expenses'];
-    let total = 0;
+    let total = 0, transactionTotal = 0;
     try {
       for (const type of types) {
         const rows = await all(type);
@@ -271,8 +271,58 @@
           total++;
         }
       }
-      syncStatus('Sync complete. ' + total + ' records uploaded or confirmed. Sales and purchases are not included yet.');
-      say('Cloud sync completed for ' + total + ' local records.');
+      // Transactions are posted only after master data, especially products, has cloud IDs.
+      const productRows = await all('products');
+      const productByLocalId = new Map(productRows.map(p => [String(p.id), p]));
+      for (const type of ['sales','purchases']) {
+        const rows = await all(type);
+        for (const row of rows) {
+          if (row.cloudSyncedFor === activeBusiness.id) continue;
+          if (!row.cloudTransactionId) {
+            row.cloudTransactionId = crypto.randomUUID();
+            await put(type, row);
+          }
+          const sourceItems = Array.isArray(row.items) && row.items.length ? row.items :
+            (type === 'purchases' ? [{productId:row.productId, name:row.product, quantity:row.quantity, unitPrice:row.cost}] : []);
+          if (!sourceItems.length) throw new Error(type + ' transaction ' + (row.receipt || row.cloudTransactionId) + ' has no item details.');
+          const items = sourceItems.map(item => {
+            const product = productByLocalId.get(String(item.productId));
+            if (!product || !product.cloudClientRecordId || product.cloudSyncedFor !== activeBusiness.id) {
+              throw new Error('A product in ' + type + ' ' + (row.receipt || row.cloudTransactionId) + ' is not synced to this workspace. Sync products first.');
+            }
+            return {
+              product_client_record_id:product.cloudClientRecordId,
+              product_name:item.name || product.name || 'Product',
+              quantity:Number(item.quantity || 0),
+              ...(type === 'sales' ? {unit_price:Number(item.unitPrice ?? product.price ?? 0)} : {unit_cost:Number(item.unitCost ?? item.cost ?? row.cost ?? product.cost ?? 0)})
+            };
+          });
+          const payload = {
+            client_transaction_id:row.cloudTransactionId,
+            receipt:row.receipt || null,
+            transaction_date:row.date || new Date().toISOString().slice(0,10),
+            customer_name:row.customer || null,
+            supplier_name:row.supplier || null,
+            payment_method:row.payment || 'cash',
+            total:Number(row.total || 0),
+            items
+          };
+          const {data,error} = await client.rpc('sync_local_transaction', {
+            p_business_id:activeBusiness.id,
+            p_event_id:type + ':' + row.cloudTransactionId,
+            p_transaction_type:type,
+            p_transaction:payload
+          });
+          if (error) throw new Error(type + ' transaction ' + (row.receipt || row.cloudTransactionId) + ': ' + error.message);
+          row.cloudSyncedFor = activeBusiness.id;
+          row.cloudSyncedAt = new Date().toISOString();
+          row.cloudSyncResult = data?.status || 'synced';
+          await put(type,row);
+          transactionTotal++;
+        }
+      }
+      syncStatus('Sync complete: ' + total + ' master/expense records and ' + transactionTotal + ' transactions uploaded or confirmed.');
+      say('Cloud sync completed: ' + total + ' records and ' + transactionTotal + ' transactions.');
     } catch (error) {
       syncStatus('Sync paused: ' + error.message + '. Local records are preserved; retry when ready.');
     } finally {
@@ -281,7 +331,7 @@
     }
   }
   window.addEventListener('online', () => {
-    if (activeBusiness) syncStatus('Internet restored. Tap Sync local records to upload pending changes.');
+    if (activeBusiness) syncStatus('Internet restored. Tap Sync local records to upload pending records and transactions.');
   });
 
   function loadSdk() {
