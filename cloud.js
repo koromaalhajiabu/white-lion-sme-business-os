@@ -314,6 +314,13 @@
             p_transaction:payload
           });
           if (error) throw new Error(type + ' transaction ' + (row.receipt || row.cloudTransactionId) + ': ' + error.message);
+          const {data: receipt, error: receiptError} = await client.from('offline_sync_receipts')
+            .select('event_id,record_type,record_count')
+            .eq('business_id', activeBusiness.id)
+            .eq('event_id', type + ':' + row.cloudTransactionId)
+            .maybeSingle();
+          if (receiptError) throw new Error('Could not verify cloud receipt for ' + (row.receipt || row.cloudTransactionId) + ': ' + receiptError.message);
+          if (!receipt) throw new Error('The cloud RPC returned but no sync receipt was found for ' + (row.receipt || row.cloudTransactionId) + '. The local transaction is still pending.');
           row.cloudSyncedFor = activeBusiness.id;
           row.cloudSyncedAt = new Date().toISOString();
           row.cloudSyncResult = data?.status || 'synced';
