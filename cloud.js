@@ -133,14 +133,14 @@
   async function checkDeveloperAccess() {
     const panel = $('wlDeveloperBox');
     if (!panel || !session) return;
-    panel.hidden = session.user.email?.toLowerCase() !== 'koromaalhaji0@gmail.com';
+    panel.hidden = session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com';
     if (panel.hidden) return;
     $('wlDevIdentity').textContent = 'Authenticated: ' + session.user.email + ' · Private developer';
     await loadDeveloperDashboard();
   }
   async function loadDeveloperDashboard() {
     const status = $('wlDevStatus');
-    if (!session || session.user.email?.toLowerCase() !== 'koromaalhaji0@gmail.com') return;
+    if (!session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
     status.textContent = 'Checking developer authorization and loading platform data…';
     const { data, error } = await client.rpc('get_platform_dashboard');
     if (error) { status.textContent = 'Developer database setup required: ' + error.message; return; }
