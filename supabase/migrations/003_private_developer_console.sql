@@ -51,6 +51,71 @@ insert into public.platform_settings(setting_key, setting_value)
 values ('maintenance_mode', '{"enabled": false, "message": "The platform is temporarily undergoing maintenance."}'::jsonb)
 on conflict (setting_key) do nothing;
 
+-- Enforce suspension and maintenance mode through the tenant helper functions
+-- used by the existing row-level security policies.
+create or replace function public.is_business_member(p_business_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select
+    (
+      public.is_platform_developer()
+      or coalesce((
+        select not (s.setting_value ->> 'enabled')::boolean
+        from public.platform_settings s
+        where s.setting_key='maintenance_mode'
+      ), true)
+    )
+    and exists (
+      select 1
+      from public.business_members m
+      join public.businesses b on b.id=m.business_id
+      where m.business_id=p_business_id
+        and m.user_id=auth.uid()
+        and m.is_active=true
+        and b.is_suspended=false
+    );
+$;
+
+create or replace function public.has_business_role(
+  p_business_id uuid,
+  p_roles public.business_role[]
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select
+    (
+      public.is_platform_developer()
+      or coalesce((
+        select not (s.setting_value ->> 'enabled')::boolean
+        from public.platform_settings s
+        where s.setting_key='maintenance_mode'
+      ), true)
+    )
+    and exists (
+      select 1
+      from public.business_members m
+      join public.businesses b on b.id=m.business_id
+      where m.business_id=p_business_id
+        and m.user_id=auth.uid()
+        and m.is_active=true
+        and b.is_suspended=false
+        and m.role=any(p_roles)
+    );
+$;
+
+revoke all on function public.is_business_member(uuid) from public;
+revoke all on function public.has_business_role(uuid,public.business_role[]) from public;
+grant execute on function public.is_business_member(uuid) to authenticated;
+grant execute on function public.has_business_role(uuid,public.business_role[]) to authenticated;
+
 create or replace function public.get_platform_dashboard()
 returns jsonb
 language plpgsql
