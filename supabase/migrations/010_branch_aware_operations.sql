@@ -60,7 +60,7 @@ create or replace function public.sync_local_records(
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   r jsonb;
   v_branch uuid;
@@ -170,7 +170,7 @@ begin
   values(p_business_id,p_event_id,p_record_type,v_count);
   return jsonb_build_object('status','synced','processed',v_count);
 end;
-$;
+$$;
 
 -- New branch-aware transaction RPC.
 -- Managers/owners/admins may post to any active branch.
