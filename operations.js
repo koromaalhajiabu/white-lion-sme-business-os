@@ -46,7 +46,7 @@
         <div class="ops-muted">These are manual finance registers. Sales and purchases are not automatically posted into the cashbook yet, to avoid double-counting.</div>
       </details>
       <details><summary>Advanced inventory, barcode & expiry</summary>
-        <div class="ops-grid"><input id="wlOpsBarcode" placeholder="Scan or enter product barcode"><button id="wlOpsBarcodeFind">Find product</button></div>
+        <div class="ops-grid"><input id="wlOpsBarcode" placeholder="Scan or enter product barcode"><button id="wlOpsBarcodeFind">Find product</button></div><div class="ops-grid"><select id="wlOpsBarcodeProduct"></select><button id="wlOpsBarcodeSave">Save barcode to product</button></div>
         <button id="wlOpsScanStart">Open camera scanner</button><button id="wlOpsScanStop">Stop scanner</button><video id="wlOpsVideo" playsinline hidden></video><div id="wlOpsBarcodeResult" class="ops-muted"></div>
         <h4>Receive batch / expiry tracking</h4>
         <select id="wlOpsBatchProduct"></select><div class="ops-grid"><input id="wlOpsBatchNo" placeholder="Batch / lot number"><input id="wlOpsExpiry" type="date"></div>
@@ -61,7 +61,7 @@
     work.appendChild(box);
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOpsCashSave',saveCashbook);
-    bind('wlOpsObligationSave',saveObligation);bind('wlOpsBarcodeFind',findBarcode);
+    bind('wlOpsObligationSave',saveObligation);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
     document.getElementById('wlOpsSource').addEventListener('change',renderTransferStock);
@@ -85,7 +85,7 @@
     if(current)document.getElementById('wlOpsSource').value=current;
     if(branches.length>1)document.getElementById('wlOpsDestination').value=branches.find(x=>x.id!==document.getElementById('wlOpsSource').value)?.id||'';
     const prodOpts=products.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.sku?' · '+esc(x.sku):'')+'</option>').join('');
-    ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
+    ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct','wlOpsBarcodeProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
     await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments()]);
     say('Operations controls loaded for '+business.name+'.');
@@ -142,7 +142,15 @@
     const code=document.getElementById('wlOpsBarcode').value.trim();if(!code)return say('Enter or scan a barcode.',true);
     const p=products.find(x=>x.barcode===code||x.sku===code);
     document.getElementById('wlOpsBarcodeResult').textContent=p?'Found: '+p.name+' · SKU '+(p.sku||'—')+' · Barcode '+(p.barcode||'—'):'No product matched that barcode or SKU.';
-    if(p)document.getElementById('wlOpsBatchProduct').value=p.id;
+    if(p){document.getElementById('wlOpsBatchProduct').value=p.id;document.getElementById('wlOpsBarcodeProduct').value=p.id;}
+  }
+  async function saveBarcode(){
+    const productId=document.getElementById('wlOpsBarcodeProduct').value,code=document.getElementById('wlOpsBarcode').value.trim();
+    if(!productId||!code)return say('Choose a product and enter a barcode.',true);
+    const {error}=await client.from('products').update({barcode:code}).eq('id',productId).eq('business_id',business.id);
+    if(error)return say(error.message,true);
+    const p=products.find(x=>x.id===productId);if(p)p.barcode=code;
+    say('Barcode saved to product.');document.getElementById('wlOpsBarcodeResult').textContent='Barcode '+code+' is now assigned to '+(p?.name||'the selected product')+'.';
   }
   async function startScanner(){
     if(!('BarcodeDetector'in window))return say('This browser does not support camera barcode detection. Enter the barcode manually.',true);
