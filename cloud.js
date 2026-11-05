@@ -66,12 +66,18 @@
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
       <div class="dev-meta" style="margin-top:10px">Account suspension blocks access to all business workspaces but preserves the Supabase login and existing records. Permanent deletion is not performed here.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:18px"><h3 style="margin:0">Platform activity &amp; audit log</h3><button id="wlDevAuditRefresh">Refresh activity</button></div>
+      <input id="wlDevAuditSearch" type="search" placeholder="Search actions, accounts, workspaces…" aria-label="Search platform audit log" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #52627b;border-radius:8px;background:#101b31;color:#fff;margin:8px 0">
+      <div id="wlDevAudit" class="dev-meta">Recent platform activity will appear here.</div>
+      <div class="dev-meta" style="margin-top:10px">The audit log records actions made after this feature is installed. Existing historical audit entries are not backfilled.</div>
       <div class="dev-meta" style="margin-top:10px">Developer access is verified by Supabase database permissions. This console does not expose passwords or secret API keys.</div>`;
     box.insertAdjacentElement('afterend', dev);
     $('wlDevRefresh').onclick = loadDeveloperDashboard;
     $('wlDevFreeze').onclick = toggleMaintenance;
     $('wlDevAssign').onclick = manageBusinessAccess;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
+    $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
+    $('wlDevAuditSearch').oninput = renderDeveloperActivity;
     $('wlSignIn').onclick = () => authenticate(false);
     $('wlSignUp').onclick = () => authenticate(true);
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; $('wlDeveloperBox').hidden = true; showSignedOut(); };
@@ -169,6 +175,33 @@
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
     await loadDeveloperAccounts();
+    await loadDeveloperActivity();
+  }
+  async function loadDeveloperActivity() {
+    const host = $('wlDevAudit');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading platform activity…';
+    const {data,error} = await client.rpc('get_platform_audit_log', {p_limit:150});
+    if (error) {
+      host.textContent = 'Audit log unavailable: ' + error.message + '. Run migration 007 first.';
+      return;
+    }
+    window.__wlPlatformAudit = Array.isArray(data) ? data : [];
+    renderDeveloperActivity();
+  }
+  function renderDeveloperActivity() {
+    const host = $('wlDevAudit');
+    if (!host) return;
+    const query = ($('wlDevAuditSearch')?.value || '').trim().toLowerCase();
+    const events = (window.__wlPlatformAudit || []).filter(event => {
+      const text = [event.action,event.actor_email,event.business_name,event.entity_table,event.entity_id,JSON.stringify(event.details || {})].join(' ').toLowerCase();
+      return !query || text.includes(query);
+    });
+    host.innerHTML = events.map(event => {
+      const when = event.occurred_at ? new Date(event.occurred_at).toLocaleString() : 'Time unavailable';
+      const details = event.details && Object.keys(event.details).length ? JSON.stringify(event.details) : '';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(String(event.action || 'Platform event').replaceAll('_',' ')) + '</strong><div class="dev-meta">' + escapeHtml(event.actor_email || 'System / unknown actor') + ' · ' + escapeHtml(when) + '</div><div class="dev-meta">' + escapeHtml(event.business_name || 'Platform-wide') + (event.entity_table ? ' · ' + escapeHtml(event.entity_table) : '') + (event.entity_id ? ' · ' + escapeHtml(event.entity_id) : '') + '</div>' + (details ? '<div class="dev-meta">' + escapeHtml(details) + '</div>' : '') + '</div></div>';
+    }).join('') || '<div class="dev-meta">No matching audit events found in the latest 150 records.</div>';
   }
   async function loadDeveloperAccounts() {
     const host = $('wlDevAccounts');
