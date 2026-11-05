@@ -63,11 +63,15 @@
         <button id="wlDevAssign">Manage business access</button>
       </div>
       <div id="wlDevBusinesses"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
+      <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
+      <div class="dev-meta" style="margin-top:10px">Account suspension blocks access to all business workspaces but preserves the Supabase login and existing records. Permanent deletion is not performed here.</div>
       <div class="dev-meta" style="margin-top:10px">Developer access is verified by Supabase database permissions. This console does not expose passwords or secret API keys.</div>`;
     box.insertAdjacentElement('afterend', dev);
     $('wlDevRefresh').onclick = loadDeveloperDashboard;
     $('wlDevFreeze').onclick = toggleMaintenance;
     $('wlDevAssign').onclick = manageBusinessAccess;
+    $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlSignIn').onclick = () => authenticate(false);
     $('wlSignUp').onclick = () => authenticate(true);
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; $('wlDeveloperBox').hidden = true; showSignedOut(); };
@@ -164,7 +168,38 @@
       };
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
+    await loadDeveloperAccounts();
   }
+  async function loadDeveloperAccounts() {
+    const host = $('wlDevAccounts');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading registered accounts…';
+    const {data,error} = await client.rpc('get_platform_accounts');
+    if (error) { host.textContent = 'Account directory unavailable: ' + error.message + '. Run migration 006 first.'; return; }
+    const accounts = Array.isArray(data) ? data : [];
+    host.innerHTML = accounts.map(a => {
+      const active = a.is_active !== false;
+      const name = a.full_name || 'Name not provided';
+      const last = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString() : 'Never signed in';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(name) + '</strong><div class="dev-meta">' + escapeHtml(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + escapeHtml(last) + '</div></div><div class="dev-actions"><button data-account-user="' + escapeHtml(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (a.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com' ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button></div></div>';
+    }).join('') || '<div class="dev-meta">No registered accounts found.</div>';
+    host.querySelectorAll('[data-account-user]').forEach(button => {
+      button.onclick = async () => {
+        const suspend = button.dataset.accountActive === 'true';
+        if (!confirm((suspend ? 'Suspend this account across all business workspaces?' : 'Restore this account access across business workspaces?') + ' Existing records will be preserved.')) return;
+        button.disabled = true;
+        const result = await client.rpc('set_platform_account_access', {
+          p_user_id:button.dataset.accountUser,
+          p_is_active:!suspend,
+          p_note:''
+        });
+        if (result.error) { $('wlDevStatus').textContent = result.error.message; button.disabled = false; return; }
+        $('wlDevStatus').textContent = suspend ? 'Account access suspended. Existing data preserved.' : 'Account access restored.';
+        await loadDeveloperAccounts();
+      };
+    });
+  }
+
   async function toggleMaintenance() {
     const dashboard = await client.rpc('get_platform_dashboard');
     if (dashboard.error) { $('wlDevStatus').textContent = dashboard.error.message; return; }
