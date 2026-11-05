@@ -75,6 +75,10 @@ create table if not exists public.stock_adjustments (
     references public.products(id,business_id) on delete cascade
 );
 
+alter table public.products add column if not exists barcode text;
+create unique index if not exists products_business_barcode_uidx
+  on public.products(business_id,barcode) where barcode is not null and barcode<>'';
+
 create index if not exists cashbook_business_date_idx on public.cashbook_entries(business_id,entry_date desc);
 create index if not exists obligations_business_status_idx on public.financial_obligations(business_id,status,due_date);
 create index if not exists product_batches_expiry_idx on public.product_batches(business_id,expiry_date);
