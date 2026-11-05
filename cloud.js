@@ -469,7 +469,7 @@
         localSuppliers=await all('suppliers'), localExpenses=await all('expenses'),
         localSales=await all('sales'), localPurchases=await all('purchases');
       const [pRes,cRes,sRes,eRes]=await Promise.all([
-        client.from('products').select('id,client_record_id,sku,name,category,unit,cost_price,selling_price,reorder_level,is_active').eq('business_id',businessId),
+        client.from('products').select('id,client_record_id,sku,name,category,unit,cost_price,selling_price,reorder_level,is_active,barcode').eq('business_id',businessId),
         client.from('customers').select('id,client_record_id,name,phone,email,address,notes').eq('business_id',businessId),
         client.from('suppliers').select('id,client_record_id,name,phone,email,address,notes').eq('business_id',businessId),
         client.from('expenses').select('id,client_record_id,category,description,amount,payment_method,expense_date').eq('business_id',businessId)
@@ -483,12 +483,13 @@
       const productMap=new Map();
       for(const cloud of pRes.data||[]){
         const old=localProducts.find(x=>x.cloudClientRecordId===cloud.client_record_id);
+        if(old)productMap.set(cloud.id,old.id);
         if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
         const row={...(old||{}),id:old?.id||('cloud-product-'+cloud.client_record_id),
           cloudClientRecordId:cloud.client_record_id,cloudSyncedFor:businessId,cloudSyncedAt:new Date().toISOString(),
           name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',
           cost:Number(cloud.cost_price||0),price:Number(cloud.selling_price||0),reorder:Number(cloud.reorder_level||0),
-          stock:selectedStock.get(cloud.id)||0,active:cloud.is_active};
+          stock:selectedStock.get(cloud.id)||0,active:cloud.is_active,barcode:cloud.barcode||''};
         await put('products',row);productMap.set(cloud.id,row.id);old?updated++:added++;
       }
       const syncSimple=async(type,rows,localRows,mapRow)=>{
