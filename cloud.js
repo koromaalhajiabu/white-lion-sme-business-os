@@ -228,6 +228,7 @@
   async function syncLocalRecords() {
     if (!client || !session || !activeBusiness) return say('Sign in and select a business workspace first.');
     if (!navigator.onLine) { syncStatus('Offline. Records remain safely on this device; reconnect to sync.'); return; }
+    if (!confirm('Upload this device’s local products, customers, suppliers and expenses into “' + activeBusiness.name + '”? This does not upload sales or purchases. Continue only if these local records belong in this workspace.')) return;
     const button = $('wlSyncNow');
     if (button) { button.disabled = true; button.textContent = 'Syncing…'; }
     const types = ['products','customers','suppliers','expenses'];
