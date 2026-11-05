@@ -122,7 +122,6 @@ drop policy if exists branch_stock_transfer_items_member_read on public.branch_s
 create policy branch_stock_transfer_items_member_read on public.branch_stock_transfer_items
   for select to authenticated using (public.is_business_member(business_id));
 
-
 create or replace function public.create_business_branch(
   p_business_id uuid,
   p_name text,
@@ -130,7 +129,7 @@ create or replace function public.create_business_branch(
 ) returns jsonb
 language plpgsql security definer
 set search_path = ''
-as $
+as $$
 declare
   v_branch uuid;
 begin
@@ -150,7 +149,7 @@ begin
 
   return jsonb_build_object('status','created','branch_id',v_branch);
 end;
-$;
+$$;
 
 create or replace function public.set_branch_member_access(
   p_business_id uuid,
@@ -262,7 +261,6 @@ as $$
 declare
   v_transfer public.branch_stock_transfers%rowtype;
   v_item record;
-  v_role public.business_role;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   select * into v_transfer from public.branch_stock_transfers
@@ -345,6 +343,7 @@ revoke all on function public.set_branch_member_access(uuid,uuid,uuid,boolean) f
 revoke all on function public.request_branch_stock_transfer(uuid,uuid,uuid,jsonb,text) from public;
 revoke all on function public.approve_branch_stock_transfer(uuid) from public;
 revoke all on function public.cancel_branch_stock_transfer(uuid) from public;
+
 grant execute on function public.create_business_branch(uuid,text,text) to authenticated;
 grant execute on function public.set_branch_member_access(uuid,uuid,uuid,boolean) to authenticated;
 grant execute on function public.request_branch_stock_transfer(uuid,uuid,uuid,jsonb,text) to authenticated;
