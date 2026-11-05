@@ -43,7 +43,7 @@
         <div class="ops-grid"><select id="wlOpsObligationType"><option value="receivable">Customer owes us</option><option value="payable">We owe supplier</option></select><input id="wlOpsParty" placeholder="Customer / supplier name"></div>
         <input id="wlOpsObligationDesc" placeholder="Description / reference"><div class="ops-grid"><input id="wlOpsObligationAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><input id="wlOpsDueDate" type="date"></div>
         <button id="wlOpsObligationSave">Save receivable / payable</button><div id="wlOpsObligations" class="ops-muted"></div>
-        <div class="ops-muted">These are manual finance registers. Sales and purchases are not automatically posted into the cashbook yet, to avoid double-counting.</div>
+        <div class="ops-muted">Finance overview is business-wide. Trading balance is a simple sales-minus-purchases-minus-expenses estimate, not audited profit or a formal accrual P&L. Cashbook entries remain separate to avoid double-counting.</div>
       </details>
       <details><summary>Advanced inventory, barcode & expiry</summary>
         <div class="ops-grid"><input id="wlOpsBarcode" placeholder="Scan or enter product barcode"><button id="wlOpsBarcodeFind">Find product</button></div><div class="ops-grid"><select id="wlOpsBarcodeProduct"></select><button id="wlOpsBarcodeSave">Save barcode to product</button></div>
@@ -137,12 +137,13 @@
   }
   async function renderFinance(){
     const summary=document.getElementById('wlOpsFinanceSummary'),list=document.getElementById('wlOpsObligations');if(!summary||!list)return;
-    const [cash,ob]=await Promise.all([client.from('cashbook_entries').select('entry_type,amount').eq('business_id',business.id),client.from('financial_obligations').select('id,obligation_type,party_name,description,amount,amount_paid,due_date,status').eq('business_id',business.id).order('created_at',{ascending:false}).limit(30)]);
-    if(cash.error)return say(cash.error.message,true);if(ob.error)return say(ob.error.message,true);
+    const [cash,ob,sales,purchases,expenses]=await Promise.all([client.from('cashbook_entries').select('entry_type,amount').eq('business_id',business.id),client.from('financial_obligations').select('id,obligation_type,party_name,description,amount,amount_paid,due_date,status').eq('business_id',business.id).order('created_at',{ascending:false}).limit(30),client.from('offline_sales').select('total').eq('business_id',business.id),client.from('offline_purchases').select('total').eq('business_id',business.id),client.from('expenses').select('amount').eq('business_id',business.id)]);
+    if(cash.error)return say(cash.error.message,true);if(ob.error)return say(ob.error.message,true);if(sales.error)return say(sales.error.message,true);if(purchases.error)return say(purchases.error.message,true);if(expenses.error)return say(expenses.error.message,true);
     const income=(cash.data||[]).filter(x=>x.entry_type==='income').reduce((a,x)=>a+Number(x.amount),0),expense=(cash.data||[]).filter(x=>x.entry_type==='expense').reduce((a,x)=>a+Number(x.amount),0);
     const recv=(ob.data||[]).filter(x=>x.obligation_type==='receivable'&&x.status!=='void').reduce((a,x)=>a+Number(x.amount)-Number(x.amount_paid),0);
     const pay=(ob.data||[]).filter(x=>x.obligation_type==='payable'&&x.status!=='void').reduce((a,x)=>a+Number(x.amount)-Number(x.amount_paid),0);
-    summary.innerHTML=[['Cash income',income],['Cash expenses',expense],['Net cash',income-expense],['Receivables',recv],['Payables',pay]].map(x=>'<div class="ops-tile"><span class="ops-muted">'+x[0]+'</span><strong>'+money(x[1])+'</strong></div>').join('');
+    const revenue=(sales.data||[]).reduce((a,x)=>a+Number(x.total||0),0),purchasesTotal=(purchases.data||[]).reduce((a,x)=>a+Number(x.total||0),0),operatingExpenses=(expenses.data||[]).reduce((a,x)=>a+Number(x.amount||0),0),tradingBalance=revenue-purchasesTotal-operatingExpenses;
+    summary.innerHTML=[['Sales revenue',revenue],['Purchases',purchasesTotal],['Recorded expenses',operatingExpenses],['Trading balance estimate',tradingBalance],['Cashbook net',income-expense],['Receivables',recv],['Payables',pay]].map(x=>'<div class="ops-tile"><span class="ops-muted">'+x[0]+'</span><strong>'+money(x[1])+'</strong></div>').join('');
     list.innerHTML=(ob.data||[]).map(x=>'<div class="ops-row"><strong>'+esc(x.party_name)+' · '+esc(x.obligation_type)+'</strong><div class="ops-muted">'+esc(x.description)+' · '+money(Number(x.amount)-Number(x.amount_paid))+' outstanding · '+esc(x.status)+(x.due_date?' · Due '+esc(x.due_date):'')+'</div></div>').join('')||'No receivables or payables recorded.';
   }
   async function findBarcode(){
