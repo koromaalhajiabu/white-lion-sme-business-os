@@ -203,4 +203,43 @@ $$;
 revoke all on function public.get_platform_audit_log(integer) from public;
 grant execute on function public.get_platform_audit_log(integer) to authenticated;
 
+
+-- Prevent the ordinary account restore control from bypassing an active deletion request.
+create or replace function public.set_platform_account_access(
+  p_user_id uuid,
+  p_is_active boolean,
+  p_note text default ''
+)
+returns void language plpgsql security definer set search_path=''
+as $
+declare v_email text;
+begin
+  if not public.is_platform_developer() then raise exception 'Developer access required'; end if;
+  if p_user_id=auth.uid() then raise exception 'You cannot suspend your own developer account'; end if;
+  select email into v_email from auth.users where id=p_user_id;
+  if v_email is null then raise exception 'Account not found'; end if;
+  if exists(select 1 from public.platform_developer_emails where email=lower(v_email)) then
+    raise exception 'Platform developer accounts cannot be managed from this console';
+  end if;
+  if p_is_active and exists(
+    select 1 from public.platform_account_deletion_requests
+    where target_user_id=p_user_id and status='pending'
+  ) then
+    raise exception 'Cancel the pending deletion request before restoring this account';
+  end if;
+  insert into public.platform_account_access(user_id,is_active,note,updated_by,updated_at)
+  values(p_user_id,p_is_active,coalesce(nullif(trim(p_note),''),''),auth.uid(),now())
+  on conflict(user_id) do update set
+    is_active=excluded.is_active,note=excluded.note,updated_by=excluded.updated_by,updated_at=now();
+  insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+  select m.business_id,auth.uid(),
+    case when p_is_active then 'platform_account_restored' else 'platform_account_suspended' end,
+    'auth.users',p_user_id::text,
+    jsonb_build_object('email',lower(v_email),'is_active',p_is_active,'note',coalesce(p_note,''))
+  from public.business_members m where m.user_id=p_user_id;
+end;
+$;
+revoke all on function public.set_platform_account_access(uuid,boolean,text) from public;
+grant execute on function public.set_platform_account_access(uuid,boolean,text) to authenticated;
+
 commit;
