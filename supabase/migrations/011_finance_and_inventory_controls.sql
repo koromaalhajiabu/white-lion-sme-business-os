@@ -150,6 +150,37 @@ drop policy if exists adjustments_member_read on public.stock_adjustments;
 create policy adjustments_member_read on public.stock_adjustments for select to authenticated
 using(public.is_business_member(business_id));
 -- Requests are made through a SECURITY DEFINER RPC; clients cannot forge approval fields.
+
+-- Financial registers are visible only to owner/admin/manager/accountant roles.
+drop policy if exists cashbook_member_read on public.cashbook_entries;
+create policy cashbook_finance_read on public.cashbook_entries for select to authenticated
+using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
+drop policy if exists obligations_member_read on public.financial_obligations;
+create policy obligations_finance_read on public.financial_obligations for select to authenticated
+using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
+drop policy if exists obligation_payments_member_read on public.financial_obligation_payments;
+create policy obligation_payments_finance_read on public.financial_obligation_payments for select to authenticated
+using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
+
+drop policy if exists batches_member_read on public.product_batches;
+create policy batches_branch_read on public.product_batches for select to authenticated using (
+ public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
+ or (
+   public.has_business_role(business_id,array['cashier','storekeeper']::public.business_role[])
+   and exists(select 1 from public.branch_members bm where bm.business_id=product_batches.business_id
+     and bm.branch_id=product_batches.branch_id and bm.user_id=auth.uid() and bm.is_active)
+ )
+);
+drop policy if exists adjustments_member_read on public.stock_adjustments;
+create policy adjustments_branch_read on public.stock_adjustments for select to authenticated using (
+ public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[])
+ or (
+   public.has_business_role(business_id,array['storekeeper']::public.business_role[])
+   and exists(select 1 from public.branch_members bm where bm.business_id=stock_adjustments.business_id
+     and bm.branch_id=stock_adjustments.branch_id and bm.user_id=auth.uid() and bm.is_active)
+ )
+);
+
 drop policy if exists adjustments_no_direct_write on public.stock_adjustments;
 create policy adjustments_no_direct_write on public.stock_adjustments for all to authenticated
 using(false) with check(false);
