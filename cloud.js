@@ -46,7 +46,7 @@
       </div>
       <div id="wlCloudWork" hidden>
         <select id="wlBusinessSelect" aria-label="Choose business"></select>
-        <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSignOut">Sign out</button></div>
+        <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Sync local records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
         <details><summary>Business modules</summary><div id="wlModules" class="muted">Select a business to view modules.</div></details>
       </div>`;
     anchor.insertAdjacentElement('afterend', box);
@@ -73,6 +73,7 @@
     $('wlSignUp').onclick = () => authenticate(true);
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; $('wlDeveloperBox').hidden = true; showSignedOut(); };
     $('wlCreateBusiness').onclick = createBusiness;
+    $('wlSyncNow').onclick = syncLocalRecords;
     $('wlBusinessSelect').onchange = async (e) => {
       const chosen = (window.__wlBusinesses || []).find(b => b.id === e.target.value);
       if (chosen) await selectBusiness(chosen);
@@ -127,7 +128,8 @@
       .select('module_key,is_enabled').eq('business_id', business.id).order('module_key');
     $('wlModules').textContent = error ? 'Module list unavailable: ' + error.message :
       (modules || []).filter(m => m.is_enabled).map(m => m.module_key.replaceAll('_',' ')).join(' · ') || 'No modules enabled';
-    say('Signed in as ' + session.user.email + '. Workspace: ' + business.name + '. Cloud record sync is not enabled yet.');
+    say('Signed in as ' + session.user.email + '. Workspace: ' + business.name + '. Cloud sync is available for products, customers, suppliers and expenses.');
+    updateSyncStatus();
     window.dispatchEvent(new CustomEvent('whiteLionWorkspaceChanged', { detail: { business, modules: modules || [] } }));
   }
   async function checkDeveloperAccess() {
@@ -207,6 +209,80 @@
     if (created) await selectBusiness(created);
     say('Business workspace created successfully.');
   }
+
+  function syncStatus(message) {
+    const el = $('wlSyncStatus');
+    if (el) el.textContent = message;
+  }
+  async function updateSyncStatus() {
+    if (!activeBusiness) return;
+    const names = ['products','customers','suppliers','expenses'];
+    let pending = 0;
+    for (const name of names) {
+      const rows = await all(name);
+      pending += rows.filter(row => !row.cloudSyncedFor || row.cloudSyncedFor !== activeBusiness.id).length;
+    }
+    const unsupported = (await all('sales')).length + (await all('purchases')).length;
+    syncStatus(pending + ' local master/expense records pending for this workspace. Sales and purchases are waiting for the next transaction-sync phase (' + unsupported + ' local transactions).');
+  }
+  async function syncLocalRecords() {
+    if (!client || !session || !activeBusiness) return say('Sign in and select a business workspace first.');
+    if (!navigator.onLine) { syncStatus('Offline. Records remain safely on this device; reconnect to sync.'); return; }
+    const button = $('wlSyncNow');
+    if (button) { button.disabled = true; button.textContent = 'Syncing…'; }
+    const types = ['products','customers','suppliers','expenses'];
+    let total = 0;
+    try {
+      for (const type of types) {
+        const rows = await all(type);
+        for (const row of rows) {
+          const localId = String(row.id);
+          let stableId = row.cloudClientRecordId;
+          if (!stableId) {
+            stableId = crypto.randomUUID();
+            row.cloudClientRecordId = stableId;
+            await put(type, row);
+          }
+          if (row.cloudSyncedFor === activeBusiness.id) continue;
+          const payload = type === 'products' ? {
+            client_record_id:stableId, sku:row.sku || null, name:row.name || 'Unnamed product',
+            category:row.category || null, unit:row.unit || 'unit',
+            cost_price:Number(row.cost || 0), selling_price:Number(row.price || 0),
+            reorder_level:Number(row.reorder || 0), quantity_on_hand:Number(row.stock || 0)
+          } : type === 'expenses' ? {
+            client_record_id:stableId, category:row.category || 'General',
+            description:row.description || 'Expense', amount:Number(row.amount || 0),
+            payment_method:row.payment || 'cash', expense_date:row.date || new Date().toISOString().slice(0,10)
+          } : {
+            client_record_id:stableId, name:row.name || (type === 'customers' ? 'Unnamed customer':'Unnamed supplier'),
+            phone:row.phone || null, email:row.email || null, address:row.address || null, notes:row.notes || null
+          };
+          const {data,error} = await client.rpc('sync_local_records', {
+            p_business_id:activeBusiness.id,
+            p_event_id:type + ':' + stableId,
+            p_record_type:type,
+            p_records:[payload]
+          });
+          if (error) throw new Error(type + ' record ' + localId + ': ' + error.message);
+          row.cloudSyncedFor = activeBusiness.id;
+          row.cloudSyncedAt = new Date().toISOString();
+          await put(type,row);
+          total++;
+        }
+      }
+      syncStatus('Sync complete. ' + total + ' records uploaded or confirmed. Sales and purchases are not included yet.');
+      say('Cloud sync completed for ' + total + ' local records.');
+    } catch (error) {
+      syncStatus('Sync paused: ' + error.message + '. Local records are preserved; retry when ready.');
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Sync local records'; }
+      await updateSyncStatus();
+    }
+  }
+  window.addEventListener('online', () => {
+    if (activeBusiness) syncStatus('Internet restored. Tap Sync local records to upload pending changes.');
+  });
+
   function loadSdk() {
     return new Promise((resolve, reject) => {
       if (window.supabase?.createClient) return resolve();
