@@ -13,7 +13,7 @@ where l.actor_user_id=u.id and l.actor_email_snapshot is null;
 -- Preserve operational and audit records when a non-owner account is permanently removed.
 -- Business owners are blocked from deletion requests until ownership is transferred.
 do $$
-declare r record; v_column text;
+declare r record;
 begin
   for r in
     select c.conname, c.conrelid::regclass as table_name,
@@ -23,16 +23,11 @@ begin
     join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum
     where c.contype='f'
       and c.confrelid='auth.users'::regclass
-      and c.conrelid in (
-        'public.businesses'::regclass,
-        'public.business_members'::regclass,
-        'public.sales'::regclass,
-        'public.purchases'::regclass,
-        'public.inventory_movements'::regclass,
-        'public.expenses'::regclass,
-        'public.audit_logs'::regclass
-      )
-      and a.attname not in ('owner_user_id','user_id')
+      and c.connamespace='public'::regnamespace
+      and c.conrelid <> 'public.profiles'::regclass
+      and not (c.conrelid='public.businesses'::regclass and a.attname='owner_user_id')
+      and not (c.conrelid='public.business_members'::regclass and a.attname='user_id')
+      and not (c.conrelid='public.platform_account_access'::regclass and a.attname='user_id')
   loop
     execute format('alter table %s alter column %I drop not null',r.table_name,r.column_name);
     execute format('alter table %s drop constraint %I',r.table_name,r.conname);
