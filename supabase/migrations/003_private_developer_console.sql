@@ -11,7 +11,7 @@ revoke all on public.platform_developer_emails from anon, authenticated;
 
 -- The email is checked against the verified Supabase Auth JWT.
 insert into public.platform_developer_emails(email)
-values ('koromaalhaji0@gmail.com')
+values ('koromaalhajiabu0@gmail.com')
 on conflict (email) do nothing;
 
 create or replace function public.is_platform_developer()
