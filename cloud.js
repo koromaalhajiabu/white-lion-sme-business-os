@@ -567,12 +567,14 @@
           }
           if (row.cloudSyncedFor === activeBusiness.id) continue;
           if (type === 'products' && !selectedBranch?.id) throw new Error('Select an active branch before syncing product opening stock.');
+          const localBranchStock = type === 'products' ? localBranchStocks.find(x => String(x.productId)===String(row.id) && (x.branchId===selectedBranch.id || x.branchId==='local-main')) : null;
+          const openingStock = localBranchStock ? Number(localBranchStock.quantity||0) : Number(row.stock||0);
           const payload = type === 'products' ? {
             branch_id:selectedBranch.id,
             client_record_id:stableId, sku:row.sku || null, name:row.name || 'Unnamed product',
             category:row.category || null, unit:row.unit || 'unit',
             cost_price:Number(row.cost || 0), selling_price:Number(row.price || 0),
-            reorder_level:Number(row.reorder || 0), quantity_on_hand:Number(row.stock || 0)
+            reorder_level:Number(row.reorder || 0), quantity_on_hand:openingStock
           } : type === 'expenses' ? {
             client_record_id:stableId, category:row.category || 'General',
             description:row.description || 'Expense', amount:Number(row.amount || 0),
@@ -591,6 +593,7 @@
           row.cloudSyncedFor = activeBusiness.id;
           row.cloudSyncedAt = new Date().toISOString();
           await put(type,row);
+          if(type==='products'&&selectedBranch?.id){await put('branchInventory',{id:String(selectedBranch.id)+'|'+String(row.id),branchId:selectedBranch.id,productId:row.id,quantity:openingStock});}
           total++;
         }
       }
