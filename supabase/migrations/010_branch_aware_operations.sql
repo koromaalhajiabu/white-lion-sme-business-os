@@ -16,35 +16,49 @@ alter table public.branch_stock_transfers
   add column if not exists rejected_at timestamptz null,
   add column if not exists decision_note text null;
 
--- Direct branch inventory writes are limited to managers globally and assigned
--- storekeepers at their assigned branches. Transaction/transfer RPCs remain atomic.
-drop policy if exists branch_inventory_write on public.branch_inventory;
-drop policy if exists branch_inventory_manage on public.branch_inventory;
+-- Replace every existing branch_inventory write policy. PostgreSQL policies are
+-- permissive by default, so leaving an older broad ALL policy would bypass scope.
+do $$
+declare p record;
+begin
+  for p in
+    select policyname from pg_policies
+    where schemaname='public' and tablename='branch_inventory'
+  loop
+    execute format('drop policy %I on public.branch_inventory',p.policyname);
+  end loop;
+end;
+$$;
+
+create policy branch_inventory_member_read on public.branch_inventory
+for select to authenticated
+using(public.is_business_member(business_id));
+
+-- Only owners/admins/managers have workspace-wide stock write access.
+-- Storekeepers can write stock only for branches to which they are assigned.
 create policy branch_inventory_manage on public.branch_inventory
 for all to authenticated
 using (
-  public.has_business_role(business_id, array['owner','admin','manager']::public.business_role[])
+  public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[])
   or (
-    public.has_business_role(business_id, array['storekeeper']::public.business_role[])
-    and exists (
+    public.has_business_role(business_id,array['storekeeper']::public.business_role[])
+    and exists(
       select 1 from public.branch_members bm
-      where bm.business_id = branch_inventory.business_id
-        and bm.branch_id = branch_inventory.branch_id
-        and bm.user_id = auth.uid()
-        and bm.is_active = true
+      where bm.business_id=branch_inventory.business_id
+        and bm.branch_id=branch_inventory.branch_id
+        and bm.user_id=auth.uid() and bm.is_active=true
     )
   )
 )
 with check (
-  public.has_business_role(business_id, array['owner','admin','manager']::public.business_role[])
+  public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[])
   or (
-    public.has_business_role(business_id, array['storekeeper']::public.business_role[])
-    and exists (
+    public.has_business_role(business_id,array['storekeeper']::public.business_role[])
+    and exists(
       select 1 from public.branch_members bm
-      where bm.business_id = branch_inventory.business_id
-        and bm.branch_id = branch_inventory.branch_id
-        and bm.user_id = auth.uid()
-        and bm.is_active = true
+      where bm.business_id=branch_inventory.business_id
+        and bm.branch_id=branch_inventory.branch_id
+        and bm.user_id=auth.uid() and bm.is_active=true
     )
   )
 );
