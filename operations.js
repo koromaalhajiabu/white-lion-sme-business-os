@@ -93,7 +93,7 @@
   async function createTransfer(){
     const source=document.getElementById('wlOpsSource').value,dest=document.getElementById('wlOpsDestination').value;
     const product=products.find(p=>p.id===document.getElementById('wlOpsProduct').value),qty=Number(document.getElementById('wlOpsTransferQty').value);
-    if(!source||!dest||source===dest||!product||!Number.isFinite(qty)||qty<=0)return say('Choose different branches, a product and a positive quantity.',true);
+    if(!source||!dest||source===dest||!product||!product.client_record_id||!Number.isFinite(qty)||qty<=0)return say('Choose different branches, a product and a positive quantity.',true);
     const {error}=await client.rpc('request_branch_stock_transfer',{p_business_id:business.id,p_source_branch_id:source,p_destination_branch_id:dest,p_items:[{product_client_record_id:product.client_record_id,quantity:qty}],p_note:document.getElementById('wlOpsTransferNote').value.trim()||null});
     if(error)return say(error.message,true);
     document.getElementById('wlOpsTransferQty').value='';document.getElementById('wlOpsTransferNote').value='';
@@ -128,6 +128,13 @@
     const {error}=await client.from('financial_obligations').insert({business_id:business.id,branch_id:api.getSelectedBranch?.()?.id||null,obligation_type:document.getElementById('wlOpsObligationType').value,party_name:party,description,amount,due_date:document.getElementById('wlOpsDueDate').value||null});
     if(error)return say(error.message,true);document.getElementById('wlOpsObligationAmount').value='';say('Financial obligation saved.');await renderFinance();
   }
+  async function recordPayment(id,balance){
+    const raw=prompt('Enter payment amount in SLE. Outstanding: '+money(balance));
+    if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0||amount>balance)return say('Enter a valid payment not exceeding the outstanding balance.',true);
+    const method=prompt('Payment method (cash, mobile money, bank transfer, card):','cash');if(method===null)return;
+    const {error}=await client.rpc('record_obligation_payment',{p_obligation_id:id,p_amount:amount,p_payment_method:method,p_payment_date:new Date().toISOString().slice(0,10),p_reference:null});
+    if(error)return say(error.message,true);say('Payment recorded and posted to cashbook.');await renderFinance();
+  }
   async function renderFinance(){
     const summary=document.getElementById('wlOpsFinanceSummary'),list=document.getElementById('wlOpsObligations');if(!summary||!list)return;
     const [cash,ob]=await Promise.all([client.from('cashbook_entries').select('entry_type,amount').eq('business_id',business.id),client.from('financial_obligations').select('id,obligation_type,party_name,description,amount,amount_paid,due_date,status').eq('business_id',business.id).order('created_at',{ascending:false}).limit(30)]);
@@ -155,7 +162,7 @@
   async function startScanner(){
     if(!('BarcodeDetector'in window))return say('This browser does not support camera barcode detection. Enter the barcode manually.',true);
     try{
-      const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code']});
+      const supported=await BarcodeDetector.getSupportedFormats();const formats=['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code'].filter(x=>supported.includes(x));if(!formats.length)return say('No supported barcode formats were found in this browser.',true);const detector=new BarcodeDetector({formats});
       scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
       const video=document.getElementById('wlOpsVideo');video.srcObject=scannerStream;video.hidden=false;await video.play();
       const scan=async()=>{if(!scannerStream)return;try{const codes=await detector.detect(video);if(codes.length){document.getElementById('wlOpsBarcode').value=codes[0].rawValue;await findBarcode();stopScanner();return;}}catch(e){}requestAnimationFrame(scan);};
@@ -175,7 +182,7 @@
     const {data,error}=await client.from('product_batches').select('batch_number,expiry_date,quantity_on_hand,unit_cost,product_id').eq('business_id',business.id).eq('branch_id',branch.id).order('expiry_date',{ascending:true}).limit(50);
     if(error){el.textContent=error.message;return;}
     const names=new Map(products.map(p=>[p.id,p.name]));
-    el.innerHTML=(data||[]).map(x=>'<div class="ops-row">'+esc(names.get(x.product_id)||'Product')+' · '+esc(x.batch_number)+' · Qty '+Number(x.quantity_on_hand).toLocaleString()+' · Expiry '+esc(x.expiry_date||'Not set')+'</div>').join('')||'No batch records for this branch.';
+    el.innerHTML=(data||[]).map(x=>{const days=x.expiry_date?Math.ceil((new Date(x.expiry_date+'T00:00:00')-new Date(new Date().toISOString().slice(0,10)+'T00:00:00'))/86400000):null;const alert=days===null?'':days<0?' · EXPIRED':days<=30?' · EXPIRING SOON':'';return '<div class="ops-row">'+esc(names.get(x.product_id)||'Product')+' · '+esc(x.batch_number)+' · Qty '+Number(x.quantity_on_hand).toLocaleString()+' · Expiry '+esc(x.expiry_date||'Not set')+'<strong>'+alert+'</strong></div>';}).join('')||'No batch records for this branch.';
   }
   async function requestAdjustment(){
     const productId=document.getElementById('wlOpsAdjustProduct').value,type=document.getElementById('wlOpsAdjustType').value,qty=Number(document.getElementById('wlOpsAdjustQty').value),reason=document.getElementById('wlOpsAdjustReason').value.trim();
