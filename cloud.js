@@ -177,6 +177,7 @@
       : '<option value="">No active branches — create one</option>';
     selectedBranch = active.find(b => b.id === (preferredId || selectedBranch?.id)) || active[0] || null;
     $('wlBranchSelect').value = selectedBranch?.id || '';
+    window.dispatchEvent(new CustomEvent('whiteLionBranchChanged', {detail:{branch:selectedBranch,branches:active}}));
     $('wlBranchStatus').textContent = active.length + ' active branch(es) available. Branch selection currently controls branch management and stock viewing; sales/purchase posting will be connected in the next integration step.';
     await loadBranchDetails();
   }
@@ -475,7 +476,9 @@
             await put(type, row);
           }
           if (row.cloudSyncedFor === activeBusiness.id) continue;
+          if (type === 'products' && !selectedBranch?.id) throw new Error('Select an active branch before syncing product opening stock.');
           const payload = type === 'products' ? {
+            branch_id:selectedBranch.id,
             client_record_id:stableId, sku:row.sku || null, name:row.name || 'Unnamed product',
             category:row.category || null, unit:row.unit || 'unit',
             cost_price:Number(row.cost || 0), selling_price:Number(row.price || 0),
@@ -508,6 +511,7 @@
         const rows = await all(type);
         for (const row of rows) {
           if (row.cloudSyncedFor === activeBusiness.id) continue;
+          if (!row.branchId) throw new Error('Transaction ' + (row.receipt || row.id) + ' has no saved branch. Select a branch when recording new transactions; older transactions must be assigned deliberately before syncing.');
           if (!row.cloudTransactionId) {
             row.cloudTransactionId = crypto.randomUUID();
             await put(type, row);
@@ -537,8 +541,9 @@
             total:Number(row.total || 0),
             items
           };
-          const {data,error} = await client.rpc('sync_local_transaction', {
+          const {data,error} = await client.rpc('sync_branch_transaction', {
             p_business_id:activeBusiness.id,
+            p_branch_id:row.branchId,
             p_event_id:type + ':' + row.cloudTransactionId,
             p_transaction_type:type,
             p_transaction:payload
@@ -598,7 +603,9 @@
       window.whiteLionCloud = {
         getClient: () => client,
         getSession: () => session,
-        getActiveBusiness: () => activeBusiness
+        getActiveBusiness: () => activeBusiness,
+        getSelectedBranch: () => selectedBranch,
+        getBranches: () => (window.__wlBranches || []).filter(b => b.is_active)
       };
       window.dispatchEvent(new CustomEvent('whiteLionCloudReady'));
     } catch (error) {
