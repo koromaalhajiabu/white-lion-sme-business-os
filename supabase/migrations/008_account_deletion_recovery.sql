@@ -5,6 +5,11 @@ begin;
 alter table public.platform_audit_logs
   add column if not exists actor_email_snapshot text;
 
+update public.platform_audit_logs l
+set actor_email_snapshot=u.email
+from auth.users u
+where l.actor_user_id=u.id and l.actor_email_snapshot is null;
+
 -- Preserve operational and audit records when a non-owner account is permanently removed.
 -- Business owners are blocked from deletion requests until ownership is transferred.
 do $$
