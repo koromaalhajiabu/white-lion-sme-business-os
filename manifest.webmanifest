@@ -1,0 +1,9 @@
+{
+  "name": "White Lion SME Business Operating System",
+  "short_name": "White Lion SME",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f9",
+  "theme_color": "#101b31",
+  "description": "Multi-industry business operations platform by White Lion Tech Solutions."
+}
