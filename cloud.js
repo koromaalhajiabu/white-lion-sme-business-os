@@ -97,6 +97,10 @@
     else say('Account created. Check your email for the confirmation link.');
   }
   async function loadBusinesses() {
+    // Show the private developer console independently of workspace membership loading.
+    // A developer account may not belong to a business workspace, and membership RLS errors
+    // must not prevent the developer dashboard from appearing.
+    void checkDeveloperAccess();
     const { data: memberships, error } = await client.from('business_members')
       .select('business_id,role,is_active,businesses(id,name,industry,currency_code)')
       .eq('user_id', session.user.id).eq('is_active', true);
@@ -109,7 +113,6 @@
       : '<option value="">No business workspace yet</option>';
     if (businesses.length) await selectBusiness(businesses[0]);
     else say('Signed in. Create your first business workspace.');
-    await checkDeveloperAccess();
   }
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
