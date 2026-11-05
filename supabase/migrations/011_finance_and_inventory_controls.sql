@@ -198,6 +198,46 @@ begin
  return jsonb_build_object('status',case when p_approve then 'approved' else 'rejected' end,'adjustment_id',p_adjustment_id);
 end; $$;
 
+
+create or replace function public.receive_product_batch(
+ p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_batch_number text,
+ p_expiry_date date,p_quantity numeric,p_unit_cost numeric
+) returns jsonb language plpgsql security definer set search_path=''
+as $
+declare v_role public.business_role; v_batch uuid;
+begin
+ if auth.uid() is null then raise exception 'Authentication required'; end if;
+ select role into v_role from public.business_members
+ where business_id=p_business_id and user_id=auth.uid() and is_active;
+ if not found or v_role not in ('owner','admin','manager','storekeeper') then
+   raise exception 'Not authorised to receive stock batches';
+ end if;
+ if v_role='storekeeper' and not exists(select 1 from public.branch_members
+   where business_id=p_business_id and branch_id=p_branch_id and user_id=auth.uid() and is_active)
+ then raise exception 'You are not assigned to this branch'; end if;
+ if length(trim(coalesce(p_batch_number,'')))<1 or p_quantity is null or p_quantity<=0
+   or p_unit_cost is null or p_unit_cost<0 then raise exception 'Batch number, positive quantity and valid cost are required'; end if;
+ if not exists(select 1 from public.branches where id=p_branch_id and business_id=p_business_id and is_active)
+   or not exists(select 1 from public.products where id=p_product_id and business_id=p_business_id and is_active)
+ then raise exception 'Active branch or product not found'; end if;
+ insert into public.product_batches(business_id,branch_id,product_id,batch_number,expiry_date,quantity_on_hand,unit_cost)
+ values(p_business_id,p_branch_id,p_product_id,trim(p_batch_number),p_expiry_date,p_quantity,p_unit_cost)
+ on conflict(branch_id,product_id,batch_number) do update
+ set expiry_date=excluded.expiry_date,quantity_on_hand=public.product_batches.quantity_on_hand+excluded.quantity_on_hand,
+     unit_cost=excluded.unit_cost,updated_at=now()
+ returning id into v_batch;
+ insert into public.branch_inventory(business_id,branch_id,product_id,quantity_on_hand)
+ values(p_business_id,p_branch_id,p_product_id,p_quantity)
+ on conflict(branch_id,product_id) do update
+ set quantity_on_hand=public.branch_inventory.quantity_on_hand+excluded.quantity_on_hand,updated_at=now();
+ insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+ values(p_business_id,auth.uid(),'product_batch_received','product_batches',v_batch::text,
+ jsonb_build_object('branch_id',p_branch_id,'product_id',p_product_id,'batch_number',p_batch_number,'quantity',p_quantity,'expiry_date',p_expiry_date));
+ return jsonb_build_object('status','received','batch_id',v_batch);
+end; $;
+
+revoke all on function public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric) from public;
+grant execute on function public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric) to authenticated;
 revoke all on function public.request_stock_adjustment(uuid,uuid,uuid,text,numeric,text) from public;
 revoke all on function public.decide_stock_adjustment(uuid,boolean,text) from public;
 grant execute on function public.request_stock_adjustment(uuid,uuid,uuid,text,numeric,text) to authenticated;
