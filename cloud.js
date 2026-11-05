@@ -293,7 +293,7 @@
             return {
               product_client_record_id:product.cloudClientRecordId,
               product_name:item.name || product.name || 'Product',
-              quantity:Number(item.quantity || 0),
+              quantity:Number(item.quantity || 0), apply_stock:!!(row.createdAt && product.cloudSyncedAt && row.createdAt > product.cloudSyncedAt),
               ...(type === 'sales' ? {unit_price:Number(item.unitPrice ?? product.price ?? 0)} : {unit_cost:Number(item.unitCost ?? item.cost ?? row.cost ?? product.cost ?? 0)})
             };
           });
