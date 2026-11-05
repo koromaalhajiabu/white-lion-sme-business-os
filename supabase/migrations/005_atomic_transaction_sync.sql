@@ -124,9 +124,11 @@ begin
       v_qty := (v_item->>'quantity')::numeric;
       v_price := greatest(coalesce((v_item->>'unit_price')::numeric,0),0);
       if v_qty is null or v_qty <= 0 then raise exception 'Invalid sale quantity'; end if;
-      update public.branch_inventory set quantity_on_hand=quantity_on_hand-v_qty,updated_at=now()
-       where business_id=p_business_id and branch_id=v_branch and product_id=v_product and quantity_on_hand>=v_qty;
-      if not found then raise exception 'Insufficient cloud stock for product %', coalesce(v_item->>'product_name',''); end if;
+      if coalesce((v_item->>'apply_stock')::boolean,true) then
+        update public.branch_inventory set quantity_on_hand=quantity_on_hand-v_qty,updated_at=now()
+         where business_id=p_business_id and branch_id=v_branch and product_id=v_product and quantity_on_hand>=v_qty;
+        if not found then raise exception 'Insufficient cloud stock for product %', coalesce(v_item->>'product_name',''); end if;
+      end if;
       v_total := v_total + round(v_qty*v_price,2);
       insert into public.offline_sale_items(business_id,sale_id,product_id,product_name,quantity,unit_price,line_total)
       values(p_business_id,v_sale,v_product,coalesce(v_item->>'product_name','Product'),v_qty,v_price,round(v_qty*v_price,2));
@@ -148,10 +150,12 @@ begin
       v_qty := (v_item->>'quantity')::numeric;
       v_price := greatest(coalesce((v_item->>'unit_cost')::numeric,0),0);
       if v_qty is null or v_qty <= 0 then raise exception 'Invalid purchase quantity'; end if;
-      insert into public.branch_inventory(business_id,branch_id,product_id,quantity_on_hand)
-      values(p_business_id,v_branch,v_product,v_qty)
-      on conflict(branch_id,product_id) do update
-       set quantity_on_hand=public.branch_inventory.quantity_on_hand+excluded.quantity_on_hand,updated_at=now();
+      if coalesce((v_item->>'apply_stock')::boolean,true) then
+        insert into public.branch_inventory(business_id,branch_id,product_id,quantity_on_hand)
+        values(p_business_id,v_branch,v_product,v_qty)
+        on conflict(branch_id,product_id) do update
+         set quantity_on_hand=public.branch_inventory.quantity_on_hand+excluded.quantity_on_hand,updated_at=now();
+      end if;
       v_total := v_total + round(v_qty*v_price,2);
       insert into public.offline_purchase_items(business_id,purchase_id,product_id,product_name,quantity,unit_cost,line_total)
       values(p_business_id,v_purchase,v_product,coalesce(v_item->>'product_name','Product'),v_qty,v_price,round(v_qty*v_price,2));
