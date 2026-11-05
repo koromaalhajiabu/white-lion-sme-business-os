@@ -259,7 +259,7 @@ create or replace function public.record_obligation_payment(
  p_obligation_id uuid,p_amount numeric,p_payment_method text default 'cash',
  p_payment_date date default current_date,p_reference text default null
 ) returns jsonb language plpgsql security definer set search_path=''
-as $
+as $$
 declare v public.financial_obligations%rowtype; v_role public.business_role; v_payment uuid; v_new_paid numeric; v_cash_type text;
 begin
  if auth.uid() is null then raise exception 'Authentication required'; end if;
@@ -290,13 +290,13 @@ begin
  values(v.business_id,auth.uid(),'financial_obligation_payment_recorded','financial_obligations',v.id::text,
  jsonb_build_object('payment_id',v_payment,'amount',p_amount,'amount_paid',v_new_paid,'status',case when v_new_paid>=v.amount then 'settled' else 'part_paid' end));
  return jsonb_build_object('status',case when v_new_paid>=v.amount then 'settled' else 'part_paid' end,'payment_id',v_payment,'amount_paid',v_new_paid);
-end; $;
+end; $$;
 
 create or replace function public.receive_product_batch(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_batch_number text,
  p_expiry_date date,p_quantity numeric,p_unit_cost numeric
 ) returns jsonb language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_role public.business_role; v_batch uuid;
 begin
  if auth.uid() is null then raise exception 'Authentication required'; end if;
@@ -327,7 +327,7 @@ begin
  values(p_business_id,auth.uid(),'product_batch_received','product_batches',v_batch::text,
  jsonb_build_object('branch_id',p_branch_id,'product_id',p_product_id,'batch_number',p_batch_number,'quantity',p_quantity,'expiry_date',p_expiry_date));
  return jsonb_build_object('status','received','batch_id',v_batch);
-end; $;
+end; $$;
 
 revoke all on function public.record_obligation_payment(uuid,numeric,text,date,text) from public;
 grant execute on function public.record_obligation_payment(uuid,numeric,text,date,text) to authenticated;
