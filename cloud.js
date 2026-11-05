@@ -3,7 +3,7 @@
   const SUPABASE_URL = 'https://nclncqlgnxnijlumznnt.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
   const $ = (id) => document.getElementById(id);
-  let client = null, session = null, activeBusiness = null;
+  let client = null, session = null, activeBusiness = null, selectedBranch = null;
 
   const style = document.createElement('style');
   style.textContent = `
@@ -12,7 +12,7 @@
     #wlCloudBox input,#wlCloudBox select{width:100%;padding:9px;border:1px solid #52627b;border-radius:8px;background:#101b31;color:#fff;margin:5px 0}
     #wlCloudBox .muted{color:#bac6d8;font-size:10px}#wlCloudBox .cloud-actions{display:flex;flex-wrap:wrap}
     #wlCloudBox .cloud-status{margin:6px 0;color:#f0d28b;overflow-wrap:anywhere}
-    #wlCloudBox details{margin-top:8px}#wlCloudBox summary{cursor:pointer;color:#f0d28b;font-weight:700}
+    #wlCloudBox details{margin-top:8px}#wlCloudBox summary{cursor:pointer;color:#f0d28b;font-weight:700}#wlCloudBox .branch-stock{display:grid;grid-template-columns:1fr auto;gap:5px;padding:6px 0;border-bottom:1px solid #34435b}#wlCloudBox .branch-note{color:#bac6d8;font-size:10px;margin:6px 0;overflow-wrap:anywhere}
     #wlDeveloperBox{margin-top:14px;background:#111d32;border:1px solid #b58c3d;border-radius:13px;padding:15px;color:#fff;font-size:12px}
     #wlDeveloperBox h3{margin:0 0 8px;color:#f0d28b;font-size:15px}
     #wlDeveloperBox button{border:0;border-radius:8px;padding:8px 10px;background:#d6ad57;color:#152238;font-weight:700;margin:5px 5px 5px 0}
@@ -46,6 +46,18 @@
       <div id="wlCloudWork" hidden>
         <select id="wlBusinessSelect" aria-label="Choose business"></select>
         <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Sync local records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
+        <details id="wlBranchManager" open><summary>Branch management</summary>
+          <div class="muted" style="margin:7px 0">Create branches, select a working branch, assign staff and inspect branch stock.</div>
+          <select id="wlBranchSelect" aria-label="Select active branch"><option value="">Loading branches…</option></select>
+          <div class="cloud-actions"><button id="wlCreateBranch">＋ Create branch</button><button id="wlRefreshBranches">Refresh branches</button></div>
+          <div id="wlBranchStatus" class="cloud-status">Select a business to load its branches.</div>
+          <div id="wlBranchInventory" class="muted"></div>
+          <details><summary>Assign staff to this branch</summary>
+            <select id="wlBranchMemberSelect" aria-label="Select business member"><option value="">Load business members…</option></select>
+            <div class="cloud-actions"><button id="wlAssignBranchMember">Assign staff</button><button id="wlRemoveBranchMember">Deactivate assignment</button></div>
+            <div id="wlBranchMembers" class="muted"></div>
+          </details>
+        </details>
         <details><summary>Business modules</summary><div id="wlModules" class="muted">Select a business to view modules.</div></details>
       </div>`;
     anchor.insertAdjacentElement('afterend', box);
@@ -86,6 +98,14 @@
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; $('wlDeveloperBox').hidden = true; showSignedOut(); };
     $('wlCreateBusiness').onclick = createBusiness;
     $('wlSyncNow').onclick = syncLocalRecords;
+    $('wlCreateBranch').onclick = createBranch;
+    $('wlRefreshBranches').onclick = loadBranches;
+    $('wlBranchSelect').onchange = async (e) => {
+      selectedBranch = (window.__wlBranches || []).find(b => b.id === e.target.value) || null;
+      await loadBranchDetails();
+    };
+    $('wlAssignBranchMember').onclick = () => setBranchMember(true);
+    $('wlRemoveBranchMember').onclick = () => setBranchMember(false);
     $('wlBusinessSelect').onchange = async (e) => {
       const chosen = (window.__wlBusinesses || []).find(b => b.id === e.target.value);
       if (chosen) await selectBusiness(chosen);
@@ -130,6 +150,82 @@
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  async function createBranch() {
+    if (!activeBusiness) return say('Select a business workspace first.');
+    const name = prompt('New branch name:');
+    if (!name || name.trim().length < 2) return;
+    const address = prompt('Branch address (optional):') || '';
+    $('wlBranchStatus').textContent = 'Creating branch…';
+    const {data,error} = await client.rpc('create_business_branch', {
+      p_business_id:activeBusiness.id,p_name:name.trim(),p_address:address.trim() || null
+    });
+    if (error) { $('wlBranchStatus').textContent = 'Could not create branch: ' + error.message; return; }
+    $('wlBranchStatus').textContent = 'Branch created successfully.';
+    await loadBranches(data?.branch_id);
+  }
+  async function loadBranches(preferredId) {
+    if (!activeBusiness || !client) return;
+    $('wlBranchStatus').textContent = 'Loading branches…';
+    const {data,error} = await client.from('branches')
+      .select('id,name,address,is_active,created_at')
+      .eq('business_id',activeBusiness.id).order('created_at');
+    if (error) { $('wlBranchStatus').textContent = 'Could not load branches: ' + error.message; return; }
+    window.__wlBranches = data || [];
+    const active = window.__wlBranches.filter(b => b.is_active);
+    $('wlBranchSelect').innerHTML = active.length
+      ? active.map(b => '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + (b.address ? ' · ' + escapeHtml(b.address) : '') + '</option>').join('')
+      : '<option value="">No active branches — create one</option>';
+    selectedBranch = active.find(b => b.id === (preferredId || selectedBranch?.id)) || active[0] || null;
+    $('wlBranchSelect').value = selectedBranch?.id || '';
+    $('wlBranchStatus').textContent = active.length + ' active branch(es) available. Branch selection currently controls branch management and stock viewing; sales/purchase posting will be connected in the next integration step.';
+    await loadBranchDetails();
+  }
+  async function loadBranchDetails() {
+    if (!activeBusiness || !selectedBranch) {
+      $('wlBranchInventory').textContent = 'No active branch selected.';
+      $('wlBranchMembers').textContent = '';
+      $('wlBranchMemberSelect').innerHTML = '<option value="">No branch selected</option>';
+      return;
+    }
+    const [stockResult, memberResult, assignmentResult] = await Promise.all([
+      client.from('branch_inventory').select('product_id,quantity_on_hand,products(name,sku,unit)')
+        .eq('business_id',activeBusiness.id).eq('branch_id',selectedBranch.id).order('updated_at',{ascending:false}),
+      client.from('business_members').select('user_id,role,is_active')
+        .eq('business_id',activeBusiness.id).eq('is_active',true),
+      client.from('branch_members').select('user_id,is_active')
+        .eq('business_id',activeBusiness.id).eq('branch_id',selectedBranch.id)
+    ]);
+    if (stockResult.error) $('wlBranchInventory').textContent = 'Stock unavailable: ' + stockResult.error.message;
+    else {
+      const rows = stockResult.data || [];
+      $('wlBranchInventory').innerHTML = '<div class="branch-note"><strong>Stock at ' + escapeHtml(selectedBranch.name) + '</strong></div>' +
+        (rows.map(row => '<div class="branch-stock"><span>' + escapeHtml(row.products?.name || row.product_id) + '</span><strong>' + Number(row.quantity_on_hand || 0).toLocaleString() + ' ' + escapeHtml(row.products?.unit || '') + '</strong></div>').join('') || '<div class="branch-note">No stock records in this branch yet.</div>');
+    }
+    if (memberResult.error) $('wlBranchMemberSelect').innerHTML = '<option value="">Members unavailable</option>';
+    else {
+      const members = memberResult.data || [];
+      $('wlBranchMemberSelect').innerHTML = '<option value="">Choose a business member…</option>' +
+        members.map(m => '<option value="' + escapeHtml(m.user_id) + '">' + escapeHtml(m.user_id) + ' · ' + escapeHtml(m.role) + '</option>').join('');
+    }
+    if (assignmentResult.error) $('wlBranchMembers').textContent = 'Assignments unavailable: ' + assignmentResult.error.message;
+    else {
+      const assignments = assignmentResult.data || [];
+      const memberMap = new Map((memberResult.data || []).map(m => [m.user_id,m]));
+      $('wlBranchMembers').innerHTML = '<div class="branch-note"><strong>Branch assignments</strong></div>' +
+        (assignments.map(a => '<div class="branch-note">' + escapeHtml(a.user_id) + ' · ' + escapeHtml(memberMap.get(a.user_id)?.role || 'member') + ' · ' + (a.is_active ? 'ACTIVE' : 'INACTIVE') + '</div>').join('') || '<div class="branch-note">No staff assigned yet.</div>');
+    }
+  }
+  async function setBranchMember(isActive) {
+    if (!activeBusiness || !selectedBranch) return say('Select a branch first.');
+    const userId = $('wlBranchMemberSelect').value;
+    if (!userId) return say('Choose a business member first.');
+    const {error} = await client.rpc('set_branch_member_access', {
+      p_business_id:activeBusiness.id,p_branch_id:selectedBranch.id,p_user_id:userId,p_is_active:isActive
+    });
+    if (error) { $('wlBranchStatus').textContent = 'Could not update branch assignment: ' + error.message; return; }
+    $('wlBranchStatus').textContent = isActive ? 'Staff member assigned to branch.' : 'Branch assignment deactivated.';
+    await loadBranchDetails();
+  }
   async function selectBusiness(business) {
     activeBusiness = business;
     $('wlBusinessSelect').value = business.id;
@@ -143,6 +239,7 @@
     say('Signed in as ' + session.user.email + '. Workspace: ' + business.name + '. Cloud sync is available for products, customers, suppliers and expenses.');
     updateSyncStatus();
     window.dispatchEvent(new CustomEvent('whiteLionWorkspaceChanged', { detail: { business, modules: modules || [] } }));
+    await loadBranches();
   }
   async function checkDeveloperAccess() {
     const panel = $('wlDeveloperBox');
