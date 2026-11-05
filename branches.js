@@ -70,7 +70,7 @@
       ? window.__wlBranchRows.map(b => '<option value="' + esc(b.id) + '"' + (b.id===selectedBranch?' selected':'') + '>' + esc(b.name) + (b.is_active?'':' (inactive)') + '</option>').join('')
       : '<option value="">No branches created yet</option>';
     const memberSelect = document.getElementById('wlBranchMember');
-    memberSelect.innerHTML = '<option value="">Choose active business member</option>' + window.__wlBranchMembers.map(m =>
+    memberSelect.innerHTML = '<option value="">Choose active business member</option>' + window.__wlBranchMembers.filter(m => m.role !== 'owner').map(m =>
       '<option value="' + esc(m.user_id) + '">' + esc(m.role) + ' · ' + esc(m.user_id) + '</option>'
     ).join('');
     status(window.__wlBranchRows.length + ' branch(es) · ' + window.__wlBranchMembers.length + ' active workspace member(s).');
