@@ -29,6 +29,13 @@
     #wlDeveloperBox .dev-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid #34435b}
     #wlDeveloperBox .dev-meta{color:#bac6d8;font-size:10px}
     #wlDeveloperBox .dev-actions{display:flex;flex-wrap:wrap;gap:4px}
+    #wlDeveloperBox .dev-role-manager{margin:14px 0;padding:14px;border:1px solid #657b99;border-radius:12px;background:#192a43}
+    #wlDeveloperBox .dev-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    #wlDeveloperBox .dev-role-manager label{display:block;color:#d9e4f2;font-size:10px;font-weight:800;margin:5px 0}
+    #wlDeveloperBox .dev-role-manager select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #64748b;border-radius:8px;background:#fff;color:#17243a;margin:0}
+    #wlDeveloperBox .dev-role-manager button{margin-top:10px}
+    #wlDeveloperBox .dev-role-help{color:#bac6d8;font-size:10px;line-height:1.55;margin-top:8px}
+    @media(max-width:620px){#wlDeveloperBox .dev-role-grid{grid-template-columns:1fr}#wlDeveloperBox .dev-row{align-items:flex-start;flex-direction:column}#wlDeveloperBox .dev-actions{width:100%}}
   `;
   document.head.appendChild(style);
 
@@ -84,6 +91,18 @@
       <div id="wlDevIdentity" class="dev-meta">Verifying developer permissions…</div>
       <div id="wlDevStatus" class="cloud-status">Loading secure platform controls…</div>
       <div id="wlDevStats" class="dev-meta"></div>
+      <section class="dev-role-manager" id="wlDevRoleManager">
+        <h3 style="margin:0 0 5px;color:#f0d28b">Assign or change a user's business role</h3>
+        <div class="dev-role-help">Select a business workspace and a registered account. This grants or updates that person's access to the selected business only.</div>
+        <div class="dev-role-grid">
+          <div><label for="wlDevRoleBusiness">Business workspace</label><select id="wlDevRoleBusiness"><option value="">Loading business workspaces…</option></select></div>
+          <div><label for="wlDevRoleAccount">Registered user</label><select id="wlDevRoleAccount"><option value="">Loading registered accounts…</option></select></div>
+          <div><label for="wlDevRoleValue">Business role</label><select id="wlDevRoleValue"><option value="admin">Administrator</option><option value="manager" selected>Manager</option><option value="cashier">Cashier</option><option value="storekeeper">Storekeeper</option><option value="accountant">Accountant</option><option value="viewer">Viewer</option></select></div>
+          <div><label for="wlDevRoleStatus">Membership access</label><select id="wlDevRoleStatus"><option value="true" selected>Active</option><option value="false">Inactive</option></select></div>
+        </div>
+        <button id="wlDevRoleSave" type="button">Assign / update business role</button>
+        <div id="wlDevRoleStatus" class="dev-role-help">Choose a business and registered account to continue.</div>
+      </section>
       <div class="dev-actions">
         <button id="wlDevRefresh">Refresh dashboard</button>
         <button id="wlDevFreeze">Freeze platform</button>
@@ -108,7 +127,8 @@
     box.insertAdjacentElement('afterend', dev);
     $('wlDevRefresh').onclick = loadDeveloperDashboard;
     $('wlDevFreeze').onclick = toggleMaintenance;
-    $('wlDevAssign').onclick = manageBusinessAccess;
+    $('wlDevAssign').onclick = () => $('wlDevRoleManager')?.scrollIntoView({behavior:'smooth',block:'center'});
+    $('wlDevRoleSave').onclick = saveDeveloperBusinessRole;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
@@ -286,6 +306,8 @@
     status.textContent = 'Checking developer authorization and loading platform data…';
     const { data, error } = await client.rpc('get_platform_dashboard');
     if (error) { status.textContent = 'Developer database setup required: ' + error.message; return; }
+    window.__wlPlatformBusinesses = Array.isArray(data.businesses) ? data.businesses : [];
+    populateDeveloperRoleForm();
     const maintenance = data.maintenance || {enabled:false};
     $('wlDevStats').textContent = 'Businesses: ' + data.business_count + ' · Suspended: ' + data.suspended_count + ' · Registered accounts: ' + data.user_count + ' · Platform mode: ' + (maintenance.enabled ? 'MAINTENANCE' : 'LIVE');
     $('wlDevFreeze').textContent = maintenance.enabled ? 'Unfreeze platform' : 'Freeze platform';
@@ -335,6 +357,53 @@
       return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(String(event.action || 'Platform event').replaceAll('_',' ')) + '</strong><div class="dev-meta">' + escapeHtml(event.actor_email || 'System / unknown actor') + ' · ' + escapeHtml(when) + '</div><div class="dev-meta">' + escapeHtml(event.business_name || 'Platform-wide') + (event.entity_table ? ' · ' + escapeHtml(event.entity_table) : '') + (event.entity_id ? ' · ' + escapeHtml(event.entity_id) : '') + '</div>' + (details ? '<div class="dev-meta">' + escapeHtml(details) + '</div>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No matching audit events found in the latest 150 records.</div>';
   }
+  function populateDeveloperRoleForm() {
+    const businessSelect = $('wlDevRoleBusiness');
+    const accountSelect = $('wlDevRoleAccount');
+    if (businessSelect) {
+      const selected = businessSelect.value;
+      const businesses = window.__wlPlatformBusinesses || [];
+      businessSelect.innerHTML = '<option value="">Choose a business workspace…</option>' +
+        businesses.map(b => '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + ' · ' + escapeHtml(b.owner_email || 'Owner unknown') + '</option>').join('');
+      if (businesses.some(b => b.id === selected)) businessSelect.value = selected;
+    }
+    if (accountSelect) {
+      const selected = accountSelect.value;
+      const accounts = window.__wlPlatformAccounts || [];
+      accountSelect.innerHTML = '<option value="">Choose a registered account…</option>' +
+        accounts.map(a => '<option value="' + escapeHtml(a.email || '') + '">' + escapeHtml(a.full_name || a.email || 'Unnamed account') + ' · ' + escapeHtml(a.email || '') + (a.is_active === false ? ' · SUSPENDED' : '') + '</option>').join('');
+      if (accounts.some(a => a.email === selected)) accountSelect.value = selected;
+    }
+  }
+  async function saveDeveloperBusinessRole() {
+    const businessId = $('wlDevRoleBusiness')?.value || '';
+    const email = $('wlDevRoleAccount')?.value || '';
+    const role = $('wlDevRoleValue')?.value || '';
+    const isActive = $('wlDevRoleStatus')?.value === 'true';
+    const status = $('wlDevRoleStatus');
+    const allowed = ['admin','manager','cashier','storekeeper','accountant','viewer'];
+    if (!businessId || !email || !allowed.includes(role)) {
+      if (status) status.textContent = 'Select a business, registered user and valid role.';
+      return;
+    }
+    const account = (window.__wlPlatformAccounts || []).find(a => a.email?.toLowerCase() === email.toLowerCase());
+    if (!account) { if (status) status.textContent = 'Choose an account from the refreshed registered account list.'; return; }
+    if (account.is_active === false && isActive) {
+      if (status) status.textContent = 'This platform account is suspended. Restore the account first in Registered accounts.';
+      return;
+    }
+    const button = $('wlDevRoleSave');
+    if (button) button.disabled = true;
+    if (status) status.textContent = 'Saving business membership securely…';
+    const {error} = await client.rpc('set_platform_member_access', {
+      p_business_id:businessId,p_email:email.trim(),p_role:role,p_is_active:isActive
+    });
+    if (button) button.disabled = false;
+    if (error) { if (status) status.textContent = 'Could not assign role: ' + error.message; return; }
+    if (status) status.textContent = 'Role updated: ' + email + ' is now ' + role.toUpperCase() + ' for the selected business.';
+    $('wlDevStatus').textContent = 'Business membership updated and recorded in the platform audit log.';
+    await loadDeveloperDashboard();
+  }
   async function loadDeveloperAccounts() {
     const host = $('wlDevAccounts');
     if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
@@ -342,6 +411,8 @@
     const {data,error} = await client.rpc('get_platform_accounts');
     if (error) { host.textContent = 'Account directory unavailable: ' + error.message + '. Run migration 006 first.'; return; }
     const accounts = Array.isArray(data) ? data : [];
+    window.__wlPlatformAccounts = accounts;
+    populateDeveloperRoleForm();
     host.innerHTML = accounts.map(a => {
       const active = a.is_active !== false;
       const name = a.full_name || 'Name not provided';
