@@ -207,7 +207,7 @@
       await save(async()=>{
         let payload={...d,business_id:b.id};
         if(kind==='competition'){payload.points_win=Number(d.points_win);payload.points_draw=Number(d.points_draw);payload.points_loss=Number(d.points_loss);payload.created_by=cloud().getSession()?.user?.id}
-        if(kind==='season'){payload.competition_id=competitionId}
+        if(kind==='season'){payload.competition_id=competitionId;payload.starts_on=d.starts_on||null;payload.ends_on=d.ends_on||null}
         if(kind==='club'){payload.competition_id=competitionId}
         if(kind==='player'){payload.competition_id=competitionId;payload.shirt_number=d.shirt_number?Number(d.shirt_number):null;payload.date_of_birth=d.date_of_birth||null}
         if(kind==='fixture'){payload.competition_id=competitionId;payload.season_id=seasonId;if(payload.home_club_id===payload.away_club_id)throw new Error('Home and away clubs must be different.');payload.kickoff_at=new Date(d.kickoff_at).toISOString()}
