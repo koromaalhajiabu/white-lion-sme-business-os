@@ -108,6 +108,12 @@ begin
       and bm.user_id=auth.uid() and bm.is_active=true
   ) then raise exception 'You are not assigned to the original sale branch'; end if;
 
+  if exists(
+    select 1 from jsonb_array_elements(p_items) x
+    group by x.value->>'product_client_record_id'
+    having count(*)>1
+  ) then raise exception 'Submit each returned product only once per return'; end if;
+
   if exists(select 1 from public.offline_sale_returns r
     where r.business_id=p_business_id and r.client_return_id=p_client_return_id) then
     return jsonb_build_object('status','already_processed','return_id',
