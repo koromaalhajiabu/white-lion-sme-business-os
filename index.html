@@ -101,7 +101,7 @@ async function render(){
   const localBusinessId=window.whiteLionCloud?.getActiveBusiness?.()?.id||null;
   const stockRows=allStock.filter(x=>!x.businessId||!localBusinessId||x.businessId===localBusinessId);
   let cart=[];
-  const available=(p,bid)=>{const key=String(bid||'local-main')+'|'+String(p.id),row=stockRows.find(x=>String(x.id)===key);return row?Number(row.quantity||0):Number(p.stock||0)};
+  const available=(p,bid)=>{const key=String(bid||'local-main')+'|'+String(p.id),row=stockRows.find(x=>String(x.id)===key);if(row)return Number(row.quantity||0);const existsElsewhere=stockRows.some(x=>String(x.productId)===String(p.id));return existsElsewhere?0:Number(p.stock||0)};
   const subtotal=()=>cart.reduce((n,x)=>n+x.quantity*x.unitPrice,0);
   const totals=()=>{const sub=subtotal(),discount=Math.max(0,Number(document.getElementById('retailDiscount')?.value||0)),taxRate=Math.max(0,Number(document.getElementById('retailTax')?.value||0)),tax=Math.max(0,(sub-discount))*taxRate/100;return{sub,discount,tax,total:Math.max(0,sub-discount+tax)}};
   const printReceipt=sale=>{
@@ -160,7 +160,7 @@ async function render(){
     for(const item of cart){
       const p=products.find(x=>String(x.id)===String(item.productId));if(!p)throw new Error('A cart product is no longer available');
       const rowId=branchKey+'|'+String(p.id),old=stockRows.find(x=>String(x.id)===rowId);
-      const qty=old?Number(old.quantity||0):Number(p.stock||0);
+      const hasOtherBranchStock=stockRows.some(x=>String(x.productId)===String(p.id));const qty=old?Number(old.quantity||0):(hasOtherBranchStock?0:Number(p.stock||0));
       if(item.quantity>qty){toast('Stock changed. '+p.name+' now has '+qty+' available.');return}
       const next=qty-item.quantity;
       updates.push({product:p,row:{id:rowId,businessId,branchId:branchKey,productId:p.id,quantity:next}});
