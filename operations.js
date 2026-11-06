@@ -20,7 +20,7 @@
     @media(max-width:560px){#wlOpsPanel .ops-grid{grid-template-columns:1fr}#wlOpsPanel .ops-summary{grid-template-columns:1fr 1fr}}
   `;
   document.head.appendChild(css);
-  const money=n=>'SLE '+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const money=n=>(business?.currency_code||'SLE')+' '+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   function host(){
     if(document.getElementById('wlOpsPanel'))return;
     const work=document.getElementById('wlCloudWork');if(!work)return;
