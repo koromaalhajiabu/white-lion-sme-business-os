@@ -200,7 +200,7 @@ as $wl_league$
       where cm.business_id=p_business_id and cm.competition_id=p_competition_id
         and cm.user_id=auth.uid() and cm.is_active and (
           cm.role='competition_admin' or
-          (cm.role in ('club_manager','disciplinary_officer') and (cm.club_id is null or cm.club_id=p_club_id))
+          (cm.role='club_manager' and (cm.club_id is null or cm.club_id=p_club_id))
         ))
   );
 $wl_league$;
@@ -226,6 +226,29 @@ as $wl_league$
         and (cm.club_id is null or cm.club_id in (f.home_club_id,f.away_club_id)))
   );
 $wl_league$;
+
+create or replace function public.league_user_can_manage_discipline(p_business_id uuid,p_competition_id uuid,p_club_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path=public,auth
+as $wl_discipline$
+  select auth.uid() is not null and (
+    exists (select 1 from public.business_members bm
+      where bm.business_id=p_business_id and bm.user_id=auth.uid()
+        and bm.is_active and bm.role::text=any(array['owner','admin','manager']))
+    or exists (select 1 from public.league_competition_members cm
+      where cm.business_id=p_business_id and cm.competition_id=p_competition_id
+        and cm.user_id=auth.uid() and cm.is_active and (
+          cm.role='competition_admin' or
+          (cm.role='disciplinary_officer' and (cm.club_id is null or cm.club_id=p_club_id))
+        ))
+  );
+$wl_discipline$;
+
+revoke all on function public.league_user_can_manage_discipline(uuid,uuid,uuid) from public;
+grant execute on function public.league_user_can_manage_discipline(uuid,uuid,uuid) to authenticated;
 
 revoke all on function public.league_user_can_manage_club(uuid,uuid,uuid) from public;
 revoke all on function public.league_user_can_manage_fixture(uuid,uuid,uuid) from public;
@@ -288,8 +311,8 @@ drop policy if exists league_discipline_read on public.league_disciplinary_actio
 create policy league_discipline_read on public.league_disciplinary_actions for select to authenticated using (public.is_business_member(business_id));
 drop policy if exists league_discipline_manage on public.league_disciplinary_actions;
 create policy league_discipline_manage on public.league_disciplinary_actions for all to authenticated
-using (public.league_user_can_manage_club(business_id,competition_id,club_id))
-with check (public.league_user_can_manage_club(business_id,competition_id,club_id));
+using (public.league_user_can_manage_discipline(business_id,competition_id,club_id))
+with check (public.league_user_can_manage_discipline(business_id,competition_id,club_id));
 
 drop policy if exists league_members_read on public.league_competition_members;
 create policy league_members_read on public.league_competition_members for select to authenticated using (public.is_business_member(business_id));
