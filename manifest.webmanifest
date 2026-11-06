@@ -1,8 +1,8 @@
 {
   "name": "White Lion SME Business Operating System",
   "short_name": "White Lion SME",
-  "id": "./",
-  "start_url": "./",
+  "id": "./?app=white-lion-sme-v2",
+  "start_url": "./?app=white-lion-sme-v2",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -32,5 +32,6 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
