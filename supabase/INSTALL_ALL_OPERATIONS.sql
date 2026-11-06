@@ -1,16 +1,18 @@
--- WHITE LION SME BUSINESS OS
--- SINGLE INSTALLER: migrations 010 + 011
--- Run once after migrations 001–009 have been installed.
--- This file combines branch-aware transactions, staff visibility, transfers,
--- finance registers, receivables/payables, batch/expiry tracking and stock approvals.
--- Do not run the two individual migration files separately if you run this installer.
+-- WHITE LION SME BUSINESS OPERATING SYSTEM
+-- SINGLE INSTALLER: Branch-aware operations + finance + inventory controls
+-- Prerequisite: migrations 001–009 must already be installed.
+-- Run this entire file ONCE in Supabase SQL Editor.
+-- This applies migrations 010 and 011 inside one transaction.
+-- Do not separately run migrations 010/011 if you run this installer.
 
 begin;
 
+-- MIGRATION 010: BRANCH-AWARE OPERATIONS
 -- White Lion SME Business OS — Migration 010
 -- Branch-scoped transaction posting, transfer rejection, and branch stock write controls.
 -- Legacy transactions remain unchanged; new postings must name an active branch.
 
+begin;
 
 -- Extend transfer decisions without deleting or rewriting existing requests.
 alter table public.branch_stock_transfers
@@ -93,18 +95,15 @@ begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   select bm.role into v_role from public.business_members bm
   where bm.business_id=p_business_id and bm.user_id=auth.uid() and bm.is_active=true;
+  if not found or v_role is null then raise exception 'Active business membership required'; end if;
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
-  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
-    raise exception 'Active business membership and platform access required';
-  end if;
-  if not found then raise exception 'Active business membership required'; end if;
   if v_role not in ('owner','admin','manager','cashier','storekeeper','accountant') then
     raise exception 'Not authorised to synchronise records';
   end if;
-  if v_role='cashier' and p_record_type='products' then
-    raise exception 'Cashiers cannot create products or opening stock';
+  if v_role='cashier' and p_record_type not in ('customers') then
+    raise exception 'Cashiers may synchronise customer records only';
   end if;
   if v_role='storekeeper' and p_record_type not in ('products','suppliers') then
     raise exception 'Storekeepers may synchronise products and suppliers only';
@@ -217,6 +216,7 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_sales_member_read on public.offline_sales;
+drop policy if exists offline_sales_branch_read on public.offline_sales;
 create policy offline_sales_branch_read on public.offline_sales
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -229,6 +229,7 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_purchases_member_read on public.offline_purchases;
+drop policy if exists offline_purchases_branch_read on public.offline_purchases;
 create policy offline_purchases_branch_read on public.offline_purchases
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -241,17 +242,20 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_sale_items_member_read on public.offline_sale_items;
+drop policy if exists offline_sale_items_branch_read on public.offline_sale_items;
 create policy offline_sale_items_branch_read on public.offline_sale_items
 for select to authenticated using (
  exists(select 1 from public.offline_sales s where s.id=offline_sale_items.sale_id and s.business_id=offline_sale_items.business_id)
 );
 drop policy if exists offline_purchase_items_member_read on public.offline_purchase_items;
+drop policy if exists offline_purchase_items_branch_read on public.offline_purchase_items;
 create policy offline_purchase_items_branch_read on public.offline_purchase_items
 for select to authenticated using (
  exists(select 1 from public.offline_purchases p where p.id=offline_purchase_items.purchase_id and p.business_id=offline_purchase_items.business_id)
 );
 
 drop policy if exists branch_stock_transfers_member_read on public.branch_stock_transfers;
+drop policy if exists branch_stock_transfers_branch_read on public.branch_stock_transfers;
 create policy branch_stock_transfers_branch_read on public.branch_stock_transfers
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -264,6 +268,7 @@ for select to authenticated using (
  )
 );
 drop policy if exists branch_stock_transfer_items_member_read on public.branch_stock_transfer_items;
+drop policy if exists branch_stock_transfer_items_branch_read on public.branch_stock_transfer_items;
 create policy branch_stock_transfer_items_branch_read on public.branch_stock_transfer_items
 for select to authenticated using (
  exists(select 1 from public.branch_stock_transfers t
@@ -314,13 +319,10 @@ begin
   where bm.business_id = p_business_id
     and bm.user_id = auth.uid()
     and bm.is_active = true;
+  if not found or v_role is null then raise exception 'Active business membership required'; end if;
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
-  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
-    raise exception 'Active business membership and platform access required';
-  end if;
-  if not found then raise exception 'Active business membership required'; end if;
 
   if v_role not in ('owner','admin','manager','cashier','storekeeper') then
     raise exception 'Your role cannot post sales or purchases';
@@ -546,12 +548,10 @@ $$;
 revoke all on function public.reject_branch_stock_transfer(uuid,text) from public;
 grant execute on function public.reject_branch_stock_transfer(uuid,text) to authenticated;
 
--- ============================================================
 -- MIGRATION 011: FINANCE AND INVENTORY CONTROLS
--- ============================================================
-
 -- White Lion SME Business OS — Migration 011
 -- Financial registers, product batches/expiry and controlled stock adjustments.
+begin;
 
 create table if not exists public.cashbook_entries (
   id uuid primary key default gen_random_uuid(),
@@ -713,6 +713,7 @@ drop policy if exists obligations_member_read on public.financial_obligations;
 create policy obligations_finance_read on public.financial_obligations for select to authenticated
 using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
 drop policy if exists obligation_payments_member_read on public.financial_obligation_payments;
+drop policy if exists obligation_payments_finance_write on public.financial_obligation_payments;
 create policy obligation_payments_finance_read on public.financial_obligation_payments for select to authenticated
 using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
 
@@ -822,6 +823,7 @@ begin
  if not public.has_business_role(v.business_id,array['owner','admin','manager','accountant']::public.business_role[]) then
    raise exception 'Not authorised to record financial payments';
  end if;
+ if v.status='void' then raise exception 'Voided receivables or payables cannot receive payments'; end if;
  if p_amount is null or p_amount<=0 or p_amount>v.amount-v.amount_paid then
    raise exception 'Payment must be positive and cannot exceed the outstanding balance';
  end if;
@@ -884,8 +886,10 @@ end; $$;
 -- Explicit authenticated table privileges; RLS above remains the row-level gate.
 revoke all on public.cashbook_entries, public.financial_obligations,
   public.financial_obligation_payments, public.product_batches,
-  public.stock_adjustments from anon;
+  public.stock_adjustments from anon, public, authenticated;
 grant select, insert on public.cashbook_entries, public.financial_obligations to authenticated;
+-- Payment rows are inserted only by the SECURITY DEFINER payment RPC, which
+-- updates the obligation balance and cashbook in the same database transaction.
 grant select on public.financial_obligation_payments, public.product_batches,
   public.stock_adjustments to authenticated;
 
@@ -900,7 +904,9 @@ grant execute on function public.decide_stock_adjustment(uuid,boolean,text) to a
 
 commit;
 
--- Post-install verification. The query returns one row per required component.
+
+-- POST-INSTALL VERIFICATION
+-- Expected result: every row should show INSTALLED.
 with checks(component, installed) as (
   values
     ('Branch membership table', to_regclass('public.branch_members') is not null),
@@ -919,7 +925,8 @@ with checks(component, installed) as (
     ('Batch receiving RPC', to_regprocedure('public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric)') is not null),
     ('Barcode field', exists(select 1 from information_schema.columns where table_schema='public' and table_name='products' and column_name='barcode')),
     ('Branch-scoped inventory write policy', exists(select 1 from pg_policies where schemaname='public' and tablename='branch_inventory' and policyname='branch_inventory_manage')),
-    ('Finance-only cashbook visibility', exists(select 1 from pg_policies where schemaname='public' and tablename='cashbook_entries' and policyname='cashbook_finance_read'))
+    ('Finance-only cashbook visibility', exists(select 1 from pg_policies where schemaname='public' and tablename='cashbook_entries' and policyname='cashbook_finance_read')),
+    ('Payment table is read-only to authenticated clients', not has_table_privilege('authenticated','public.financial_obligation_payments','INSERT'))
 )
 select component, case when installed then 'INSTALLED' else 'MISSING' end as status
 from checks
