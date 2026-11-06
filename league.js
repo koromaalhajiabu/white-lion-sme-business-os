@@ -73,7 +73,8 @@
     return '<div class="wl-league-grid"><div class="wl-league-card"><small>Registered clubs</small><strong>'+clubs.length+'</strong><small>In this competition</small></div><div class="wl-league-card"><small>Registered players</small><strong>'+players.length+'</strong><small>Across all clubs</small></div><div class="wl-league-card"><small>Fixtures completed</small><strong>'+completed+'</strong><small>'+upcoming+' scheduled fixtures</small></div></div>'+
       '<div class="wl-league-panel"><h3>'+esc(c.name)+' · '+esc(s?.name||'No season selected')+'</h3><div class="wl-league-sub">'+esc(c.competition_type)+' · '+esc(c.region||'Region not set')+' · '+esc(c.organiser||'Organiser not set')+'</div>'+
       (s?'Season dates: '+esc(s.starts_on||'TBC')+' to '+esc(s.ends_on||'TBC')+' · <span class="wl-league-badge">'+esc(s.status)+'</span>':'Create a season to start scheduling fixtures.')+
-      '<div class="wl-league-actions">'+button('Add season','primary','data-league-action="new-season"')+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div></div>'+
+      '<form class="wl-league-form" data-league-form="season" style="margin-top:14px">'+field('Season name','name','text',true)+field('Start date','starts_on','date')+field('End date','ends_on','date')+selectField('Season status','status',['planned','active','completed','archived'].map(x=>'<option value="'+x+'">'+x+'</option>').join(''))+'<div class="wl-league-field full">'+button('Save season','primary')+'</div></form>'+
+      '<div class="wl-league-actions">'+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div></div>'+
       '<div class="wl-league-panel"><h3>Competition workflow</h3><div class="wl-league-sub">Set up a competition, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League positions and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>';
   }
   function clubsView(){
@@ -114,7 +115,7 @@
     return '<div class="wl-league-panel"><h3>Player statistics</h3><div class="wl-league-sub">Goals, assists and cards are calculated from recorded match events. Record events after a result has been verified.</div>'+table(['#','Player','Club','Goals','Assists','Yellow','Red'],rows)+'</div>'+
       (cache.players?.length?'<div class="wl-league-panel"><h3>Record match event</h3><form class="wl-league-form" data-league-form="event">'+selectField('Club','club_id',selectOptions(cache.clubs))+
       selectField('Player','player_id',selectOptions(cache.players,'id','full_name'))+selectField('Event type','event_type',['goal','own_goal','assist','yellow_card','red_card','substitution_on','substitution_off','penalty_scored','penalty_missed'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
-      field('Minute','minute','number',false,'min="0" max="150"')+selectField('Fixture','fixture_id',selectOptions((cache.fixtures||[]).filter(f=>f.status==='completed'),'id','id','Select completed match'))+
+      field('Minute','minute','number',false,'min="0" max="150"')+selectField('Fixture','fixture_id',selectOptions((cache.fixtures||[]).filter(f=>f.status==='completed').map(f=>({id:f.id,name:(cache.clubs.find(c=>c.id===f.home_club_id)?.name||'Home')+' v '+(cache.clubs.find(c=>c.id===f.away_club_id)?.name||'Away')+' · '+moneylessDate(f.kickoff_at)})),'id','name','Select completed match'))+
       field('Notes','notes')+'<div class="wl-league-field full">'+button('Save match event','primary')+'</div></form></div>':'');
   }
   function disciplineView(){
@@ -200,6 +201,7 @@
     }));
   }
   function bindForms(){
+    document.querySelectorAll('[data-league-form="event"]').forEach(f=>{const club=f.querySelector('[name="club_id"]'),player=f.querySelector('[name="player_id"]');club?.addEventListener('change',()=>{const rows=(cache.players||[]).filter(p=>p.club_id===club.value);player.innerHTML=selectOptions(rows,'id','full_name','Select player');});});
     document.querySelectorAll('[data-league-form]').forEach(f=>f.addEventListener('submit',async e=>{
       e.preventDefault();const kind=f.dataset.leagueForm,d=Object.fromEntries(new FormData(f).entries()),b=business(),c=client();
       await save(async()=>{
