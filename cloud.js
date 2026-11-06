@@ -508,7 +508,7 @@
       await syncSimple('suppliers',sRes.data,localSuppliers,r=>({name:r.name,phone:r.phone||'',email:r.email||'',address:r.address||'',notes:r.notes||''}));
       await syncSimple('expenses',eRes.data,localExpenses,r=>({category:r.category,description:r.description,amount:Number(r.amount||0),payment:r.payment_method||'cash',date:r.expense_date}));
       const [saleRes,purchaseRes]=await Promise.all([
-        client.from('offline_sales').select('id,client_transaction_id,receipt,transaction_date,customer_name,payment_method,total,branch_id').eq('business_id',businessId),
+        client.from('offline_sales').select('id,client_transaction_id,receipt,transaction_date,customer_name,payment_method,subtotal,discount,tax,total,branch_id').eq('business_id',businessId),
         client.from('offline_purchases').select('id,client_transaction_id,transaction_date,supplier_name,total,branch_id').eq('business_id',businessId)
       ]);
       if(saleRes.error)throw new Error('Could not download sales: '+saleRes.error.message);
@@ -533,7 +533,7 @@
             cloudSyncedAt:new Date().toISOString(),branchId:cloud.branch_id||null,
             receipt:cloud.receipt||('PUR-'+cloud.client_transaction_id.slice(0,10)),
             date:cloud.transaction_date,customer:cloud.customer_name||'',supplier:cloud.supplier_name||'',
-            payment:cloud.payment_method||'cash',total:Number(cloud.total||0),items};
+            payment:cloud.payment_method||'cash',subtotal:Number(cloud.subtotal??cloud.total??0),discount:Number(cloud.discount||0),tax:Number(cloud.tax||0),total:Number(cloud.total||0),items};
           await put(type,row);old?updated++:added++;
         }
       };
@@ -641,6 +641,9 @@
             customer_name:row.customer || null,
             supplier_name:row.supplier || null,
             payment_method:row.payment || 'cash',
+            subtotal:type === 'sales' ? Number(row.subtotal ?? items.reduce((sum,item) => sum + Math.round(Number(item.quantity || 0) * Number(item.unit_price || 0) * 100) / 100, 0)) : Number(row.total || 0),
+            discount:type === 'sales' ? Number(row.discount || 0) : 0,
+            tax:type === 'sales' ? Number(row.tax || 0) : 0,
             total:Number(row.total || 0),
             items
           };
