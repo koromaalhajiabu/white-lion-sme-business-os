@@ -74,6 +74,11 @@
         <button id="wlDevFreeze">Freeze platform</button>
         <button id="wlDevAssign">Manage business access</button>
       </div>
+      <div style="margin:14px 0;padding:12px;border:1px solid #b85d63;border-radius:10px;background:#351f2b">
+        <h3 style="color:#ffd0d0;margin:0 0 6px">Clear demonstration data</h3>
+        <div class="dev-meta">Permanently removes all business workspaces and their cloud records, then clears this device's local business records. Your developer sign-in, platform controls and audit history are preserved. Other login accounts are not deleted by this reset.</div>
+        <button id="wlDevResetData" class="danger">Reset all business data</button>
+      </div>
       <div id="wlDevBusinesses"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
@@ -89,6 +94,7 @@
     $('wlDevRefresh').onclick = loadDeveloperDashboard;
     $('wlDevFreeze').onclick = toggleMaintenance;
     $('wlDevAssign').onclick = manageBusinessAccess;
+    $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
@@ -397,6 +403,55 @@
       };
     });
   }
+  async function clearLocalBusinessData() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('whiteLionSME', 3);
+      request.onerror = () => reject(request.error || new Error('Could not open local business database.'));
+      request.onsuccess = () => {
+        const database = request.result;
+        const names = ['products','sales','purchases','returns','customers','suppliers','expenses','employees','branchInventory','settings'];
+        const available = names.filter(name => database.objectStoreNames.contains(name));
+        if (!available.length) { database.close(); resolve(); return; }
+        const tx = database.transaction(available, 'readwrite');
+        available.forEach(name => tx.objectStore(name).clear());
+        tx.oncomplete = () => { database.close(); resolve(); };
+        tx.onerror = () => { const error = tx.error || new Error('Could not clear local business records.'); database.close(); reject(error); };
+        tx.onabort = () => { const error = tx.error || new Error('Local data reset was cancelled.'); database.close(); reject(error); };
+      };
+    });
+  }
+
+  async function resetDeveloperBusinessData() {
+    if (!session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') {
+      return say('Only the registered private developer account can reset business data.');
+    }
+    const confirmation = prompt(
+      'This permanently deletes ALL business workspaces and cloud business records, and clears this device’s local business records. Your developer login and platform audit history are preserved.\n\nType RESET WHITE LION to continue:',
+      ''
+    );
+    if (confirmation !== 'RESET WHITE LION') return say('Reset cancelled. No records were changed.');
+    const button = $('wlDevResetData');
+    button.disabled = true;
+    button.textContent = 'Resetting business data…';
+    try {
+      const {data,error} = await client.rpc('reset_platform_business_data');
+      if (error) throw new Error(error.message);
+      await clearLocalBusinessData();
+      activeBusiness = null;
+      selectedBranch = null;
+      window.__wlBusinesses = [];
+      await loadBusinesses();
+      $('wlDevStatus').textContent = 'Business data reset completed. Developer sign-in and platform audit history are preserved. Deleted workspaces: ' + Number(data?.deleted_business_workspaces || 0) + '.';
+      say('Business records cleared. Your developer account remains signed in.');
+    } catch (error) {
+      $('wlDevStatus').textContent = 'Reset incomplete: ' + error.message + '. Do not sync old local records; contact the developer console before continuing.';
+      say('Reset did not complete: ' + error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Reset all business data';
+    }
+  }
+
   async function toggleMaintenance() {
     const dashboard = await client.rpc('get_platform_dashboard');
     if (dashboard.error) { $('wlDevStatus').textContent = dashboard.error.message; return; }
