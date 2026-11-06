@@ -25,6 +25,22 @@
     #wlOpsPanel .ops-tile strong{display:block;font-size:15px;color:#075b35;margin-top:4px}
     #wlOpsPanel video{width:100%;max-height:210px;background:#102c1d;border-radius:10px}
     #wlOpsPanel .ops-row button{padding:6px 9px}
+    #wlOwnerDashboard{margin:12px 0 16px;padding:15px;border:1px solid #cfe5d5;border-radius:14px;background:linear-gradient(135deg,#f5fbf6,#fff)}
+    #wlOwnerDashboard h4{margin:0 0 5px;font-size:14px}
+    #wlOwnerDashboard .owner-toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:12px 0}
+    #wlOwnerDashboard .owner-toolbar select{max-width:190px;margin:0}
+    #wlOwnerDashboard .owner-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+    #wlOwnerDashboard .owner-kpi{min-width:0;padding:11px;border:1px solid #e0eee4;border-radius:10px;background:#fff}
+    #wlOwnerDashboard .owner-kpi span{display:block;color:#718078;font-size:10px}
+    #wlOwnerDashboard .owner-kpi strong{display:block;color:#075b35;font-size:14px;margin-top:5px;overflow-wrap:anywhere}
+    #wlOwnerDashboard .owner-table-wrap{overflow-x:auto;margin-top:12px}
+    #wlOwnerDashboard table{width:100%;min-width:650px;border-collapse:collapse;font-size:11px}
+    #wlOwnerDashboard th,#wlOwnerDashboard td{text-align:right;padding:10px 8px;border-bottom:1px solid #e5eee7;white-space:nowrap}
+    #wlOwnerDashboard th:first-child,#wlOwnerDashboard td:first-child{text-align:left}
+    #wlOwnerDashboard th{color:#64776b;font-weight:800;background:#f4f9f5}
+    #wlOwnerDashboard td:first-child{font-weight:750;color:#17432b}
+    #wlOwnerDashboard .owner-foot{margin-top:10px;color:#718078;font-size:10px;line-height:1.5}
+    @media(max-width:760px){#wlOwnerDashboard .owner-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#wlOwnerDashboard .owner-toolbar select{max-width:none;flex:1}}
     @media(max-width:560px){#wlOpsPanel{padding:14px;border-radius:14px}#wlOpsPanel .ops-grid{grid-template-columns:1fr}#wlOpsPanel .ops-summary{grid-template-columns:1fr 1fr}#wlOpsPanel summary{padding:12px}}
   `;
   document.head.appendChild(css);
@@ -35,7 +51,16 @@
     const box=document.createElement('section');box.id='wlOpsPanel';
     box.innerHTML=`
       <h3>OPERATIONS CONTROL CENTRE</h3>
-      <div id="wlOpsStatus" class="ops-muted">Connect a business workspace to load operations.</div><details><summary>Cloud sync conflicts</summary><div id="wlOpsConflicts" class="ops-muted">No conflicts loaded.</div></details>
+      <div id="wlOpsStatus" class="ops-muted">Connect a business workspace to load operations.</div>
+      <section id="wlOwnerDashboard" hidden aria-live="polite">
+        <h4>OWNER · MULTI-BRANCH PERFORMANCE</h4>
+        <div class="ops-muted">One consolidated view of every active branch in this business workspace.</div>
+        <div class="owner-toolbar"><span id="wlOwnerPeriodLabel" class="ops-muted">Loading consolidated performance…</span><div style="display:flex;gap:7px;flex-wrap:wrap;flex:1;justify-content:flex-end"><select id="wlOwnerPeriod" aria-label="Dashboard reporting period"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option><option value="all">All available records</option></select><button id="wlOwnerRefresh" type="button">Refresh dashboard</button></div></div>
+        <div id="wlOwnerKpis" class="owner-kpis"></div>
+        <div class="owner-table-wrap"><div id="wlOwnerBranchRows" class="ops-muted">Branch results will appear here.</div></div>
+        <div class="owner-foot">Sales are shown after recorded refunds. Purchases and expenses are recorded values, not verified cash payments. Cashbook is displayed separately. These management indicators are not audited profit or bank reconciliation.</div>
+      </section>
+      <details><summary>Cloud sync conflicts</summary><div id="wlOpsConflicts" class="ops-muted">No conflicts loaded.</div></details>
       <details open><summary>Stock transfers & approvals</summary>
         <div class="ops-grid"><select id="wlOpsSource"></select><select id="wlOpsDestination"></select><select id="wlOpsProduct"></select><input id="wlOpsTransferQty" type="number" min="0.001" step="0.001" placeholder="Quantity"></div>
         <input id="wlOpsTransferNote" placeholder="Transfer note (optional)"><button id="wlOpsTransferCreate">Submit transfer request</button>
@@ -78,7 +103,8 @@
     `;
     work.appendChild(box);
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
-    bind('wlOpsTransferCreate',createTransfer);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
+    bind('wlOpsTransferCreate',createTransfer);bind('wlOwnerRefresh',renderOwnerDashboard);
+    document.getElementById('wlOwnerPeriod').addEventListener('change',renderOwnerDashboard);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
     bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
@@ -117,8 +143,65 @@
     const prodOpts=products.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.sku?' · '+esc(x.sku):'')+'</option>').join('');
     ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct','wlOpsBarcodeProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
-    await Promise.all([renderTransfers(),renderFinance(),renderCashbookRegister(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts()]);
+    const ownerDashboard=document.getElementById('wlOwnerDashboard');
+    if(ownerDashboard)ownerDashboard.hidden=!['owner','admin'].includes(memberRole);
+    await Promise.all([renderTransfers(),renderFinance(),renderCashbookRegister(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts(),renderOwnerDashboard()]);
     say('Operations controls loaded for '+business.name+'.');
+  }
+  async function fetchBusinessRows(table,columns,orderColumn){
+    const rows=[],pageSize=1000;let offset=0;
+    while(true){
+      const {data,error}=await client.from(table).select(columns).eq('business_id',business.id).order(orderColumn,{ascending:true}).range(offset,offset+pageSize-1);
+      if(error)throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<pageSize)break;
+      offset+=pageSize;
+    }
+    return rows;
+  }
+  async function renderOwnerDashboard(){
+    const panel=document.getElementById('wlOwnerDashboard');if(!panel||panel.hidden||!client||!business)return;
+    const kpis=document.getElementById('wlOwnerKpis'),table=document.getElementById('wlOwnerBranchRows'),label=document.getElementById('wlOwnerPeriodLabel');
+    if(!kpis||!table||!label)return;
+    label.textContent='Updating consolidated figures…';table.textContent='Loading branch records…';
+    try{
+      const period=document.getElementById('wlOwnerPeriod')?.value||'30';
+      const today=new Date().toISOString().slice(0,10),cutoffDate=new Date();cutoffDate.setHours(0,0,0,0);
+      if(period!=='all')cutoffDate.setDate(cutoffDate.getDate()-Number(period)+1);
+      const cutoff=period==='all'?'0000-01-01':cutoffDate.toISOString().slice(0,10);
+      const [sales,purchases,expenses,returns,cashbook,transfers,stock]=await Promise.all([
+        fetchBusinessRows('offline_sales','branch_id,total,transaction_date','transaction_date'),
+        fetchBusinessRows('offline_purchases','branch_id,total,transaction_date','transaction_date'),
+        fetchBusinessRows('expenses','branch_id,amount,expense_date','expense_date'),
+        fetchBusinessRows('offline_sale_returns','branch_id,refund_total,created_at','created_at'),
+        fetchBusinessRows('cashbook_entries','branch_id,entry_type,amount,entry_date','entry_date'),
+        fetchBusinessRows('branch_stock_transfers','source_branch_id,destination_branch_id,status,requested_at','requested_at'),
+        fetchBusinessRows('branch_inventory','branch_id,quantity_on_hand','branch_id')
+      ]);
+      const inRange=(value)=>{const d=String(value||'').slice(0,10);return d&&d>=cutoff&&d<=today;};
+      const branches=(branchesCache||[]).filter(x=>x.is_active!==false);
+      const rows=new Map(branches.map(b=>[String(b.id),{id:String(b.id),name:b.name,sales:0,refunds:0,purchases:0,expenses:0,cashIncome:0,cashExpense:0,stockUnits:0}]));
+      const getRow=id=>{const key=id?String(id):'unassigned';if(!rows.has(key))rows.set(key,{id:key,name:'Unassigned / business-wide',sales:0,refunds:0,purchases:0,expenses:0,cashIncome:0,cashExpense:0,stockUnits:0});return rows.get(key);};
+      sales.filter(x=>inRange(x.transaction_date)).forEach(x=>getRow(x.branch_id).sales+=Number(x.total||0));
+      returns.filter(x=>inRange(x.created_at)).forEach(x=>getRow(x.branch_id).refunds+=Number(x.refund_total||0));
+      purchases.filter(x=>inRange(x.transaction_date)).forEach(x=>getRow(x.branch_id).purchases+=Number(x.total||0));
+      expenses.filter(x=>inRange(x.expense_date)).forEach(x=>getRow(x.branch_id).expenses+=Number(x.amount||0));
+      cashbook.filter(x=>inRange(x.entry_date)).forEach(x=>{const r=getRow(x.branch_id);if(x.entry_type==='income')r.cashIncome+=Number(x.amount||0);else if(x.entry_type==='expense')r.cashExpense+=Number(x.amount||0);});
+      stock.forEach(x=>getRow(x.branch_id).stockUnits+=Number(x.quantity_on_hand||0));
+      const activeTransfers=transfers.filter(x=>x.status==='pending');
+      const visibleRows=[...rows.values()].map(r=>({...r,netSales:r.sales-r.refunds,cashNet:r.cashIncome-r.cashExpense})).sort((a,b)=>b.netSales-a.netSales);
+      const totals=visibleRows.reduce((a,r)=>{a.sales+=r.sales;a.refunds+=r.refunds;a.purchases+=r.purchases;a.expenses+=r.expenses;a.cashNet+=r.cashNet;return a;},{sales:0,refunds:0,purchases:0,expenses:0,cashNet:0});
+      const fmt=n=>money(n);
+      const tile=(name,value)=>'<div class="owner-kpi"><span>'+name+'</span><strong>'+value+'</strong></div>';
+      kpis.innerHTML=tile('Active branches',branches.length.toLocaleString())+tile('Net sales after refunds',fmt(totals.sales-totals.refunds))+tile('Purchases recorded',fmt(totals.purchases))+tile('Operating expenses',fmt(totals.expenses))+tile('Pending stock transfers',activeTransfers.length.toLocaleString());
+      const periodText=period==='all'?'All available records':'Last '+period+' days';
+      label.textContent=periodText+' · Updated '+new Date().toLocaleTimeString();
+      const body=visibleRows.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+fmt(r.netSales)+'</td><td>'+fmt(r.purchases)+'</td><td>'+fmt(r.expenses)+'</td><td>'+fmt(r.cashNet)+'</td><td>'+r.stockUnits.toLocaleString(undefined,{maximumFractionDigits:3})+'</td></tr>').join('');
+      table.innerHTML=visibleRows.length?'<table><thead><tr><th>Branch</th><th>Net sales</th><th>Purchases</th><th>Expenses</th><th>Cashbook net</th><th>Stock units</th></tr></thead><tbody>'+body+'</tbody><tfoot><tr><th>Business total</th><th>'+fmt(totals.sales-totals.refunds)+'</th><th>'+fmt(totals.purchases)+'</th><th>'+fmt(totals.expenses)+'</th><th>'+fmt(totals.cashNet)+'</th><th>—</th></tr></tfoot></table>':'No branch performance records are available yet.';
+    }catch(error){
+      label.textContent='Dashboard could not be refreshed.';
+      table.textContent='Could not load consolidated branch data: '+(error?.message||String(error));
+    }
   }
   async function renderConflicts(){
     const el=document.getElementById('wlOpsConflicts');if(!el)return;
