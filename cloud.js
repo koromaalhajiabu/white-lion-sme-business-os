@@ -547,11 +547,12 @@
       if(returnRes.error)throw new Error('Could not download returns: '+returnRes.error.message);
       if(returnItemsRes.error)throw new Error('Could not download return items: '+returnItemsRes.error.message);
       const cloudSaleById=new Map((saleRes.data||[]).map(x=>[x.id,x]));
+      const localSalesAfterImport=await all('sales');
       for(const cloud of returnRes.data||[]){
         const old=localReturns.find(x=>x.clientReturnId===cloud.client_return_id);
         if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
         const sale=cloudSaleById.get(cloud.sale_id);
-        const localSale=localSales.find(x=>x.cloudTransactionId===sale?.client_transaction_id);
+        const localSale=localSalesAfterImport.find(x=>x.cloudTransactionId===sale?.client_transaction_id);
         const items=(returnItemsRes.data||[]).filter(x=>x.return_id===cloud.id).map(x=>({
           productId:productMap.get(x.product_id)||('cloud-product-id-'+x.product_id),
           name:x.product_name,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),
