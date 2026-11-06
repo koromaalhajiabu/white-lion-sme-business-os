@@ -484,10 +484,10 @@
       for(const cloud of pRes.data||[]){
         const old=localProducts.find(x=>x.cloudClientRecordId===cloud.client_record_id);
         if(old)productMap.set(cloud.id,old.id);
-        if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
+        if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
         if(old&&old.cloudSyncedAt&&cloud.updated_at&&Date.parse(cloud.updated_at)>Date.parse(old.cloudSyncedAt)+1500){old.cloudConflictSnapshot={fields:{name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',cost:Number(cloud.cost_price||0),price:Number(cloud.selling_price||0),reorder:Number(cloud.reorder_level||0),barcode:cloud.barcode||'',stock:selectedStock.get(cloud.id)||0},updatedAt:cloud.updated_at,branchId:selectedBranch?.id||null};old.cloudConflictAt=new Date().toISOString();await put('products',old);conflicts++;continue;}
         const row={...(old||{}),id:old?.id||('cloud-product-'+cloud.client_record_id),
-          cloudClientRecordId:cloud.client_record_id,cloudSyncedFor:businessId,cloudSyncedAt:new Date().toISOString(),
+          cloudClientRecordId:cloud.client_record_id,localBusinessId:businessId,cloudSyncedFor:businessId,cloudSyncedAt:new Date().toISOString(),
           name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',
           cost:Number(cloud.cost_price||0),price:Number(cloud.selling_price||0),reorder:Number(cloud.reorder_level||0),
           stock:selectedStock.get(cloud.id)||0,active:cloud.is_active,barcode:cloud.barcode||''};
@@ -496,10 +496,10 @@
       const syncSimple=async(type,rows,localRows,mapRow)=>{
         for(const cloud of rows||[]){
           const old=localRows.find(x=>x.cloudClientRecordId===cloud.client_record_id);
-          if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
+          if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
           if(old&&old.cloudSyncedAt&&cloud.updated_at&&Date.parse(cloud.updated_at)>Date.parse(old.cloudSyncedAt)+1500){old.cloudConflictSnapshot={fields:mapRow(cloud),updatedAt:cloud.updated_at};old.cloudConflictAt=new Date().toISOString();await put(type,old);conflicts++;continue;}
           const row={...(old||{}),id:old?.id||('cloud-'+type+'-'+cloud.client_record_id),
-            cloudClientRecordId:cloud.client_record_id,cloudSyncedFor:businessId,
+            cloudClientRecordId:cloud.client_record_id,localBusinessId:businessId,cloudSyncedFor:businessId,
             cloudSyncedAt:new Date().toISOString(),...mapRow(cloud)};
           await put(type,row);old?updated++:added++;
         }
@@ -522,14 +522,14 @@
       const importTransactions=async(type,rows,itemRows)=>{
         for(const cloud of rows||[]){
           const old=(type==='sales'?localSales:localPurchases).find(x=>x.cloudTransactionId===cloud.client_transaction_id);
-          if(old&&old.cloudSyncedFor!==businessId){skipped++;continue;}
+          if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
           const items=itemRows.filter(i=>i[type==='sales'?'sale_id':'purchase_id']===cloud.id).map(i=>({
             productId:productMap.get(i.product_id)||('cloud-product-id-'+i.product_id),
             name:i.product_name,quantity:Number(i.quantity),
             ...(type==='sales'?{unitPrice:Number(i.unit_price)}:{unitCost:Number(i.unit_cost),cost:Number(i.unit_cost)})
           }));
           const row={...(old||{}),id:old?.id||('cloud-'+type+'-'+cloud.client_transaction_id),
-            cloudTransactionId:cloud.client_transaction_id,cloudSyncedFor:businessId,
+            cloudTransactionId:cloud.client_transaction_id,localBusinessId:businessId,cloudSyncedFor:businessId,
             cloudSyncedAt:new Date().toISOString(),branchId:cloud.branch_id||null,
             receipt:cloud.receipt||('PUR-'+cloud.client_transaction_id.slice(0,10)),
             date:cloud.transaction_date,customer:cloud.customer_name||'',supplier:cloud.supplier_name||'',
@@ -561,15 +561,18 @@
         const rows = await all(type);
         for (const row of rows) {
           const localId = String(row.id);
+          if ((row.localBusinessId && row.localBusinessId !== activeBusiness.id) || (row.cloudSyncedFor && row.cloudSyncedFor !== activeBusiness.id)) {
+            throw new Error(type + ' record ' + localId + ' is linked to a different business workspace. Export a separate copy before importing it elsewhere.');
+          }
           let stableId = row.cloudClientRecordId;
           if (!stableId) {
             stableId = crypto.randomUUID();
             row.cloudClientRecordId = stableId;
             await put(type, row);
           }
-          if (row.cloudSyncedFor === activeBusiness.id) continue;
+          if (row.cloudSyncedFor === activeBusiness.id) { if (!row.localBusinessId) { row.localBusinessId=activeBusiness.id; await put(type,row); } continue; }
           if (type === 'products' && !selectedBranch?.id) throw new Error('Select an active branch before syncing product opening stock.');
-          const localBranchStock = type === 'products' ? localBranchStocks.find(x => String(x.productId)===String(row.id) && (x.branchId===selectedBranch.id || x.branchId==='local-main')) : null;
+          const localBranchStock = type === 'products' ? localBranchStocks.find(x => String(x.productId)===String(row.id) && (!x.businessId || x.businessId===activeBusiness.id) && (x.branchId===selectedBranch.id || x.branchId==='local-main')) : null;
           const openingStock = localBranchStock ? Number(localBranchStock.quantity||0) : Number(row.stock||0);
           const payload = type === 'products' ? {
             branch_id:selectedBranch.id,
@@ -592,10 +595,11 @@
             p_records:[payload]
           });
           if (error) throw new Error(type + ' record ' + localId + ': ' + error.message);
+          row.localBusinessId = activeBusiness.id;
           row.cloudSyncedFor = activeBusiness.id;
           row.cloudSyncedAt = new Date().toISOString();
           await put(type,row);
-          if(type==='products'&&selectedBranch?.id){await put('branchInventory',{id:String(selectedBranch.id)+'|'+String(row.id),branchId:selectedBranch.id,productId:row.id,quantity:openingStock});}
+          if(type==='products'&&selectedBranch?.id){await put('branchInventory',{id:String(selectedBranch.id)+'|'+String(row.id),businessId:activeBusiness.id,branchId:selectedBranch.id,productId:row.id,quantity:openingStock});}
           total++;
         }
       }
@@ -605,7 +609,10 @@
       for (const type of ['sales','purchases']) {
         const rows = await all(type);
         for (const row of rows) {
-          if (row.cloudSyncedFor === activeBusiness.id) continue;
+          if ((row.localBusinessId && row.localBusinessId !== activeBusiness.id) || (row.cloudSyncedFor && row.cloudSyncedFor !== activeBusiness.id)) {
+            throw new Error(type + ' transaction ' + (row.receipt || row.id) + ' belongs to a different business workspace.');
+          }
+          if (row.cloudSyncedFor === activeBusiness.id) { if (!row.localBusinessId) { row.localBusinessId=activeBusiness.id; await put(type,row); } continue; }
           if (!row.branchId) throw new Error('Transaction ' + (row.receipt || row.id) + ' has no saved branch. Select a branch when recording new transactions; older transactions must be assigned deliberately before syncing.');
           if (!row.cloudTransactionId) {
             row.cloudTransactionId = crypto.randomUUID();
@@ -651,6 +658,7 @@
             .maybeSingle();
           if (receiptError) throw new Error('Could not verify cloud receipt for ' + (row.receipt || row.cloudTransactionId) + ': ' + receiptError.message);
           if (!receipt) throw new Error('The cloud RPC returned but no sync receipt was found for ' + (row.receipt || row.cloudTransactionId) + '. The local transaction is still pending.');
+          row.localBusinessId = activeBusiness.id;
           row.cloudSyncedFor = activeBusiness.id;
           row.cloudSyncedAt = new Date().toISOString();
           row.cloudSyncResult = data?.status || 'synced';
