@@ -41,7 +41,7 @@ begin
     raise exception 'Active product not found in this business';
   end if;
 
-  if abs(new.unit_price - v_standard_price) > 0.01 then
+  if new.unit_price <> v_standard_price then
     if v_role = 'cashier' then
       raise exception 'Cashiers must use the catalogue selling price. Ask a manager to approve a price override.';
     end if;
