@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#087a43">
+<meta name="theme-color" content="#075b35">
 <meta name="description" content="White Lion SME Business Operating System">
 <link rel="manifest" href="manifest.webmanifest?v=43">
 <link rel="icon" type="image/svg+xml" href="icons/white-lion-icon.svg">
@@ -320,6 +320,117 @@ tbody tr:hover{background:#fbfcff}
 .finance-cash-total{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:17px;border-radius:12px;background:#f5faf7;margin-bottom:14px}
 .finance-cash-total small{font-size:10px;color:#718096}.finance-cash-total b{font-size:25px;color:#176b49;letter-spacing:-.5px}
 @media(max-width:560px){.finance-budget-row{grid-template-columns:minmax(0,1fr) auto}.finance-budget-row button{grid-column:1/-1;width:100%}}
+
+
+/* WHITE LION — PROFESSIONAL PREMIUM DESIGN SYSTEM (Sierra Leone brand palette) */
+:root{
+ --wl-green:#1eb53a;--wl-deep:#075b35;--wl-deep-2:#06482d;--wl-blue:#0072c6;
+ --wl-ink:#17271f;--wl-muted:#718078;--wl-line:#e3ebe5;--wl-surface:#fff;
+ --wl-canvas:#f5f8f6;--wl-soft-green:#edf8f0;--wl-soft-blue:#edf5fc;
+ --wl-radius:16px;--wl-shadow:0 8px 26px rgba(12,55,34,.055);
+ --wl-shadow-hover:0 15px 34px rgba(12,55,34,.10);
+}
+html{scroll-behavior:smooth}
+body{background:linear-gradient(135deg,rgba(30,181,58,.035),transparent 34%),var(--wl-canvas);color:var(--wl-ink);font-feature-settings:"ss01" on,"cv11" on}
+::selection{background:rgba(30,181,58,.18);color:var(--wl-deep)}
+button,input,select,textarea{accent-color:var(--wl-deep)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(0,114,198,.25);outline-offset:2px}
+.app{grid-template-columns:264px minmax(0,1fr)}
+.sidebar{background:linear-gradient(165deg,#08643a 0%,#075331 54%,#043d28 100%);box-shadow:9px 0 30px rgba(5,54,33,.09)}
+.brand-mark{background:linear-gradient(145deg,#1eb53a 0 35%,#fff 35% 67%,#0072c6 67% 100%);box-shadow:0 7px 18px rgba(0,0,0,.12)}
+.brand strong{letter-spacing:1.35px}
+.brand small{color:rgba(255,255,255,.72)}
+.business-switch{background:rgba(0,48,28,.32);border:1px solid rgba(255,255,255,.17);border-radius:13px}
+.business-switch small{color:rgba(255,255,255,.7)}
+.nav-label{color:rgba(255,255,255,.58)}
+.nav button{min-height:41px;color:rgba(255,255,255,.82);border-radius:10px}
+.nav button:hover{background:rgba(255,255,255,.12);transform:translateX(2px)}
+.nav button.active{background:linear-gradient(100deg,rgba(0,114,198,.98),rgba(0,91,166,.92));box-shadow:inset 3px 0 #fff,0 5px 14px rgba(0,30,70,.16)}
+.nav .ico{color:#fff}
+.side-foot{color:rgba(255,255,255,.62);border-top-color:rgba(255,255,255,.14)}
+.topbar{height:72px;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);box-shadow:0 3px 16px rgba(20,55,35,.025);z-index:8}
+.topbar:after{height:4px;background:linear-gradient(to right,#1eb53a 0 33.33%,#fff 33.33% 66.66%,#0072c6 66.66% 100%)}
+.crumb{color:#183b29;font-weight:760}
+.status{background:#edf8f0;color:#087443;border:1px solid #d9efdf;border-radius:30px;padding:7px 11px}
+.dot{background:#1eb53a}
+.avatar{background:linear-gradient(145deg,#e7f5eb,#cce9d5);color:#075b35;border:1px solid #c7e3cf;box-shadow:none}
+.content{max-width:1680px;padding:clamp(20px,3vw,38px) clamp(14px,3vw,40px) 54px}
+.welcome h1,.page-title h1{color:#153b27;letter-spacing:-.8px;font-weight:780}
+.eyebrow{color:#087a43;letter-spacing:1.6px}
+.welcome p,.page-title p{color:#738278}
+.btn{border:1px solid #dce8df;background:#fff;color:#254334;border-radius:10px;font-weight:720;box-shadow:0 1px 2px rgba(16,50,30,.025)}
+.btn:hover{border-color:#a9d4b6;box-shadow:0 7px 17px rgba(8,82,43,.08)}
+.btn.primary{background:linear-gradient(135deg,#087a43,#075b35);border-color:#087a43;color:#fff;box-shadow:0 6px 15px rgba(8,122,67,.17)}
+.btn.primary:hover{background:linear-gradient(135deg,#066b3a,#064b2e)}
+.btn.gold{background:linear-gradient(135deg,#1687d0,#0067b5);border-color:#0067b5;color:#fff;box-shadow:0 6px 15px rgba(0,114,198,.14)}
+.btn.danger{color:#b63e4b;border-color:#f0d9dc;background:#fff8f8}
+.stat,.panel,.module-card,.stock-kpi,.return-kpi,.report-kpi,.inventory-kpi{border:1px solid var(--wl-line);border-radius:var(--wl-radius);box-shadow:var(--wl-shadow);background:#fff}
+.stat{padding:19px 20px}
+.stat:hover,.module-card:hover{box-shadow:var(--wl-shadow-hover);border-color:#cfe5d5}
+.stat-icon{background:var(--wl-soft-green);color:var(--wl-deep);border:1px solid #dcefe1}
+.stat strong{color:#173b28;font-weight:790;letter-spacing:-.8px}
+.stat-head{color:#728078}
+.panel{padding:20px}
+.panel h3{color:#193b29;font-weight:760}
+.panel-sub{color:#7a897f}
+.quick{border:1px solid #e5eee7;border-radius:13px;background:linear-gradient(145deg,#fff,#fbfdfb)}
+.quick:hover{border-color:#a8d8b5;background:#f8fcf9;box-shadow:0 9px 20px rgba(8,82,43,.07)}
+.quick span{color:#087a43}
+.quick b{color:#1d3c2b}
+.table-wrap{border:1px solid #e8eee9;border-radius:12px;background:#fff}
+th{background:#f5f9f6;color:#718078;border-bottom:1px solid #e5eee7}
+td{color:#34483b;border-bottom-color:#edf2ee}
+tbody tr:hover{background:#f8fcf9}
+.pill{background:#e9f7ed;color:#087a43}
+.pill.warn{background:#fff6e5;color:#93630d}
+.pill.neutral{background:#edf5fc;color:#1769a8}
+.search,.inventory-filter,.field input,.field select,.field textarea{border:1px solid #dce8df;background:#fff;color:#203b2b;border-radius:10px}
+.search:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:#62b77b;box-shadow:0 0 0 3px rgba(30,181,58,.11)}
+.field label{color:#586d5e}
+.modal-back{background:rgba(4,35,21,.62);backdrop-filter:blur(5px)}
+.modal{border:1px solid rgba(255,255,255,.7);border-radius:19px}
+.notice{background:#f2f8ff;border-color:#d8e9f7;color:#245a7c}
+.tag{background:#f0f8f2;border-color:#dcefe1;color:#315d40}
+.report-box{background:#f5faf6;border:1px solid #e5eee7}
+.footer{color:#87958b;border-top:1px solid #e2ebe5}
+.toast{background:#123d29;border:1px solid rgba(255,255,255,.14)}
+/* Harmonise existing specialist workspaces with the national palette */
+.pos-command-strip{border-color:#dcece0;background:linear-gradient(105deg,#f2faf4,#fff 58%,#f1f7fc)}
+.pos-command-mark{background:linear-gradient(145deg,#1eb53a,#087a43);color:#fff}
+.pos-command-copy b{color:#17432b}
+.pos-live-dot{background:#1eb53a}
+.pos-products #retailBarcode{border-color:#a9d8b6;box-shadow:0 0 0 3px rgba(30,181,58,.07)}
+.pos-checkout #retailComplete{background:linear-gradient(120deg,#1687d0,#0067b5);border-color:#0067b5;color:#fff}
+.pos-checkout-actions{border-color:#dcece0;background:rgba(246,251,247,.97)}
+.pos-total-card{background:#f3f9f5;border-color:#e0eee4}
+.pos-grand-total strong{color:#075b35}
+.sales-chart-bar,.expense-track i{background:linear-gradient(180deg,#1eb53a,#087a43)}
+.intel-sales{background:linear-gradient(180deg,#1eb53a,#087a43)}
+.intel-expenses{background:linear-gradient(180deg,#56a9e4,#0072c6)}
+.intel-insight.good{border-left-color:#1eb53a}
+.finance-progress i{background:linear-gradient(90deg,#087a43,#1eb53a)}
+.finance-progress.expense i{background:linear-gradient(90deg,#0072c6,#56a9e4)}
+.finance-cash-total{background:#eff8f1;border:1px solid #dcefe1}
+.finance-cash-total b{color:#075b35}
+.inventory-product-mark{background:#eaf7ed;color:#087a43}
+.inventory-note{background:#f2f8ff;border-color:#d9eaf7;color:#315c78}
+.wl-install-banner{border-color:#d7eade;background:linear-gradient(110deg,#f0faf3,#fff)}
+.wl-install-button{background:linear-gradient(135deg,#087a43,#075b35);color:#fff}
+@media(max-width:1050px){.app{grid-template-columns:230px minmax(0,1fr)}}
+@media(max-width:720px){
+ .sidebar{box-shadow:16px 0 44px rgba(4,35,21,.24)}
+ .topbar{height:62px}
+ .content{padding:18px 13px 34px}
+ .panel{padding:15px}
+ .stat{border-radius:13px}
+ .table-wrap{border-radius:10px}
+ .welcome h1{letter-spacing:-.6px}
+ .pos-checkout-actions{background:rgba(246,251,247,.97);border-color:#dcece0}
+}
+@media(prefers-reduced-motion:no-preference){
+ .panel,.stat,.quick,.btn{transition:box-shadow .18s ease,border-color .18s ease,transform .18s ease}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
 </style>
 </head>
@@ -790,6 +901,6 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
 if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=45',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=25" defer></script>
-<script src="./operations.js?v=10" defer></script>
+<script src="./operations.js?v=11" defer></script>
 <script src="./documents.js?v=1" defer></script>
 </body></html>
