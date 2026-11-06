@@ -162,6 +162,7 @@ drop policy if exists obligations_member_read on public.financial_obligations;
 create policy obligations_finance_read on public.financial_obligations for select to authenticated
 using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
 drop policy if exists obligation_payments_member_read on public.financial_obligation_payments;
+drop policy if exists obligation_payments_finance_write on public.financial_obligation_payments;
 create policy obligation_payments_finance_read on public.financial_obligation_payments for select to authenticated
 using(public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
 
@@ -271,6 +272,7 @@ begin
  if not public.has_business_role(v.business_id,array['owner','admin','manager','accountant']::public.business_role[]) then
    raise exception 'Not authorised to record financial payments';
  end if;
+ if v.status='void' then raise exception 'Voided receivables or payables cannot receive payments'; end if;
  if p_amount is null or p_amount<=0 or p_amount>v.amount-v.amount_paid then
    raise exception 'Payment must be positive and cannot exceed the outstanding balance';
  end if;
@@ -333,8 +335,10 @@ end; $$;
 -- Explicit authenticated table privileges; RLS above remains the row-level gate.
 revoke all on public.cashbook_entries, public.financial_obligations,
   public.financial_obligation_payments, public.product_batches,
-  public.stock_adjustments from anon;
+  public.stock_adjustments from anon, public, authenticated;
 grant select, insert on public.cashbook_entries, public.financial_obligations to authenticated;
+-- Payment rows are inserted only by the SECURITY DEFINER payment RPC, which
+-- updates the obligation balance and cashbook in the same database transaction.
 grant select on public.financial_obligation_payments, public.product_batches,
   public.stock_adjustments to authenticated;
 
