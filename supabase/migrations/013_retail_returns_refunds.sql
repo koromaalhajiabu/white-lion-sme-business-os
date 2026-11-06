@@ -205,6 +205,22 @@ begin
     end if;
   end loop;
 
+  if lower(coalesce(nullif(trim(p_refund_method),''),'cash')) not in ('cash','mobile money','bank transfer','store credit') then
+    raise exception 'Unsupported refund method';
+  end if;
+
+  -- Cash refunds are posted to the cashbook as an expense in the same transaction.
+  -- Store credit is tracked on the return record without reducing cash.
+  if v_total>0 and lower(coalesce(nullif(trim(p_refund_method),''),'cash')) <> 'store credit' then
+    insert into public.cashbook_entries(
+      business_id,branch_id,entry_type,category,description,amount,payment_method,entry_date,reference
+    ) values(
+      p_business_id,p_branch_id,'expense','Sales refund',
+      'Refund for receipt '||coalesce(v_sale.receipt,'')||' — '||trim(p_reason),
+      round(v_total,2),lower(coalesce(nullif(trim(p_refund_method),''),'cash')),current_date,p_client_return_id
+    );
+  end if;
+
   insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
   values(p_business_id,auth.uid(),'sale_return_processed','offline_sale_returns',v_return::text,
     jsonb_build_object('sale_id',v_sale.id,'receipt',v_sale.receipt,'reason',trim(p_reason),
