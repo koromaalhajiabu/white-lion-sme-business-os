@@ -374,7 +374,7 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={customerintel:'Customer Intelligence',documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',finance:'Financial Planning'};
+const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',finance:'Financial Planning'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
  const labels=industryWording(),icons={customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',employees:'♟',settings:'⚙'};
