@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101b31">
 <meta name="description" content="White Lion SME Business Operating System">
-<link rel="manifest" href="manifest.webmanifest?v=38">
+<link rel="manifest" href="manifest.webmanifest?v=39">
 <link rel="icon" type="image/svg+xml" href="icons/white-lion-icon.svg">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -525,7 +525,7 @@ async function restore(e){const f=e.target.files[0];if(!f)return;try{const data=
 function csv(rows){const keys=['receipt','date','customer','payment','total'];const lines=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))];const a=document.createElement('a'),blob=new Blob([lines.join('\n')],{type:'text/csv'});a.href=URL.createObjectURL(blob);a.download='white-lion-sales.csv';a.click();URL.revokeObjectURL(a.href)}
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=38',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=39',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=22" defer></script>
 <script src="./operations.js?v=8" defer></script>
