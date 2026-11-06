@@ -206,6 +206,7 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_sales_member_read on public.offline_sales;
+drop policy if exists offline_sales_branch_read on public.offline_sales;
 create policy offline_sales_branch_read on public.offline_sales
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -218,6 +219,7 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_purchases_member_read on public.offline_purchases;
+drop policy if exists offline_purchases_branch_read on public.offline_purchases;
 create policy offline_purchases_branch_read on public.offline_purchases
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -230,17 +232,20 @@ for select to authenticated using (
 );
 
 drop policy if exists offline_sale_items_member_read on public.offline_sale_items;
+drop policy if exists offline_sale_items_branch_read on public.offline_sale_items;
 create policy offline_sale_items_branch_read on public.offline_sale_items
 for select to authenticated using (
  exists(select 1 from public.offline_sales s where s.id=offline_sale_items.sale_id and s.business_id=offline_sale_items.business_id)
 );
 drop policy if exists offline_purchase_items_member_read on public.offline_purchase_items;
+drop policy if exists offline_purchase_items_branch_read on public.offline_purchase_items;
 create policy offline_purchase_items_branch_read on public.offline_purchase_items
 for select to authenticated using (
  exists(select 1 from public.offline_purchases p where p.id=offline_purchase_items.purchase_id and p.business_id=offline_purchase_items.business_id)
 );
 
 drop policy if exists branch_stock_transfers_member_read on public.branch_stock_transfers;
+drop policy if exists branch_stock_transfers_branch_read on public.branch_stock_transfers;
 create policy branch_stock_transfers_branch_read on public.branch_stock_transfers
 for select to authenticated using (
  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
@@ -253,6 +258,7 @@ for select to authenticated using (
  )
 );
 drop policy if exists branch_stock_transfer_items_member_read on public.branch_stock_transfer_items;
+drop policy if exists branch_stock_transfer_items_branch_read on public.branch_stock_transfer_items;
 create policy branch_stock_transfer_items_branch_read on public.branch_stock_transfer_items
 for select to authenticated using (
  exists(select 1 from public.branch_stock_transfers t
