@@ -5,7 +5,6 @@ const APP_SHELL=[
   './manifest.webmanifest?v=37',
   './cloud.js?v=22',
   './operations.js?v=8',
-  './icons/white-lion-icon.svg',
   './icons/white-lion-icon.svg'
 ];
 
