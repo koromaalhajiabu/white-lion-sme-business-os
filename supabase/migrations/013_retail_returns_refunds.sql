@@ -14,7 +14,7 @@ create table if not exists public.offline_sale_returns (
   created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   constraint offline_sale_returns_branch_fk foreign key(branch_id,business_id)
-    references public.branches(id,business_id) on delete cascade,
+    references public.branches(id,business_id) on delete restrict,
   constraint offline_sale_returns_unique unique(business_id,client_return_id),
   constraint offline_sale_returns_sale_fk foreign key(sale_id)
     references public.offline_sales(id) on delete restrict
