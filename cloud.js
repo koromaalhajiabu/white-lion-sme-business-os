@@ -577,7 +577,7 @@
           const openingStock = localBranchStock ? Number(localBranchStock.quantity||0) : Number(row.stock||0);
           const payload = type === 'products' ? {
             branch_id:selectedBranch.id,
-            client_record_id:stableId, sku:row.sku || null, name:row.name || 'Unnamed product',
+            client_record_id:stableId, sku:row.sku || null, barcode:row.barcode || null, name:row.name || 'Unnamed product',
             category:row.category || null, unit:row.unit || 'unit',
             cost_price:Number(row.cost || 0), selling_price:Number(row.price || 0),
             reorder_level:Number(row.reorder || 0), quantity_on_hand:openingStock
