@@ -135,7 +135,7 @@ create table if not exists public.league_disciplinary_actions (
   created_at timestamptz not null default now(),
   foreign key (club_id,business_id,competition_id) references public.league_clubs(id,business_id,competition_id),
   foreign key (player_id,business_id,competition_id,club_id) references public.league_players(id,business_id,competition_id,club_id),
-  foreign key (fixture_id,business_id,competition_id) references public.league_fixtures(id,business_id,competition_id) on delete set null
+  foreign key (fixture_id,business_id,competition_id) references public.league_fixtures(id,business_id,competition_id) on delete restrict
 );
 
 create table if not exists public.league_competition_members (
