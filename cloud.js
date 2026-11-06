@@ -455,7 +455,8 @@
     }
     const txRows = [...await all('sales'), ...await all('purchases')];
     const txPending = txRows.filter(row => row.cloudSyncedFor !== activeBusiness.id).length;
-    syncStatus(pending + ' master/expense records and ' + txPending + ' sales/purchases pending for this workspace.');
+    const returnPending = (await all('returns')).filter(row => row.cloudSyncedFor !== activeBusiness.id).length;
+    syncStatus(pending + ' master/expense records, ' + txPending + ' sales/purchases and ' + returnPending + ' returns pending for this workspace.');
   }
 
   async function downloadCloudRecords() {
@@ -467,7 +468,7 @@
       const businessId=activeBusiness.id;
       const localProducts=await all('products'), localCustomers=await all('customers'),
         localSuppliers=await all('suppliers'), localExpenses=await all('expenses'),
-        localSales=await all('sales'), localPurchases=await all('purchases');
+        localSales=await all('sales'), localPurchases=await all('purchases'), localReturns=await all('returns');
       const [pRes,cRes,sRes,eRes]=await Promise.all([
         client.from('products').select('id,client_record_id,sku,name,category,unit,cost_price,selling_price,reorder_level,is_active,barcode,updated_at').eq('business_id',businessId),
         client.from('customers').select('id,client_record_id,name,phone,email,address,notes,updated_at').eq('business_id',businessId),
@@ -539,6 +540,31 @@
       };
       await importTransactions('sales',saleRes.data,saleItemsRes.data||[]);
       await importTransactions('purchases',purchaseRes.data,purchaseItemsRes.data||[]);
+      const [returnRes,returnItemsRes]=await Promise.all([
+        client.from('offline_sale_returns').select('id,sale_id,branch_id,client_return_id,reason,refund_method,refund_total,created_at').eq('business_id',businessId),
+        client.from('offline_sale_return_items').select('return_id,product_id,product_name,quantity,unit_price,refund_amount,restocked').eq('business_id',businessId)
+      ]);
+      if(returnRes.error)throw new Error('Could not download returns: '+returnRes.error.message);
+      if(returnItemsRes.error)throw new Error('Could not download return items: '+returnItemsRes.error.message);
+      const cloudSaleById=new Map((saleRes.data||[]).map(x=>[x.id,x]));
+      for(const cloud of returnRes.data||[]){
+        const old=localReturns.find(x=>x.clientReturnId===cloud.client_return_id);
+        if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
+        const sale=cloudSaleById.get(cloud.sale_id);
+        const items=(returnItemsRes.data||[]).filter(x=>x.return_id===cloud.id).map(x=>({
+          productId:productMap.get(x.product_id)||('cloud-product-id-'+x.product_id),
+          name:x.product_name,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),
+          refundAmount:Number(x.refund_amount),restock:!!x.restocked
+        }));
+        const row={...(old||{}),id:old?.id||cloud.client_return_id,clientReturnId:cloud.client_return_id,
+          cloudReturnId:cloud.id,saleId:old?.saleId||('cloud-sale-'+(sale?.client_transaction_id||cloud.sale_id)),
+          saleCloudTransactionId:sale?.client_transaction_id||old?.saleCloudTransactionId||null,
+          saleReceipt:sale?.receipt||old?.saleReceipt||'',branchId:cloud.branch_id,localBusinessId:businessId,
+          cloudSyncedFor:businessId,reason:cloud.reason,method:cloud.refund_method,
+          refundTotal:Number(cloud.refund_total||0),items,date:(cloud.created_at||'').slice(0,10),
+          createdAt:cloud.created_at,restock:items.some(x=>x.restock)};
+        await put('returns',row);old?updated++:added++;
+      }
       syncStatus('Download complete: '+added+' new, '+updated+' refreshed, '+skipped+' local unsynced records preserved, '+conflicts+' conflicts awaiting your choice.');
       say('Cloud download completed. Local unsynced records were preserved.');
       window.dispatchEvent(new CustomEvent('whiteLionCloudDownloaded'));
@@ -551,7 +577,7 @@
   async function syncLocalRecords() {
     if (!client || !session || !activeBusiness) return say('Sign in and select a business workspace first.');
     if (!navigator.onLine) { syncStatus('Offline. Records remain safely on this device; reconnect to sync.'); return; }
-    if (!confirm('Upload this device’s local products, customers, suppliers, expenses, sales and purchases into “' + activeBusiness.name + '”? Continue only if ALL these local records belong in this workspace.')) return;
+    if (!confirm('Upload this device’s local products, customers, suppliers, expenses, sales, purchases and returns into “' + activeBusiness.name + '”? Continue only if ALL these local records belong in this workspace.')) return;
     const button = $('wlSyncNow');
     if (button) { button.disabled = true; button.textContent = 'Syncing…'; }
     const types = ['products','customers','suppliers','expenses'];
@@ -670,7 +696,40 @@
           transactionTotal++;
         }
       }
-      syncStatus('Sync complete: ' + total + ' master/expense records and ' + transactionTotal + ' transactions uploaded or confirmed.');
+      // Upload returns only after the original sale and its products are in the cloud.
+      const localSalesForReturns=await all('sales');
+      const returnsToSync=await all('returns');
+      let returnTotal=0;
+      for(const row of returnsToSync){
+        if(row.cloudSyncedFor===activeBusiness.id)continue;
+        if((row.localBusinessId&&row.localBusinessId!==activeBusiness.id)||(row.cloudSyncedFor&&row.cloudSyncedFor!==activeBusiness.id))
+          throw new Error('Return '+(row.clientReturnId||row.id)+' belongs to a different business workspace.');
+        const sale=localSalesForReturns.find(s=>String(s.id)===String(row.saleId));
+        const saleTransactionId=row.saleCloudTransactionId||sale?.cloudTransactionId;
+        if(!saleTransactionId||sale?.cloudSyncedFor!==activeBusiness.id)
+          throw new Error('Return '+(row.clientReturnId||row.id)+' is waiting for its original sale to sync first.');
+        if(!row.branchId||row.branchId==='local-main')
+          throw new Error('Return '+(row.clientReturnId||row.id)+' has no cloud branch. The original sale must be posted to a selected cloud branch.');
+        const returnItems=(row.items||[]).map(item=>{
+          const product=productByLocalId.get(String(item.productId));
+          if(!product?.cloudClientRecordId||product.cloudSyncedFor!==activeBusiness.id)
+            throw new Error('A returned product is not synced to this workspace.');
+          return {product_client_record_id:product.cloudClientRecordId,product_name:item.name||product.name,
+            quantity:Number(item.quantity||0),restock:!!item.restock};
+        });
+        const {data,error}=await client.rpc('sync_sale_return',{
+          p_business_id:activeBusiness.id,p_branch_id:row.branchId,
+          p_client_return_id:row.clientReturnId||String(row.id),
+          p_sale_client_transaction_id:saleTransactionId,p_reason:row.reason||'Customer return',
+          p_refund_method:row.method||'cash',p_items:returnItems
+        });
+        if(error)throw new Error('Return '+(row.clientReturnId||row.id)+': '+error.message);
+        row.localBusinessId=activeBusiness.id;row.cloudSyncedFor=activeBusiness.id;
+        row.cloudReturnId=data?.return_id||row.cloudReturnId;row.cloudSyncedAt=new Date().toISOString();
+        await put('returns',row);returnTotal++;
+      }
+      syncStatus('Sync complete: ' + total + ' master/expense records, ' + transactionTotal + ' sales/purchases and ' + returnTotal + ' returns uploaded or confirmed.');
+
       say('Cloud sync completed: ' + total + ' records and ' + transactionTotal + ' transactions.');
     } catch (error) {
       syncStatus('Sync paused: ' + error.message + '. Local records are preserved; retry when ready.');
