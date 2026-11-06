@@ -102,8 +102,9 @@ async function render(){
   const stockRows=allStock.filter(x=>!x.businessId||!localBusinessId||x.businessId===localBusinessId);
   let cart=[];
   const available=(p,bid)=>{const key=String(bid||'local-main')+'|'+String(p.id),row=stockRows.find(x=>String(x.id)===key);if(row)return Number(row.quantity||0);const existsElsewhere=stockRows.some(x=>String(x.productId)===String(p.id));return existsElsewhere?0:Number(p.stock||0)};
-  const subtotal=()=>cart.reduce((n,x)=>n+x.quantity*x.unitPrice,0);
-  const totals=()=>{const sub=subtotal(),discount=Math.max(0,Number(document.getElementById('retailDiscount')?.value||0)),taxRate=Math.max(0,Number(document.getElementById('retailTax')?.value||0)),tax=Math.max(0,(sub-discount))*taxRate/100;return{sub,discount,tax,total:Math.max(0,sub-discount+tax)}};
+  const roundMoney=n=>Math.round((Number(n)+Number.EPSILON)*100)/100;
+  const subtotal=()=>roundMoney(cart.reduce((n,x)=>n+roundMoney(x.quantity*x.unitPrice),0));
+  const totals=()=>{const sub=subtotal(),discount=roundMoney(Math.max(0,Number(document.getElementById('retailDiscount')?.value||0))),taxRate=Math.max(0,Number(document.getElementById('retailTax')?.value||0)),tax=roundMoney(Math.max(0,sub-discount)*taxRate/100);return{sub,discount,tax,total:roundMoney(Math.max(0,sub-discount+tax))}};
   const printReceipt=sale=>{
     const rows=(sale.items||[]).map(i=>'<tr><td>'+esc(i.name)+'</td><td>'+Number(i.quantity)+'</td><td>'+money(i.unitPrice)+'</td><td>'+money(Number(i.quantity)*Number(i.unitPrice))+'</td></tr>').join('');
     const w=window.open('','_blank','width=420,height=720');if(!w){toast('Allow pop-ups to print receipts');return}
