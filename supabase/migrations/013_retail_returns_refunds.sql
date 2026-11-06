@@ -100,7 +100,9 @@ begin
     and s.client_transaction_id=p_sale_client_transaction_id
   for update;
   if not found then raise exception 'Original sale is not available in the cloud yet'; end if;
-  if v_sale.branch_id <> p_branch_id then raise exception 'Return must be processed at the original sale branch'; end if;
+  if v_sale.branch_id is null or p_branch_id is null or v_sale.branch_id <> p_branch_id then
+    raise exception 'Return must be processed at the original sale branch; legacy sales without a saved branch cannot be returned through this workflow';
+  end if;
 
   if v_role='cashier' and not exists (
     select 1 from public.branch_members bm
@@ -124,8 +126,7 @@ begin
     select p.id,p.name into v_product,v_name
     from public.products p
     where p.business_id=p_business_id
-      and p.client_record_id=v_item->>'product_client_record_id'
-      and p.is_active=true;
+      and p.client_record_id=v_item->>'product_client_record_id';
     if v_product is null then raise exception 'A returned product is not available in this business'; end if;
 
     v_qty := (v_item->>'quantity')::numeric;
