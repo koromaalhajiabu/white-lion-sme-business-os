@@ -248,6 +248,29 @@ tbody tr:hover{background:#fbfcff}
 
 /* Installable app controls */
 .wl-install-banner{display:none;align-items:center;justify-content:space-between;gap:12px;margin:12px clamp(13px,3vw,38px) 0;padding:12px 14px;border:1px solid #e7d8b6;border-radius:14px;background:linear-gradient(110deg,#fffaf0,#fff);box-shadow:0 6px 18px rgba(18,34,57,.045)}.wl-install-banner.show{display:flex}.wl-install-copy{min-width:0}.wl-install-copy b{display:block;color:#1a2b45;font-size:12px}.wl-install-copy small{display:block;color:#778499;font-size:10px;margin-top:3px;line-height:1.4}.wl-install-button{flex:0 0 auto;border:0;border-radius:9px;padding:10px 14px;background:linear-gradient(135deg,#e5c77f,#c9a253);color:#17243a;font-size:11px;font-weight:850;min-height:40px}.wl-install-banner[hidden]{display:none!important}@media(max-width:720px){.wl-install-banner{margin:10px 12px 0;padding:11px;align-items:center}.wl-install-copy small{max-width:210px}.wl-install-button{padding:10px 11px}}
+
+/* INVENTORY MANAGEMENT WORKSPACE */
+.inventory-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:0 0 17px}
+.inventory-kpi{background:#fff;border:1px solid #e6eaf1;border-radius:15px;padding:16px 17px;box-shadow:var(--shadow);min-width:0}
+.inventory-kpi span{display:block;color:#7c899b;font-size:10px;font-weight:750;letter-spacing:.45px;text-transform:uppercase}
+.inventory-kpi b{display:block;color:#1b2a40;font-size:24px;letter-spacing:-.7px;margin:8px 0 2px}
+.inventory-kpi small{color:#8a95a5;font-size:10px}
+.inventory-kpi.warn b{color:#a97821}.inventory-kpi.danger b{color:#bf4d57}.inventory-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.inventory-toolbar .search{flex:1;min-width:170px}
+.inventory-filter{border:1px solid #dfe5ee;background:#fff;border-radius:10px;padding:10px 12px;color:#344258;font-size:12px;min-height:40px}
+.inventory-table table{min-width:760px}.inventory-product{display:flex;align-items:center;gap:10px;min-width:170px}
+.inventory-product-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,#fbf4e5,#f1e3c2);color:#8b6825;display:grid;place-items:center;font-weight:850;flex:0 0 34px}
+.inventory-product b{display:block;color:#26364d;font-size:11px}.inventory-product small{display:block;color:#8994a4;font-size:10px;margin-top:2px}
+.inventory-qty{font-weight:800;color:#24334a}.inventory-status{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:30px;font-size:9px;font-weight:850;white-space:nowrap}
+.inventory-status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.inventory-status.good{background:#eaf6ef;color:#18764f}.inventory-status.low{background:#fff4df;color:#a16d13}.inventory-status.out{background:#fff0f0;color:#bd4852}
+.inventory-empty{padding:30px 15px;text-align:center;color:#7b8798;font-size:12px}
+.inventory-empty b{display:block;color:#26364d;font-size:14px;margin-bottom:5px}
+.inventory-adjust{padding:6px 9px;font-size:10px}
+.inventory-note{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid #e9dfc8;background:#fffdf7;border-radius:12px;color:#76623b;font-size:11px;line-height:1.55;margin-bottom:15px}
+@media(max-width:900px){.inventory-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.inventory-kpis{gap:8px}.inventory-kpi{padding:13px;border-radius:12px}.inventory-kpi b{font-size:21px}.inventory-toolbar{align-items:stretch}.inventory-toolbar .search{flex-basis:100%}.inventory-filter{flex:1;min-width:0}.inventory-table table{min-width:700px}}
+
 </style>
 </head>
 <body>
@@ -259,7 +282,8 @@ tbody tr:hover{background:#fbfcff}
     <button class="active" data-page="dashboard"><span class="ico">▦</span>Overview</button>
     <button data-page="sales"><span class="ico">▣</span>Sales & POS</button>
     <button data-page="returns"><span class="ico">↩</span>Returns & Refunds</button>
-    <button data-page="products"><span class="ico">◇</span>Products & Inventory</button>
+    <button data-page="inventory"><span class="ico">▤</span>Inventory Management</button>
+    <button data-page="products"><span class="ico">◇</span>Products & Catalogue</button>
     <button data-page="purchases"><span class="ico">⇩</span>Purchases</button>
     <button data-page="customers"><span class="ico">♙</span>Customers</button>
     <button data-page="suppliers"><span class="ico">♧</span>Suppliers</button>
@@ -295,10 +319,10 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports'};
+const BASE_WORDING={inventory:'Inventory Management',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
- const labels=industryWording(),icons={dashboard:'▦',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',employees:'♟',settings:'⚙'};
+ const labels=industryWording(),icons={dashboard:'▦',inventory:'▤',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',employees:'♟',settings:'⚙'};
  document.querySelectorAll('[data-page]').forEach(b=>{const p=b.dataset.page;if(labels[p]||p==='dashboard'||p==='employees'||p==='settings')b.innerHTML='<span class="ico">'+icons[p]+'</span>'+(labels[p]||({dashboard:'Overview',employees:'Employees',settings:'Business settings'}[p]))});
  if(state.page==='dashboard')document.getElementById('crumb').textContent='Overview';
  else document.getElementById('crumb').textContent=labels[state.page]||({employees:'Employees',settings:'Business settings'}[state.page]||state.page);
@@ -311,7 +335,7 @@ function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transa
 function del(store,id){return new Promise((resolve,reject)=>{const numeric=Number(id),key=String(id).trim()!==''&&Number.isFinite(numeric)?numeric:id;const r=db.transaction(store,'readwrite').objectStore(store).delete(key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
 async function setting(key,value){if(value!==undefined){await put('settings',{key,value});return value}const rows=await all('settings');return rows.find(x=>x.key===key)?.value}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
-function setPage(p){state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===p));document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');render()}
+function setPage(p){state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===p));document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',inventory:'Inventory Management',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');render()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 document.getElementById('menuBtn').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
 document.getElementById('closeModal').onclick=document.getElementById('cancelModal').onclick=closeModal;
@@ -330,6 +354,50 @@ async function render(){
  expenses:{store:'expenses',title:industryWording().expenses,sub:'Record operating costs and business spending',fields:[['description','Expense description','text',1],['category','Category','text'],['amount','Amount','number',1],['date','Date','date',1],['reference','Reference / receipt no.','text']]},
  employees:{store:'employees',title:'Employees',sub:'Maintain your staff directory (permissions and payroll arrive in a later phase)',fields:[['name','Employee full name','text',1],['role','Job title','text'],['phone','Phone number','text'],['email','Email','email']]}
  };
+ 
+ if(state.page==='inventory'){
+  const [products,stockRows]=await Promise.all([all('products'),all('branchInventory')]);
+  const activeBusiness=window.whiteLionCloud?.getActiveBusiness?.()||null;
+  const businessId=activeBusiness?.id||null;
+  const branches=window.whiteLionCloud?.getBranches?.()||[];
+  const currentBranch=window.whiteLionCloud?.getSelectedBranch?.()||null;
+  const branchId=currentBranch?.id||'local-main';
+  const branchName=currentBranch?.name||'Local device stock';
+  const scopedStock=stockRows.filter(x=>!businessId||!x.businessId||String(x.businessId)===String(businessId));
+  const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
+  const branchStock=scopedStock.filter(x=>String(x.branchId||'local-main')===String(branchId));
+  const totalUnits=branchStock.reduce((n,x)=>n+Number(x.quantity||0),0);
+  const costValue=scopedProducts.reduce((n,p)=>{const row=branchStock.find(x=>String(x.productId)===String(p.id));const qty=row?Number(row.quantity||0):(!scopedStock.some(x=>String(x.productId)===String(p.id))?Number(p.stock||0):0);return n+qty*Number(p.cost||0)},0);
+  const lowCount=scopedProducts.filter(p=>{const row=branchStock.find(x=>String(x.productId)===String(p.id));const qty=row?Number(row.quantity||0):(!scopedStock.some(x=>String(x.productId)===String(p.id))?Number(p.stock||0):0);return qty>0&&qty<=Number(p.reorder||0)}).length;
+  const outCount=scopedProducts.filter(p=>{const row=branchStock.find(x=>String(x.productId)===String(p.id));const qty=row?Number(row.quantity||0):(!scopedStock.some(x=>String(x.productId)===String(p.id))?Number(p.stock||0):0);return qty<=0}).length;
+  const branchOptions=[{value:'local-main',label:'Local device stock'},...branches.map(b=>({value:String(b.id),label:b.name}))];
+  const uniqueBranches=branchOptions.filter((b,i,a)=>a.findIndex(x=>x.value===b.value)===i);
+  const productRows=scopedProducts.map(p=>{
+   const row=branchStock.find(x=>String(x.productId)===String(p.id));
+   const hasAny=scopedStock.some(x=>String(x.productId)===String(p.id));
+   const qty=row?Number(row.quantity||0):(!hasAny?Number(p.stock||0):0);
+   const reorder=Number(p.reorder||0);
+   const status=qty<=0?'out':qty<=reorder?'low':'good';
+   const label=status==='out'?'Out of stock':status==='low'?'Low stock':'In stock';
+   return {p,qty,status,label};
+  }).sort((a,b)=>a.status==='out'?-1:b.status==='out'?1:a.status==='low'?-1:b.status==='low'?1:String(a.p.name||'').localeCompare(String(b.p.name||'')));
+  const branchSelect=uniqueBranches.map(b=>'<option value="'+esc(b.value)+'" '+(b.value===String(branchId)?'selected':'')+'>'+esc(b.label)+'</option>').join('');
+  const rowsHtml=productRows.map(x=>'<tr data-inventory-row><td><div class="inventory-product"><span class="inventory-product-mark">'+esc((x.p.name||'P').slice(0,1).toUpperCase())+'</span><span><b>'+esc(x.p.name||'Unnamed product')+'</b><small>'+esc(x.p.sku||x.p.barcode||'No SKU assigned')+'</small></span></div></td><td>'+esc(x.p.category||'Uncategorised')+'</td><td><span class="inventory-qty">'+x.qty+'</span> '+esc(x.p.unit||'units')+'</td><td>'+Number(x.p.reorder||0)+' '+esc(x.p.unit||'units')+'</td><td><span class="inventory-status '+x.status+'">'+x.label+'</span></td><td>'+money(x.qty*Number(x.p.cost||0))+'</td><td><button class="btn inventory-adjust" data-inventory-adjust="'+esc(x.p.id)+'">Adjust stock</button></td></tr>').join('');
+  v.innerHTML=pageHeader('Inventory management','Monitor stock availability, reorder levels and stock value by branch', '<button class="btn gold" id="inventoryAddProduct">＋ Add product</button>')+
+   '<div class="inventory-note"><b>i</b><span>Stock adjustments are saved to this device first and follow the active branch. Existing product and sales records are preserved.</span></div>'+
+   '<div class="inventory-kpis"><div class="inventory-kpi"><span>Products tracked</span><b>'+scopedProducts.length+'</b><small>Active catalogue items</small></div><div class="inventory-kpi"><span>Units in stock</span><b>'+totalUnits.toLocaleString()+'</b><small>'+esc(branchName)+'</small></div><div class="inventory-kpi '+(lowCount?'warn':'')+'"><span>Low stock</span><b>'+lowCount+'</b><small>At or below reorder threshold</small></div><div class="inventory-kpi '+(outCount?'danger':'')+'"><span>Out of stock</span><b>'+outCount+'</b><small>Items requiring replenishment</small></div></div>'+
+   '<div class="panel inventory-table"><div class="panel-head"><div><h3>Stock register</h3><div class="panel-sub">Current quantities and estimated stock cost value: <b>'+money(costValue)+'</b></div></div><span class="pill neutral">'+productRows.length+' products</span></div>'+
+   '<div class="inventory-toolbar"><input class="search" id="inventorySearch" placeholder="Search product, SKU or category"><select class="inventory-filter" id="inventoryBranch">'+branchSelect+'</select><select class="inventory-filter" id="inventoryStatus"><option value="all">All stock statuses</option><option value="good">In stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></div>'+
+   '<div id="inventoryTableArea" style="margin-top:13px">'+(rowsHtml?table(['Product','Category','Available quantity','Reorder level','Status','Stock cost value',''],rowsHtml):'<div class="inventory-empty"><b>No products to display yet</b>Add products to your catalogue to begin tracking stock.</div>')+'</div></div>';
+  document.getElementById('inventoryAddProduct').onclick=()=>setPage('products');
+  const applyInventoryFilters=()=>{const q=document.getElementById('inventorySearch').value.toLowerCase(),status=document.getElementById('inventoryStatus').value;v.querySelectorAll('[data-inventory-row]').forEach(row=>{const matches=row.textContent.toLowerCase().includes(q),statusMatches=status==='all'||row.querySelector('.inventory-status')?.classList.contains(status);row.style.display=matches&&statusMatches?'':'none'})};
+  document.getElementById('inventorySearch').oninput=applyInventoryFilters;
+  document.getElementById('inventoryStatus').onchange=applyInventoryFilters;
+  document.getElementById('inventoryBranch').onchange=e=>{const chosen=e.target.value;if(chosen==='local-main'){window.whiteLionCloud?.selectBranch?.(null)}else{window.whiteLionCloud?.selectBranch?.(chosen)}render()};
+  v.querySelectorAll('[data-inventory-adjust]').forEach(btn=>btn.onclick=()=>{const p=scopedProducts.find(x=>String(x.id)===btn.dataset.inventoryAdjust);if(!p)return;const old=branchStock.find(x=>String(x.productId)===String(p.id));const hasAny=scopedStock.some(x=>String(x.productId)===String(p.id));const current=old?Number(old.quantity||0):(!hasAny?Number(p.stock||0):0);showModal('Adjust stock · '+p.name,[{name:'quantity',label:'New available quantity',type:'number',required:true,step:'0.001',min:0,placeholder:String(current)},{name:'note',label:'Adjustment note',type:'text',placeholder:'e.g. Physical stock count'}],async d=>{const next=Math.max(0,Number(d.quantity||0));const rowId=String(branchId)+'|'+String(p.id);await put('branchInventory',{id:rowId,businessId,branchId,productId:p.id,quantity:next});const fresh=await all('branchInventory');const other=fresh.filter(x=>String(x.productId)===String(p.id));p.stock=other.length?other.reduce((n,x)=>n+Number(x.quantity||0),0):next;await put('products',p);toast('Stock quantity updated')})});
+  return;
+ }
+
  if(config[state.page]){const c=config[state.page],rows=await all(c.store);const heads=state.page==='products'?['Product','SKU','Barcode','Category','Stock','Cost','Price','']:state.page==='expenses'?['Description','Category','Date','Amount','Reference','']:['Name','Phone','Email','Details',''];const lowStock=rows.filter(x=>Number(x.stock||0)<=Number(x.reorder||0)).length,outStock=rows.filter(x=>Number(x.stock||0)<=0).length,stockValue=rows.reduce((n,x)=>n+Number(x.stock||0)*Number(x.cost||0),0);const htmlRows=rows.slice().reverse().map(x=>state.page==='products'?`<tr><td><b>${esc(x.name)}</b><div class="panel-sub">${esc(x.category||'Uncategorised')}</div></td><td>${esc(x.sku||'—')}</td><td>${esc(x.barcode||'—')}</td><td>${esc(x.category||'—')}</td><td><span class="stock-state ${Number(x.stock||0)<=0?'out':Number(x.stock||0)<=Number(x.reorder||0)?'low':'ok'}">${Number(x.stock||0)<=0?'Out of stock':Number(x.stock||0)<=Number(x.reorder||0)?'Low stock':'In stock'} · ${x.stock} ${esc(x.unit||'')}</span></td><td>${money(x.cost)}</td><td><b>${money(x.price)}</b></td><td><button class="btn small danger" data-del="${x.id}">Delete</button></td></tr>`:state.page==='expenses'?`<tr><td>${esc(x.description)}</td><td>${esc(x.category)}</td><td>${esc(x.date)}</td><td><b>${money(x.amount)}</b></td><td>${esc(x.reference)}</td><td><button class="btn small danger" data-del="${x.id}">Delete</button></td></tr>`:`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.phone)}</td><td>${esc(x.email)}</td><td>${esc(x.address||x.role||'')}</td><td><button class="btn small danger" data-del="${x.id}">Delete</button></td></tr>`).join('');v.innerHTML=pageHeader(c.title,c.sub,`<button class="btn primary" id="addBtn">＋ Add ${state.page==='products'?'product':state.page.slice(0,-1)==='supplie'?'supplier':state.page.slice(0,-1)}</button>`)+(state.page==='products'?`<div class="stock-kpis"><div class="stock-kpi"><span>Products listed</span><b>${rows.length}</b><small>Catalogue items</small></div><div class="stock-kpi ${lowStock?'alert':'good'}"><span>At / below reorder</span><b>${lowStock}</b><small>Needs stock review</small></div><div class="stock-kpi ${outStock?'alert':'good'}"><span>Out of stock</span><b>${outStock}</b><small>Unavailable items</small></div><div class="stock-kpi"><span>Stock cost value</span><b>${money(stockValue)}</b><small>Quantity × recorded cost</small></div></div>`:'')+`<div class="panel"><div class="toolbar" style="margin-bottom:13px"><input class="search" id="filter" placeholder="Search records..."><span class="pill neutral">${rows.length} records</span></div><div id="tableArea">${table(heads,htmlRows)}</div></div>`;document.getElementById('addBtn').onclick=()=>showModal('Add '+(state.page==='products'?'product':state.page.slice(0,-1)),c.fields.map(f=>({name:f[0],label:f[1],type:f[2],required:!!f[3],step:f[2]==='number'?'0.01':undefined,min:f[2]==='number'?0:undefined})),async d=>{if(state.page==='products'){d.cost=Number(d.cost||0);d.price=Number(d.price||0);d.stock=Number(d.stock||0);d.reorder=Number(d.reorder||0)}if(state.page==='expenses')d.amount=Number(d.amount||0);d.createdAt=new Date().toISOString();d.localBusinessId=window.whiteLionCloud?.getActiveBusiness?.()?.id||null;const savedId=await put(c.store,d);if(state.page==='products'){const active=window.whiteLionCloud?.getSelectedBranch?.();const branchId=active?.id||'local-main';await put('branchInventory',{id:String(branchId)+'|'+String(savedId),businessId:d.localBusinessId,branchId,productId:savedId,quantity:Number(d.stock||0)});}toast('Record saved')});v.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this record?')){await del(c.store,b.dataset.del);render();toast('Record deleted')}});document.getElementById('filter').oninput=e=>{const q=e.target.value.toLowerCase();v.querySelectorAll('tbody tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none')};return}
  if(state.page==='sales'){
   const [products,customers,sales,allStock]=await Promise.all([all('products'),all('customers'),all('sales'),all('branchInventory')]);
