@@ -16,7 +16,7 @@ create table if not exists public.cashbook_entries (
   created_by uuid null default auth.uid() references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   constraint cashbook_branch_business_fk foreign key(branch_id,business_id)
-    references public.branches(id,business_id) on delete set null
+    references public.branches(id,business_id) on delete set null (branch_id)
 );
 
 create table if not exists public.financial_obligations (
@@ -34,7 +34,8 @@ create table if not exists public.financial_obligations (
   created_by uuid null default auth.uid() references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   constraint financial_obligations_branch_business_fk foreign key(branch_id,business_id)
-    references public.branches(id,business_id) on delete set null
+    references public.branches(id,business_id) on delete set null (branch_id),
+  constraint financial_obligations_id_business_uidx unique(id,business_id)
 );
 
 create table if not exists public.financial_obligation_payments (
@@ -328,6 +329,14 @@ begin
  jsonb_build_object('branch_id',p_branch_id,'product_id',p_product_id,'batch_number',p_batch_number,'quantity',p_quantity,'expiry_date',p_expiry_date));
  return jsonb_build_object('status','received','batch_id',v_batch);
 end; $$;
+
+-- Explicit authenticated table privileges; RLS above remains the row-level gate.
+revoke all on public.cashbook_entries, public.financial_obligations,
+  public.financial_obligation_payments, public.product_batches,
+  public.stock_adjustments from anon;
+grant select, insert on public.cashbook_entries, public.financial_obligations to authenticated;
+grant select on public.financial_obligation_payments, public.product_batches,
+  public.stock_adjustments to authenticated;
 
 revoke all on function public.record_obligation_payment(uuid,numeric,text,date,text) from public;
 grant execute on function public.record_obligation_payment(uuid,numeric,text,date,text) to authenticated;
