@@ -11,7 +11,6 @@ begin;
 -- Branch-scoped transaction posting, transfer rejection, and branch stock write controls.
 -- Legacy transactions remain unchanged; new postings must name an active branch.
 
-begin;
 
 -- Extend transfer decisions without deleting or rewriting existing requests.
 alter table public.branch_stock_transfers
@@ -553,7 +552,6 @@ grant execute on function public.reject_branch_stock_transfer(uuid,text) to auth
 
 -- White Lion SME Business OS — Migration 011
 -- Financial registers, product batches/expiry and controlled stock adjustments.
-begin;
 
 create table if not exists public.cashbook_entries (
   id uuid primary key default gen_random_uuid(),
