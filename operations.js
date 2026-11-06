@@ -213,8 +213,8 @@
     const period=document.getElementById('wlOpsCashbookPeriod').value,type=document.getElementById('wlOpsCashbookType').value,branch=document.getElementById('wlOpsCashbookBranch').value,q=document.getElementById('wlOpsCashbookSearch').value.trim().toLowerCase(),cutoff=new Date();cutoff.setHours(0,0,0,0);if(period!=='all')cutoff.setDate(cutoff.getDate()-Number(period));
     const rows=(data||[]).filter(x=>(period==='all'||String(x.entry_date||'')>=cutoff.toISOString().slice(0,10))&&(type==='all'||x.entry_type===type)&&(branch==='all'||String(x.branch_id||'')===branch)&&[x.description,x.category,x.reference,x.payment_method].join(' ').toLowerCase().includes(q));
     const cell=v=>{let s=String(v??'');if(/^[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
-    const headers=['Date','Type','Category','Description','Amount','Payment method','Branch ID','Reference'];
-    const csv=[headers.join(','),...rows.map(x=>[x.entry_date,x.entry_type,x.category,x.description,Number(x.amount||0).toFixed(2),x.payment_method,x.branch_id,x.reference].map(cell).join(','))].join('\n');
+    const headers=['Date','Type','Category','Description','Amount','Payment method','Branch','Reference'],branchNames=new Map(branchesCache.map(x=>[String(x.id),x.name]));
+    const csv=[headers.join(','),...rows.map(x=>[x.entry_date,x.entry_type,x.category,x.description,Number(x.amount||0).toFixed(2),x.payment_method,branchNames.get(String(x.branch_id))||'Unassigned / business-wide',x.reference].map(cell).join(','))].join('\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='white-lion-cashbook-register.csv';a.click();URL.revokeObjectURL(url);say('Cashbook CSV exported.');
   }
   async function saveCashbook(){
