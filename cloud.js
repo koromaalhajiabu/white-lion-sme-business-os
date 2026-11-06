@@ -179,7 +179,7 @@
     selectedBranch = active.find(b => b.id === (preferredId || selectedBranch?.id)) || active[0] || null;
     $('wlBranchSelect').value = selectedBranch?.id || '';
     window.dispatchEvent(new CustomEvent('whiteLionBranchChanged', {detail:{branch:selectedBranch,branches:active}}));
-    $('wlBranchStatus').textContent = active.length + ' active branch(es) available. Branch selection currently controls branch management and stock viewing; sales/purchase posting will be connected in the next integration step.';
+    $('wlBranchStatus').textContent = active.length + ' active branch(es) available. Branch selection is active for branch stock, sales, purchases and cloud transaction posting.';
     await loadBranchDetails();
   }
   async function loadBranchDetails() {
