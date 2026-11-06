@@ -20,8 +20,7 @@
   '<div class="ops-grid"><select id="wlReconFilter"><option value="all">All statement lines</option><option value="unmatched">Unmatched only</option><option value="matched">Matched only</option><option value="ignored">Ignored only</option></select><button id="wlReconAuto">Auto-match safe exact matches</button></div>'+
   '<button id="wlReconExport">Export discrepancy report (CSV)</button><div id="wlReconRows" class="ops-muted">No statement lines loaded.</div><h4>Imported statements</h4><div id="wlReconImports" class="ops-muted"></div>';
   host.appendChild(d);
-  const branches=api?.getBranches?.()||[];$('wlReconBranch').innerHTML+ = '';
-  $('wlReconBranch').innerHTML='<option value="">Business-wide / no branch</option>'+branches.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join('');
+  const branches=api?.getBranches?.()||[];$('wlReconBranch').innerHTML='<option value="">Business-wide / no branch</option>'+branches.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join('');
   $('wlReconFile').onchange=readFile;$('wlReconImport').onclick=importFile;$('wlReconFilter').onchange=renderRows;$('wlReconAuto').onclick=autoMatch;$('wlReconExport').onclick=exportReport;
  }
  function parseCSV(s){const a=[];let r=[],v='',q=false;for(let i=0;i<s.length;i++){let c=s[i];if(q){if(c==='"'&&s[i+1]==='"'){v+='"';i++;}else if(c==='"')q=false;else v+=c;}else if(c==='"')q=true;else if(c===','){r.push(v);v='';}else if(c==='\n'){r.push(v.replace(/\r$/,''));if(r.some(x=>x.trim()))a.push(r);r=[];v='';}else v+=c;}r.push(v.replace(/\r$/,''));if(r.some(x=>x.trim()))a.push(r);const h=(a.shift()||[]).map((x,i)=>x.trim()||'Column '+(i+1));return {h,rows:a.map(x=>Object.fromEntries(h.map((k,i)=>[k,(x[i]||'').trim()]))) }; }
