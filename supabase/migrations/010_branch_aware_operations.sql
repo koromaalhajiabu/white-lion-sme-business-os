@@ -503,7 +503,7 @@ create or replace function public.approve_branch_stock_transfer(
 ) returns jsonb
 language plpgsql security definer
 set search_path = ''
-as $
+as $$
 declare
   v_transfer public.branch_stock_transfers%rowtype;
   v_item record;
@@ -565,7 +565,7 @@ begin
 
   return jsonb_build_object('status','completed','transfer_id',p_transfer_id);
 end;
-$;
+$$;
 
 revoke all on function public.approve_branch_stock_transfer(uuid) from public;
 grant execute on function public.approve_branch_stock_transfer(uuid) to authenticated;
