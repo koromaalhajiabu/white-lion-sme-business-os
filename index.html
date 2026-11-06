@@ -579,6 +579,13 @@ html[data-theme="dark"] .footer{color:#8492a6}
 .theme-toggle span:first-child{font-size:15px;line-height:1}
 @media(max-width:720px){.theme-toggle{padding:8px 9px}.theme-toggle #themeLabel{font-size:10px}}
 
+
+/* Always-visible appearance control, outside the mobile navigation drawer. */
+#appearanceBar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px clamp(14px,3vw,38px) 0;padding:12px 15px;border:1px solid #d9e2ec;border-radius:13px;background:#fff;color:#17243a;box-shadow:0 4px 16px rgba(20,36,61,.06)}
+#appearanceBar strong{font-size:12px;letter-spacing:.2px}#appearanceBar small{display:block;color:#68778d;font-size:11px;margin-top:2px}
+#appearanceBarToggle{border:0;border-radius:9px;background:#075b35;color:#fff;font-weight:800;padding:10px 15px;min-height:40px;white-space:nowrap}
+html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-color:#3a485d}html[data-theme="dark"] #appearanceBar small{color:#a3afc0}
+
 </style>
 </head>
 <body>
@@ -617,6 +624,7 @@ html[data-theme="dark"] .footer{color:#8492a6}
   <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
 </header>
 <div class="wl-install-banner" id="wlInstallBanner" hidden><div class="wl-install-copy"><b>Install White Lion SME</b><small id="wlInstallHint">Add the business system to your home screen for quick access.</small></div><button class="wl-install-button" id="wlInstallButton" type="button">Install app</button></div>
+<div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button">Switch to dark mode</button></div>
 <section class="content" id="view"></section>
 <div class="footer">Designed by Alhaji Abu Koroma · White Lion Tech Solutions</div>
 </main>
@@ -1051,7 +1059,7 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
 
 /* Persist each user's appearance preference on this device. */
 (()=>{
- const root=document.documentElement,buttons=[document.getElementById('themeToggle'),document.getElementById('sideThemeToggle')].filter(Boolean),icon=document.getElementById('themeIcon'),label=document.getElementById('themeLabel'),sideLabel=document.getElementById('sideThemeLabel'),sideButton=document.getElementById('sideThemeToggle'),meta=document.querySelector('meta[name="theme-color"]');
+ const root=document.documentElement,buttons=[document.getElementById('themeToggle'),document.getElementById('sideThemeToggle'),document.getElementById('appearanceBarToggle')].filter(Boolean),icon=document.getElementById('themeIcon'),label=document.getElementById('themeLabel'),sideLabel=document.getElementById('sideThemeLabel'),sideButton=document.getElementById('sideThemeToggle'),barLabel=document.getElementById('appearanceBarLabel'),barButton=document.getElementById('appearanceBarToggle'),meta=document.querySelector('meta[name="theme-color"]');
  let theme='light';
  try{theme=localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(_){}
  const apply=next=>{
@@ -1060,6 +1068,8 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
   if(icon)icon.textContent=theme==='dark'?'☀':'☾';
   if(label)label.textContent=theme==='dark'?'Light mode':'Dark mode';
   if(sideLabel)sideLabel.textContent=theme==='dark'?'Dark mode':'Light mode';
+  if(barLabel)barLabel.textContent='Current theme: '+(theme==='dark'?'Dark mode':'Light mode');
+  if(barButton)barButton.textContent='Switch to '+(theme==='dark'?'light':'dark')+' mode';
   if(sideButton){sideButton.textContent=theme==='dark'?'☀':'☾';sideButton.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode')}
   buttons.forEach(button=>{button.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');button.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'});
   if(meta)meta.setAttribute('content',theme==='dark'?'#101722':'#14243d');
