@@ -19,13 +19,14 @@ create table if not exists public.statement_imports (
   created_at timestamptz not null default now(),
   constraint statement_import_branch_business_fk foreign key(branch_id,business_id)
     references public.branches(id,business_id) on delete set null (branch_id),
-  constraint statement_import_file_unique unique (business_id,account_name,file_hash)
+  constraint statement_import_file_unique unique (business_id,account_name,file_hash),
+  constraint statement_import_id_business_unique unique (id,business_id)
 );
 
 create table if not exists public.statement_transactions (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
-  import_id uuid not null references public.statement_imports(id) on delete cascade,
+  import_id uuid not null,
   account_name text not null,
   transaction_date date not null,
   description text not null,
@@ -40,6 +41,8 @@ create table if not exists public.statement_transactions (
   matched_at timestamptz null,
   created_at timestamptz not null default now(),
   constraint statement_transaction_fingerprint_unique unique (business_id,account_name,fingerprint),
+  constraint statement_transaction_import_business_fk foreign key(import_id,business_id)
+    references public.statement_imports(id,business_id) on delete cascade,
   constraint statement_transaction_match_state check (
     (status = 'matched' and cashbook_entry_id is not null)
     or (status <> 'matched' and cashbook_entry_id is null)
@@ -93,6 +96,8 @@ create policy statement_transactions_finance_update on public.statement_transact
   using (public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]))
   with check (
     public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
+    and exists (select 1 from public.statement_imports i
+      where i.id = import_id and i.business_id = statement_transactions.business_id)
     and (cashbook_entry_id is null or exists (
       select 1 from public.cashbook_entries c
       where c.id = cashbook_entry_id and c.business_id = statement_transactions.business_id
