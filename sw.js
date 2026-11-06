@@ -1,4 +1,4 @@
-const CACHE='white-lion-sme-v29';
+const CACHE='white-lion-sme-v30';
 const FILES=['./','./index.html','./manifest.webmanifest','./cloud.js?v=22','./operations.js?v=8'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
