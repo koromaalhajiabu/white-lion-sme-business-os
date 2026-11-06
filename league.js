@@ -48,14 +48,15 @@
     cache.competitions=competitions||[];
     if(!competitionId||!cache.competitions.some(x=>x.id===competitionId))competitionId=cache.competitions[0]?.id||'';
     if(!competitionId){cache.seasons=[];cache.clubs=[];cache.players=[];cache.fixtures=[];return}
-    const [seasons,clubs,players,fixtures]=await Promise.all([
+    const [seasons,clubs,players,fixtures,members]=await Promise.all([
       c.from('league_seasons').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('starts_on',{ascending:false}),
       c.from('league_clubs').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('name'),
       c.from('league_players').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('full_name'),
-      c.from('league_fixtures').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('kickoff_at',{ascending:true})
+      c.from('league_fixtures').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('kickoff_at',{ascending:true}),
+      c.from('league_competition_members').select('*').eq('business_id',b.id).eq('competition_id',competitionId).order('created_at',{ascending:false})
     ]);
-    for(const x of [seasons,clubs,players,fixtures])if(x.error)throw x.error;
-    cache.seasons=seasons.data||[];cache.clubs=clubs.data||[];cache.players=players.data||[];cache.fixtures=fixtures.data||[];
+    for(const x of [seasons,clubs,players,fixtures,members])if(x.error)throw x.error;
+    cache.seasons=seasons.data||[];cache.clubs=clubs.data||[];cache.players=players.data||[];cache.fixtures=fixtures.data||[];cache.members=members.data||[];
     if(!seasonId||!cache.seasons.some(x=>x.id===seasonId))seasonId=cache.seasons.find(x=>x.status==='active')?.id||cache.seasons[0]?.id||'';
   }
   function base(title,sub,body){
@@ -134,6 +135,7 @@
       selectField('Competition role','role',['competition_admin','club_manager','referee','disciplinary_officer','viewer'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
       selectField('Limit to club (optional)','club_id',selectOptions(cache.clubs,'id','name','All clubs'))+
       '<div class="wl-league-field full">'+button('Assign competition role','primary')+'</div></form></div>'+
+      '<div class="wl-league-panel"><h3>Assigned competition members</h3>'+table(['User UUID','Role','Club scope','Status'],(cache.members||[]).map(m=>'<tr><td>'+esc(m.user_id)+'</td><td>'+esc(m.role.replaceAll('_',' '))+'</td><td>'+esc(cache.clubs.find(c=>c.id===m.club_id)?.name||'All clubs')+'</td><td>'+ (m.is_active?'Active':'Inactive')+'</td></tr>').join(''))+'</div>'+
       '<div class="wl-league-panel"><h3>Role responsibilities</h3>'+table(['Role','Access'],[
         '<tr><td>Competition admin</td><td>Manage seasons, clubs, players, fixtures and competition records</td></tr>',
         '<tr><td>Club manager</td><td>Maintain player registrations for the competition</td></tr>',
