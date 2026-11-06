@@ -196,7 +196,7 @@ create or replace function public.consume_product_batches(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_quantity numeric
 ) returns numeric
 language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
 begin
  if p_quantity is null or p_quantity<=0 then return 0; end if;
@@ -216,14 +216,14 @@ begin
  end loop;
  return greatest(v_remaining,0);
 end;
-$;
+$$;
 
 create or replace function public.transfer_product_batches(
  p_business_id uuid,p_source_branch_id uuid,p_destination_branch_id uuid,
  p_product_id uuid,p_quantity numeric
 ) returns numeric
 language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
 begin
  if p_quantity is null or p_quantity<=0 then return 0; end if;
@@ -252,7 +252,7 @@ begin
  end loop;
  return greatest(v_remaining,0);
 end;
-$;
+$$;
 
 revoke all on function public.consume_product_batches(uuid,uuid,uuid,numeric) from public;
 revoke all on function public.transfer_product_batches(uuid,uuid,uuid,uuid,numeric) from public;
