@@ -483,8 +483,8 @@
       const productMap=new Map();
       for(const cloud of pRes.data||[]){
         const old=localProducts.find(x=>x.cloudClientRecordId===cloud.client_record_id);
-        if(old)productMap.set(cloud.id,old.id);
         if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
+        if(old)productMap.set(cloud.id,old.id);
         if(old&&old.cloudSyncedAt&&cloud.updated_at&&Date.parse(cloud.updated_at)>Date.parse(old.cloudSyncedAt)+1500){old.cloudConflictSnapshot={fields:{name:cloud.name,sku:cloud.sku||'',category:cloud.category||'',unit:cloud.unit||'unit',cost:Number(cloud.cost_price||0),price:Number(cloud.selling_price||0),reorder:Number(cloud.reorder_level||0),barcode:cloud.barcode||'',stock:selectedStock.get(cloud.id)||0},updatedAt:cloud.updated_at,branchId:selectedBranch?.id||null};old.cloudConflictAt=new Date().toISOString();await put('products',old);conflicts++;continue;}
         const row={...(old||{}),id:old?.id||('cloud-product-'+cloud.client_record_id),
           cloudClientRecordId:cloud.client_record_id,localBusinessId:businessId,cloudSyncedFor:businessId,cloudSyncedAt:new Date().toISOString(),
@@ -557,6 +557,7 @@
     const types = ['products','customers','suppliers','expenses'];
     let total = 0, transactionTotal = 0;
     try {
+      const localBranchStocks = await all('branchInventory');
       for (const type of types) {
         const rows = await all(type);
         for (const row of rows) {
