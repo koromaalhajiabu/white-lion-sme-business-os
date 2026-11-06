@@ -76,7 +76,7 @@
       </div>
       <div style="margin:14px 0;padding:12px;border:1px solid #b85d63;border-radius:10px;background:#351f2b">
         <h3 style="color:#ffd0d0;margin:0 0 6px">Clear demonstration data</h3>
-        <div class="dev-meta">Permanently removes all business workspaces and their cloud records, then clears this device's local business records. Your developer sign-in, platform controls and audit history are preserved. Other login accounts are not deleted by this reset.</div>
+        <div class="dev-meta">Permanently removes all business workspaces and their cloud records, then clears this device's local business records. Your developer sign-in, platform controls and audit history are preserved. Other accounts are disabled immediately and queued for deletion after the existing 30-day recovery period.</div>
         <button id="wlDevResetData" class="danger">Reset all business data</button>
       </div>
       <div id="wlDevBusinesses"></div>
@@ -426,7 +426,7 @@
       return say('Only the registered private developer account can reset business data.');
     }
     const confirmation = prompt(
-      'This permanently deletes ALL business workspaces and cloud business records, and clears this device’s local business records. Your developer login and platform audit history are preserved.\n\nType RESET WHITE LION to continue:',
+      'This permanently deletes ALL business workspaces and cloud business records, and clears this device’s local business records. Your developer login and platform audit history are preserved. Other accounts will be disabled and queued for deletion after 30 days.\n\nType RESET WHITE LION to continue:',
       ''
     );
     if (confirmation !== 'RESET WHITE LION') return say('Reset cancelled. No records were changed.');
@@ -441,7 +441,7 @@
       selectedBranch = null;
       window.__wlBusinesses = [];
       await loadBusinesses();
-      $('wlDevStatus').textContent = 'Business data reset completed. Developer sign-in and platform audit history are preserved. Deleted workspaces: ' + Number(data?.deleted_business_workspaces || 0) + '.';
+      $('wlDevStatus').textContent = 'Business reset completed. Developer login preserved. Deleted workspaces: ' + Number(data?.deleted_business_workspaces || 0) + '. Other accounts queued for 30-day deletion: ' + Number(data?.accounts_queued_for_30_day_deletion || 0) + '.';
       say('Business records cleared. Your developer account remains signed in.');
     } catch (error) {
       $('wlDevStatus').textContent = 'Reset incomplete: ' + error.message + '. Do not sync old local records; contact the developer console before continuing.';
