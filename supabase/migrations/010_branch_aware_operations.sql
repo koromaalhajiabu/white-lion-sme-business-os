@@ -92,8 +92,8 @@ begin
   if v_role not in ('owner','admin','manager','cashier','storekeeper','accountant') then
     raise exception 'Not authorised to synchronise records';
   end if;
-  if v_role='cashier' and p_record_type='products' then
-    raise exception 'Cashiers cannot create products or opening stock';
+  if v_role='cashier' and p_record_type not in ('customers') then
+    raise exception 'Cashiers may synchronise customer records only';
   end if;
   if v_role='storekeeper' and p_record_type not in ('products','suppliers') then
     raise exception 'Storekeepers may synchronise products and suppliers only';
