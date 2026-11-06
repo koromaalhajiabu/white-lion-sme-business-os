@@ -35,7 +35,7 @@ create table if not exists public.statement_transactions (
   running_balance numeric(14,2) null,
   fingerprint text not null,
   status text not null default 'unmatched' check (status in ('unmatched','matched','ignored')),
-  cashbook_entry_id uuid null references public.cashbook_entries(id) on delete set null,
+  cashbook_entry_id uuid null references public.cashbook_entries(id) on delete restrict,
   matched_by uuid null references auth.users(id) on delete set null,
   matched_at timestamptz null,
   created_at timestamptz not null default now(),
@@ -99,7 +99,16 @@ create policy statement_transactions_finance_update on public.statement_transact
     ))
   );
 
-grant select, insert, delete on public.statement_imports to authenticated;
+drop policy if exists statement_imports_finance_update on public.statement_imports;
+create policy statement_imports_finance_update on public.statement_imports
+  for update to authenticated
+  using (public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]))
+  with check (public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[]));
+
+create unique index if not exists statement_transactions_one_cashbook_match_idx
+  on public.statement_transactions(cashbook_entry_id) where cashbook_entry_id is not null;
+
+grant select, insert, update, delete on public.statement_imports to authenticated;
 grant select, insert, update on public.statement_transactions to authenticated;
 
 commit;
