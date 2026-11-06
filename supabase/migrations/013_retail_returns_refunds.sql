@@ -42,11 +42,39 @@ alter table public.offline_sale_return_items enable row level security;
 
 drop policy if exists offline_sale_returns_member_read on public.offline_sale_returns;
 create policy offline_sale_returns_member_read on public.offline_sale_returns
-for select to authenticated using (public.is_business_member(business_id));
+for select to authenticated using (
+  public.has_business_role(business_id,array['owner','admin','manager','accountant']::public.business_role[])
+  or (
+    public.has_business_role(business_id,array['cashier']::public.business_role[])
+    and exists (
+      select 1 from public.branch_members bm
+      where bm.business_id=offline_sale_returns.business_id
+        and bm.branch_id=offline_sale_returns.branch_id
+        and bm.user_id=auth.uid() and bm.is_active=true
+    )
+  )
+);
 
 drop policy if exists offline_sale_return_items_member_read on public.offline_sale_return_items;
 create policy offline_sale_return_items_member_read on public.offline_sale_return_items
-for select to authenticated using (public.is_business_member(business_id));
+for select to authenticated using (
+  exists (
+    select 1 from public.offline_sale_returns r
+    where r.id=offline_sale_return_items.return_id
+      and r.business_id=offline_sale_return_items.business_id
+      and (
+        public.has_business_role(r.business_id,array['owner','admin','manager','accountant']::public.business_role[])
+        or (
+          public.has_business_role(r.business_id,array['cashier']::public.business_role[])
+          and exists (
+            select 1 from public.branch_members bm
+            where bm.business_id=r.business_id and bm.branch_id=r.branch_id
+              and bm.user_id=auth.uid() and bm.is_active=true
+          )
+        )
+      )
+  )
+);
 
 revoke all on public.offline_sale_returns, public.offline_sale_return_items from anon, public, authenticated;
 grant select on public.offline_sale_returns, public.offline_sale_return_items to authenticated;
