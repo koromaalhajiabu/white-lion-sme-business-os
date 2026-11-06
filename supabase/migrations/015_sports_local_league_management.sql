@@ -200,7 +200,7 @@ as $
       where cm.business_id=p_business_id and cm.competition_id=p_competition_id
         and cm.user_id=auth.uid() and cm.is_active and (
           cm.role='competition_admin' or
-          (cm.role='club_manager' and (cm.club_id is null or cm.club_id=p_club_id))
+          (cm.role in ('club_manager','disciplinary_officer') and (cm.club_id is null or cm.club_id=p_club_id))
         ))
   );
 $;
@@ -288,8 +288,8 @@ drop policy if exists league_discipline_read on public.league_disciplinary_actio
 create policy league_discipline_read on public.league_disciplinary_actions for select to authenticated using (public.is_business_member(business_id));
 drop policy if exists league_discipline_manage on public.league_disciplinary_actions;
 create policy league_discipline_manage on public.league_disciplinary_actions for all to authenticated
-using (public.league_user_has_role(business_id,competition_id,array['owner','admin','manager','competition_admin','disciplinary_officer']))
-with check (public.league_user_has_role(business_id,competition_id,array['owner','admin','manager','competition_admin','disciplinary_officer']));
+using (public.league_user_can_manage_club(business_id,competition_id,club_id))
+with check (public.league_user_can_manage_club(business_id,competition_id,club_id));
 
 drop policy if exists league_members_read on public.league_competition_members;
 create policy league_members_read on public.league_competition_members for select to authenticated using (public.is_business_member(business_id));
