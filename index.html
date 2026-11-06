@@ -22,6 +22,7 @@
   <div><div class="nav-label">Workspace</div><nav class="nav" id="nav">
     <button class="active" data-page="dashboard"><span class="ico">▦</span>Overview</button>
     <button data-page="sales"><span class="ico">▣</span>Sales & POS</button>
+    <button data-page="returns"><span class="ico">↩</span>Returns & Refunds</button>
     <button data-page="products"><span class="ico">◇</span>Products & Inventory</button>
     <button data-page="purchases"><span class="ico">⇩</span>Purchases</button>
     <button data-page="customers"><span class="ico">♙</span>Customers</button>
@@ -57,7 +58,7 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports'};
+const BASE_WORDING={sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
  const labels=industryWording(),icons={dashboard:'▦',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',employees:'♟',settings:'⚙'};
