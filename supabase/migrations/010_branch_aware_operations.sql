@@ -85,13 +85,10 @@ begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   select bm.role into v_role from public.business_members bm
   where bm.business_id=p_business_id and bm.user_id=auth.uid() and bm.is_active=true;
+  if not found or v_role is null then raise exception 'Active business membership required'; end if;
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
-  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
-    raise exception 'Active business membership and platform access required';
-  end if;
-  if not found then raise exception 'Active business membership required'; end if;
   if v_role not in ('owner','admin','manager','cashier','storekeeper','accountant') then
     raise exception 'Not authorised to synchronise records';
   end if;
@@ -306,13 +303,10 @@ begin
   where bm.business_id = p_business_id
     and bm.user_id = auth.uid()
     and bm.is_active = true;
+  if not found or v_role is null then raise exception 'Active business membership required'; end if;
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
-  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
-    raise exception 'Active business membership and platform access required';
-  end if;
-  if not found then raise exception 'Active business membership required'; end if;
 
   if v_role not in ('owner','admin','manager','cashier','storekeeper') then
     raise exception 'Your role cannot post sales or purchases';
