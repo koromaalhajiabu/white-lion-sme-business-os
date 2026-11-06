@@ -186,7 +186,7 @@
     if(error)return say(error.message,true);document.getElementById('wlOpsObligationAmount').value='';say('Financial obligation saved.');await renderFinance();
   }
   async function recordPayment(id,balance){
-    const raw=prompt('Enter payment amount in SLE. Outstanding: '+money(balance));
+    const raw=prompt('Enter payment amount in '+(business?.currency_code||'SLE')+'. Outstanding: '+money(balance));
     if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0||amount>balance)return say('Enter a valid payment not exceeding the outstanding balance.',true);
     const method=prompt('Payment method (cash, mobile money, bank transfer, card):','cash');if(method===null)return;
     const {error}=await client.rpc('record_obligation_payment',{p_obligation_id:id,p_amount:amount,p_payment_method:method,p_payment_date:new Date().toISOString().slice(0,10),p_reference:null});
@@ -201,7 +201,8 @@
     const pay=(ob.data||[]).filter(x=>x.obligation_type==='payable'&&x.status!=='void').reduce((a,x)=>a+Number(x.amount)-Number(x.amount_paid),0);
     const revenue=(sales.data||[]).reduce((a,x)=>a+Number(x.total||0),0),purchasesTotal=(purchases.data||[]).reduce((a,x)=>a+Number(x.total||0),0),operatingExpenses=(expenses.data||[]).reduce((a,x)=>a+Number(x.amount||0),0),tradingBalance=revenue-purchasesTotal-operatingExpenses;
     summary.innerHTML=[['Sales revenue',revenue],['Purchases',purchasesTotal],['Recorded expenses',operatingExpenses],['Trading balance estimate',tradingBalance],['Cashbook net',income-expense],['Receivables',recv],['Payables',pay]].map(x=>'<div class="ops-tile"><span class="ops-muted">'+x[0]+'</span><strong>'+money(x[1])+'</strong></div>').join('');
-    list.innerHTML=(ob.data||[]).map(x=>'<div class="ops-row"><strong>'+esc(x.party_name)+' · '+esc(x.obligation_type)+'</strong><div class="ops-muted">'+esc(x.description)+' · '+money(Number(x.amount)-Number(x.amount_paid))+' outstanding · '+esc(x.status)+(x.due_date?' · Due '+esc(x.due_date):'')+'</div></div>').join('')||'No receivables or payables recorded.';
+    list.innerHTML=(ob.data||[]).map(x=>'<div class="ops-row"><strong>'+esc(x.party_name)+' · '+esc(x.obligation_type)+'</strong><div class="ops-muted">'+esc(x.description)+' · '+money(Number(x.amount)-Number(x.amount_paid))+' outstanding · '+esc(x.status)+(x.due_date?' · Due '+esc(x.due_date):'')+'</div>'+(x.status!=='settled'&&x.status!=='void'?'<button data-ops-payment="'+esc(x.id)+'" data-ops-balance="'+(Number(x.amount)-Number(x.amount_paid))+'">Record payment</button>':'')+'</div>').join('')||'No receivables or payables recorded.';
+    list.querySelectorAll('[data-ops-payment]').forEach(b=>b.onclick=()=>recordPayment(b.dataset.opsPayment,Number(b.dataset.opsBalance)));
   }
   async function findBarcode(){
     const code=document.getElementById('wlOpsBarcode').value.trim();if(!code)return say('Enter or scan a barcode.',true);
