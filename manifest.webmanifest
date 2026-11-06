@@ -1,10 +1,14 @@
 {
   "name": "White Lion SME Business Operating System",
   "short_name": "White Lion SME",
-  "start_url": "./",
   "id": "./",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "background_color": "#f3f5f9",
   "theme_color": "#101b31",
@@ -20,7 +24,7 @@
       "src": "./icons/white-lion-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "./icons/white-lion-icon.svg",
