@@ -551,13 +551,14 @@
         const old=localReturns.find(x=>x.clientReturnId===cloud.client_return_id);
         if(old&&((old.localBusinessId&&old.localBusinessId!==businessId)||(old.cloudSyncedFor&&old.cloudSyncedFor!==businessId))){skipped++;continue;}
         const sale=cloudSaleById.get(cloud.sale_id);
+        const localSale=localSales.find(x=>x.cloudTransactionId===sale?.client_transaction_id);
         const items=(returnItemsRes.data||[]).filter(x=>x.return_id===cloud.id).map(x=>({
           productId:productMap.get(x.product_id)||('cloud-product-id-'+x.product_id),
           name:x.product_name,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),
           refundAmount:Number(x.refund_amount),restock:!!x.restocked
         }));
         const row={...(old||{}),id:old?.id||cloud.client_return_id,clientReturnId:cloud.client_return_id,
-          cloudReturnId:cloud.id,saleId:old?.saleId||('cloud-sale-'+(sale?.client_transaction_id||cloud.sale_id)),
+          cloudReturnId:cloud.id,saleId:old?.saleId||localSale?.id||('cloud-sale-'+(sale?.client_transaction_id||cloud.sale_id)),
           saleCloudTransactionId:sale?.client_transaction_id||old?.saleCloudTransactionId||null,
           saleReceipt:sale?.receipt||old?.saleReceipt||'',branchId:cloud.branch_id,localBusinessId:businessId,
           cloudSyncedFor:businessId,reason:cloud.reason,method:cloud.refund_method,
@@ -730,7 +731,7 @@
       }
       syncStatus('Sync complete: ' + total + ' master/expense records, ' + transactionTotal + ' sales/purchases and ' + returnTotal + ' returns uploaded or confirmed.');
 
-      say('Cloud sync completed: ' + total + ' records and ' + transactionTotal + ' transactions.');
+      say('Cloud sync completed: ' + total + ' records, ' + transactionTotal + ' sales/purchases and ' + returnTotal + ' returns.');
     } catch (error) {
       syncStatus('Sync paused: ' + error.message + '. Local records are preserved; retry when ready.');
     } finally {
