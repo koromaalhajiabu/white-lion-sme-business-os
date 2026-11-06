@@ -1,7 +1,7 @@
 /* White Lion SME OS — branch transfers, finance registers and advanced inventory controls. */
 (() => {
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let api,client,business,memberRole=null,scannerStream=null,products=[];
+  let api,client,business,memberRole=null,scannerStream=null,products=[],branchesCache=[];
   const css=document.createElement('style');
   css.textContent=`
     #wlOpsPanel{margin-top:12px;padding:14px;background:#14233b;border:1px solid #52627b;border-radius:12px;color:#fff;font-size:12px}
@@ -39,6 +39,10 @@
         <div class="ops-grid"><select id="wlOpsCashType"><option value="income">Income</option><option value="expense">Expense</option></select><input id="wlOpsCashCategory" placeholder="Category"></div>
         <input id="wlOpsCashDescription" placeholder="Description"><div class="ops-grid"><input id="wlOpsCashAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><select id="wlOpsCashPayment"><option>cash</option><option>mobile money</option><option>bank transfer</option><option>card</option></select></div>
         <div class="ops-grid"><input id="wlOpsCashDate" type="date"><button id="wlOpsCashSave">Save cashbook entry</button></div>
+        <h4>Cashbook register</h4><div class="ops-muted">Review recorded cash movements. This register does not connect to bank or mobile-money provider statements.</div>
+        <div class="ops-grid"><select id="wlOpsCashbookPeriod"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option><option value="all">All available records</option></select><select id="wlOpsCashbookType"><option value="all">All movement types</option><option value="income">Income only</option><option value="expense">Expenses only</option></select></div>
+        <div class="ops-grid"><select id="wlOpsCashbookBranch"><option value="all">All branches</option></select><input id="wlOpsCashbookSearch" placeholder="Search description, category or reference"></div>
+        <button id="wlOpsCashbookExport">Export filtered cashbook CSV</button><div id="wlOpsCashbookSummary" class="ops-summary"></div><div id="wlOpsCashbookRows" class="ops-muted">Loading cashbook entries…</div>
         <h4>Receivables & payables</h4>
         <div class="ops-grid"><select id="wlOpsObligationType"><option value="receivable">Customer owes us</option><option value="payable">We owe supplier</option></select><input id="wlOpsParty" placeholder="Customer / supplier name"></div>
         <input id="wlOpsObligationDesc" placeholder="Description / reference"><div class="ops-grid"><input id="wlOpsObligationAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><input id="wlOpsDueDate" type="date"></div>
@@ -67,12 +71,14 @@
     work.appendChild(box);
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
-    bind('wlOpsObligationSave',saveObligation);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
+    bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
     bind('wlOpsAuditRefresh',renderAuditLog);bind('wlOpsAuditExport',exportAuditLog);
     document.getElementById('wlOpsAuditSearch').addEventListener('input',filterAuditLog);
     document.getElementById('wlOpsAuditPeriod').addEventListener('change',renderAuditLog);
+    ['wlOpsCashbookPeriod','wlOpsCashbookType','wlOpsCashbookBranch'].forEach(id=>document.getElementById(id).addEventListener('change',renderCashbookRegister));
+    document.getElementById('wlOpsCashbookSearch').addEventListener('input',renderCashbookRegister);
     document.getElementById('wlOpsSource').addEventListener('change',renderTransferStock);
   }
   function say(msg,bad=false){const el=document.getElementById('wlOpsStatus');if(el){el.textContent=msg;el.style.color=bad?'#ffb4b4':'#f0d28b';}}
@@ -93,7 +99,8 @@
     if(p.error)return say(p.error.message,true);if(b.error)return say(b.error.message,true);
     if(document.getElementById('wlOpsAudit')&&!document.getElementById('wlOpsAudit').hidden)await renderAuditLog();
     products=p.data||[];
-    const branches=b.data||branchRows;
+    const branches=b.data||branchRows;branchesCache=branches;
+    document.getElementById('wlOpsCashbookBranch').innerHTML='<option value="all">All branches</option>'+branches.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
     const opts=branches.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');document.getElementById('wlOpsPendingBranch').innerHTML=opts;
     ['wlOpsSource','wlOpsDestination'].forEach(id=>document.getElementById(id).innerHTML=opts);
     const current=api.getSelectedBranch?.()?.id;
@@ -102,7 +109,7 @@
     const prodOpts=products.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.sku?' · '+esc(x.sku):'')+'</option>').join('');
     ['wlOpsProduct','wlOpsBatchProduct','wlOpsAdjustProduct','wlOpsBarcodeProduct'].forEach(id=>document.getElementById(id).innerHTML=prodOpts||'<option value="">No products synced</option>');
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
-    await Promise.all([renderTransfers(),renderFinance(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts()]);
+    await Promise.all([renderTransfers(),renderFinance(),renderCashbookRegister(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts()]);
     say('Operations controls loaded for '+business.name+'.');
   }
   async function renderConflicts(){
@@ -185,11 +192,36 @@
     else{const reason=prompt('Reason for rejecting this transfer:');if(reason===null)return;r=await client.rpc('reject_branch_stock_transfer',{p_transfer_id:id,p_reason:reason});}
     if(r.error)return say(r.error.message,true);say('Transfer '+action+' completed.');await renderTransfers();
   }
+  async function renderCashbookRegister(){
+    const summary=document.getElementById('wlOpsCashbookSummary'),list=document.getElementById('wlOpsCashbookRows');if(!summary||!list||!client||!business)return;
+    list.textContent='Loading cashbook entries…';
+    const {data,error}=await client.from('cashbook_entries').select('id,branch_id,entry_type,category,description,amount,payment_method,entry_date,reference,created_at').eq('business_id',business.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false}).limit(1000);
+    if(error){list.textContent='Cashbook could not be loaded: '+error.message;return;}
+    const period=document.getElementById('wlOpsCashbookPeriod').value,type=document.getElementById('wlOpsCashbookType').value,branch=document.getElementById('wlOpsCashbookBranch').value,q=document.getElementById('wlOpsCashbookSearch').value.trim().toLowerCase();
+    const cutoff=new Date();cutoff.setHours(0,0,0,0);if(period!=='all')cutoff.setDate(cutoff.getDate()-Number(period));
+    const rows=(data||[]).filter(x=>(period==='all'||String(x.entry_date||'')>=cutoff.toISOString().slice(0,10))&&(type==='all'||x.entry_type===type)&&(branch==='all'||String(x.branch_id||'')===branch)&&[x.description,x.category,x.reference,x.payment_method].join(' ').toLowerCase().includes(q));
+    const income=rows.filter(x=>x.entry_type==='income').reduce((n,x)=>n+Number(x.amount||0),0),out=rows.filter(x=>x.entry_type==='expense').reduce((n,x)=>n+Number(x.amount||0),0),net=income-out;
+    summary.innerHTML=[['Income',income],['Expenses',out],['Period net',net]].map(x=>'<div class="ops-tile"><span class="ops-muted">'+x[0]+'</span><strong>'+money(x[1])+'</strong></div>').join('');
+    const names=new Map(branchesCache.map(x=>[String(x.id),x.name]));
+    list.innerHTML=rows.length?rows.map(x=>'<div class="ops-row"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>'+esc(x.entry_date)+' · '+esc(x.category)+'</strong><strong style="color:'+(x.entry_type==='income'?'#9be7b0':'#ffb4b4')+'">'+(x.entry_type==='income'?'+ ':'− ')+money(x.amount)+'</strong></div><div class="ops-muted">'+esc(x.description)+' · '+esc(x.entry_type)+' · '+esc(x.payment_method||'cash')+' · '+esc(names.get(String(x.branch_id))||'Unassigned / business-wide')+(x.reference?' · Ref '+esc(x.reference):'')+'</div></div>').join(''):'<div class="ops-row">No cashbook entries match these filters.</div>';
+    list.insertAdjacentHTML('beforeend','<div class="ops-muted">Showing '+rows.length+' matching records'+((data||[]).length===1000?' · Latest 1,000 fetched; narrow the date range for older entries.':'')+'</div>');
+  }
+  async function exportCashbook(){
+    const summary=document.getElementById('wlOpsCashbookSummary');if(!summary)return;
+    const {data,error}=await client.from('cashbook_entries').select('id,branch_id,entry_type,category,description,amount,payment_method,entry_date,reference,created_at').eq('business_id',business.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false}).limit(1000);
+    if(error)return say('Cashbook export failed: '+error.message,true);
+    const period=document.getElementById('wlOpsCashbookPeriod').value,type=document.getElementById('wlOpsCashbookType').value,branch=document.getElementById('wlOpsCashbookBranch').value,q=document.getElementById('wlOpsCashbookSearch').value.trim().toLowerCase(),cutoff=new Date();cutoff.setHours(0,0,0,0);if(period!=='all')cutoff.setDate(cutoff.getDate()-Number(period));
+    const rows=(data||[]).filter(x=>(period==='all'||String(x.entry_date||'')>=cutoff.toISOString().slice(0,10))&&(type==='all'||x.entry_type===type)&&(branch==='all'||String(x.branch_id||'')===branch)&&[x.description,x.category,x.reference,x.payment_method].join(' ').toLowerCase().includes(q));
+    const cell=v=>{let s=String(v??'');if(/^[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+    const headers=['Date','Type','Category','Description','Amount','Payment method','Branch','Reference'],branchNames=new Map(branchesCache.map(x=>[String(x.id),x.name]));
+    const csv=[headers.join(','),...rows.map(x=>[x.entry_date,x.entry_type,x.category,x.description,Number(x.amount||0).toFixed(2),x.payment_method,branchNames.get(String(x.branch_id))||'Unassigned / business-wide',x.reference].map(cell).join(','))].join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='white-lion-cashbook-register.csv';a.click();URL.revokeObjectURL(url);say('Cashbook CSV exported.');
+  }
   async function saveCashbook(){
     const amount=Number(document.getElementById('wlOpsCashAmount').value),category=document.getElementById('wlOpsCashCategory').value.trim(),description=document.getElementById('wlOpsCashDescription').value.trim();
     if(!Number.isFinite(amount)||amount<=0||!category||!description)return say('Enter a category, description and positive amount.',true);
     const {error}=await client.from('cashbook_entries').insert({business_id:business.id,branch_id:api.getSelectedBranch?.()?.id||null,entry_type:document.getElementById('wlOpsCashType').value,category,description,amount,payment_method:document.getElementById('wlOpsCashPayment').value,entry_date:document.getElementById('wlOpsCashDate').value||new Date().toISOString().slice(0,10)});
-    if(error)return say(error.message,true);document.getElementById('wlOpsCashAmount').value='';say('Cashbook entry saved.');await renderFinance();
+    if(error)return say(error.message,true);document.getElementById('wlOpsCashAmount').value='';say('Cashbook entry saved.');await Promise.all([renderFinance(),renderCashbookRegister()]);
   }
   async function saveObligation(){
     const party=document.getElementById('wlOpsParty').value.trim(),description=document.getElementById('wlOpsObligationDesc').value.trim(),amount=Number(document.getElementById('wlOpsObligationAmount').value);
@@ -202,7 +234,7 @@
     if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0||amount>balance)return say('Enter a valid payment not exceeding the outstanding balance.',true);
     const method=prompt('Payment method (cash, mobile money, bank transfer, card):','cash');if(method===null)return;
     const {error}=await client.rpc('record_obligation_payment',{p_obligation_id:id,p_amount:amount,p_payment_method:method,p_payment_date:new Date().toISOString().slice(0,10),p_reference:null});
-    if(error)return say(error.message,true);say('Payment recorded and posted to cashbook.');await renderFinance();
+    if(error)return say(error.message,true);say('Payment recorded and posted to cashbook.');await Promise.all([renderFinance(),renderCashbookRegister()]);
   }
   async function renderFinance(){
     const summary=document.getElementById('wlOpsFinanceSummary'),list=document.getElementById('wlOpsObligations');if(!summary||!list)return;

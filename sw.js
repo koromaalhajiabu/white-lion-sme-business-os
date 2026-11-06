@@ -1,10 +1,10 @@
-const CACHE_NAME='white-lion-sme-v50';
+const CACHE_NAME='white-lion-sme-v51';
 const APP_SHELL=[
   './',
   './index.html',
   './manifest.webmanifest?v=43',
   './cloud.js?v=25',
-  './operations.js?v=9',
+  './operations.js?v=10',
   './documents.js?v=1',
   './icons/white-lion-icon.svg'
 ];
