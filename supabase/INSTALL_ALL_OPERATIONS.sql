@@ -899,3 +899,28 @@ grant execute on function public.request_stock_adjustment(uuid,uuid,uuid,text,nu
 grant execute on function public.decide_stock_adjustment(uuid,boolean,text) to authenticated;
 
 commit;
+
+-- Post-install verification. The query returns one row per required component.
+with checks(component, installed) as (
+  values
+    ('Branch membership table', to_regclass('public.branch_members') is not null),
+    ('Branch stock transfer tables', to_regclass('public.branch_stock_transfers') is not null and to_regclass('public.branch_stock_transfer_items') is not null),
+    ('Branch-aware transaction RPC', to_regprocedure('public.sync_branch_transaction(uuid,uuid,text,text,jsonb)') is not null),
+    ('Legacy transaction RPC locked down', exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='sync_local_transaction')),
+    ('Transfer rejection RPC', to_regprocedure('public.reject_branch_stock_transfer(uuid,text)') is not null),
+    ('Cashbook table', to_regclass('public.cashbook_entries') is not null),
+    ('Receivables/payables table', to_regclass('public.financial_obligations') is not null),
+    ('Financial payment ledger', to_regclass('public.financial_obligation_payments') is not null),
+    ('Same-business payment foreign key', exists(select 1 from pg_constraint where conname='financial_payment_obligation_business_fk')),
+    ('Product batch and expiry table', to_regclass('public.product_batches') is not null),
+    ('Stock adjustment table', to_regclass('public.stock_adjustments') is not null),
+    ('Stock adjustment approval RPC', to_regprocedure('public.decide_stock_adjustment(uuid,boolean,text)') is not null),
+    ('Financial payment RPC', to_regprocedure('public.record_obligation_payment(uuid,numeric,text,date,text)') is not null),
+    ('Batch receiving RPC', to_regprocedure('public.receive_product_batch(uuid,uuid,uuid,text,date,numeric,numeric)') is not null),
+    ('Barcode field', exists(select 1 from information_schema.columns where table_schema='public' and table_name='products' and column_name='barcode')),
+    ('Branch-scoped inventory write policy', exists(select 1 from pg_policies where schemaname='public' and tablename='branch_inventory' and policyname='branch_inventory_manage')),
+    ('Finance-only cashbook visibility', exists(select 1 from pg_policies where schemaname='public' and tablename='cashbook_entries' and policyname='cashbook_finance_read'))
+)
+select component, case when installed then 'INSTALLED' else 'MISSING' end as status
+from checks
+order by component;
