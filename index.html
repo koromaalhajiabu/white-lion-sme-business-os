@@ -127,6 +127,45 @@ tbody tr:hover{background:#fbfcff}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
+/* POS CHECKOUT — refined counter workspace */
+.pos-command-strip{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;margin:-5px 0 17px;border:1px solid #e8dfc9;border-radius:14px;background:linear-gradient(105deg,#fffdf7 0%,#fff 55%,#f8fafc 100%);box-shadow:0 5px 18px rgba(24,38,60,.035)}
+.pos-command-copy{display:flex;align-items:center;gap:11px;min-width:0}
+.pos-command-mark{width:37px;height:37px;flex:0 0 37px;display:grid;place-items:center;border-radius:11px;background:linear-gradient(145deg,#f1d99f,#cda85d);color:#18263c;font-size:11px;font-weight:900;letter-spacing:.5px;box-shadow:0 4px 12px rgba(205,168,93,.17)}
+.pos-command-copy b{display:block;color:#23334b;font-size:12px;letter-spacing:.1px}
+.pos-command-copy small{display:block;margin-top:3px;color:#7c899b;font-size:10px}
+.pos-command-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:#7d899b;font-size:10px}
+.pos-command-meta span{display:inline-flex;align-items:center;gap:6px}
+.pos-live-dot{width:7px;height:7px;border-radius:50%;background:#20a36d;box-shadow:0 0 0 4px rgba(32,163,109,.11)}
+.pos-products{overflow:hidden}
+.pos-products .panel-head{padding-bottom:13px;border-bottom:1px solid #edf0f5}
+.pos-products .panel-head h3{font-size:15px}
+.pos-products .field label{font-size:10px;font-weight:800;letter-spacing:.35px;text-transform:uppercase}
+.pos-products #retailBarcode{background:linear-gradient(180deg,#fffefb,#fff);font-weight:650;letter-spacing:.15px}
+.pos-products #retailBarcode::placeholder{font-weight:400;color:#9aa4b2}
+.pos-products #retailAdd{min-height:43px;padding-left:18px;padding-right:18px}
+.pos-products #retailFind{min-height:43px}
+.pos-checkout{border-color:#e3e8f0;box-shadow:0 12px 32px rgba(17,32,53,.075)}
+.pos-checkout>.panel-head{padding-bottom:13px;border-bottom:1px solid #edf0f5}
+.pos-checkout>.panel-head h3{font-size:15px}
+.pos-checkout #retailCustomer,.pos-checkout #retailPayment,.pos-checkout #retailBranch{min-width:0}
+.pos-checkout #retailComplete{background:linear-gradient(120deg,#e6c77f,#c59a45);border-color:#c59a45;color:#17243a;font-weight:850;box-shadow:0 8px 18px rgba(197,154,69,.2)}
+.pos-checkout #retailComplete:hover{box-shadow:0 10px 22px rgba(197,154,69,.28)}
+.pos-history>.panel-head{align-items:center}
+.pos-history .table-wrap{border:1px solid #edf0f5;border-radius:12px}
+.pos-history .table-wrap table{min-width:690px}
+@media(max-width:720px){
+ .pos-command-strip{align-items:flex-start;padding:12px;margin:-3px 0 13px}
+ .pos-command-meta{display:grid;gap:6px;justify-items:end;font-size:9px}
+ .pos-command-copy small{max-width:190px;line-height:1.4}
+ .pos-products .panel-head{gap:8px}
+ .pos-products .panel-head .pill{white-space:nowrap}
+ .pos-products #retailAdd{flex:1}
+ .pos-products #retailFind{flex:1}
+ .pos-checkout{box-shadow:0 8px 24px rgba(17,32,53,.06)}
+ .pos-checkout-actions{position:sticky;bottom:8px;z-index:3;padding:8px;border:1px solid #eadbb7;border-radius:13px;background:rgba(255,253,247,.96);backdrop-filter:blur(12px);box-shadow:0 7px 20px rgba(17,32,53,.1)}
+ .pos-checkout-actions .btn{min-height:50px}
+}
+
 /* Screen-specific premium workspaces */
 .pos-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);gap:16px;align-items:start}
 .pos-main,.pos-checkout{min-width:0}.pos-products,.pos-checkout{margin-bottom:16px}
@@ -302,6 +341,7 @@ async function render(){
     w.document.close();
   };
   v.innerHTML=pageHeader(industryWording().sales,'A faster counter experience with barcode search, live stock checks and clear payment totals')+
+  '<div class="pos-command-strip"><div class="pos-command-copy"><span class="pos-command-mark">WL</span><div><b>Sales counter</b><small>Scan · Add items · Review · Take payment</small></div></div><div class="pos-command-meta"><span><i class="pos-live-dot"></i> Offline-ready</span><span>Secure local checkout</span></div></div>'+
   '<div class="pos-layout"><div class="pos-main"><div class="panel pos-products"><div class="panel-head"><div><h3>Find products</h3><div class="panel-sub">Scan a barcode with a handheld/Bluetooth scanner or search by product name, SKU or barcode.</div></div><span class="pill neutral">'+products.length+' products</span></div>'+
   '<div class="form-grid"><div class="field"><label>Posting branch</label><select id="retailBranch">'+branchOptions.map(o=>'<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>').join('')+'</select></div><div class="field"><label>Barcode / product search</label><input id="retailBarcode" placeholder="Scan or type barcode, SKU or name" autocomplete="off"></div>'+
   '<div class="field"><label>Select product</label><select id="retailProduct"><option value="">Choose a product…</option>'+products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+money(p.price)+' · Stock '+available(p,currentBranch?.id)+'</option>').join('')+'</select></div><div class="field"><label>Quantity</label><input id="retailQty" type="number" min="0.001" step="0.001" value="1"></div></div>'+
