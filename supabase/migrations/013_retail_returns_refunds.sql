@@ -83,7 +83,7 @@ begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   if coalesce(trim(p_client_return_id),'') = '' then raise exception 'Return reference is required'; end if;
   if coalesce(trim(p_reason),'') = '' then raise exception 'Return reason is required'; end if;
-  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
     raise exception 'Select at least one item to return';
   end if;
 
