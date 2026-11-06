@@ -566,6 +566,6 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=42',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
-<script src="./cloud.js?v=22" defer></script>
+<script src="./cloud.js?v=23" defer></script>
 <script src="./operations.js?v=8" defer></script>
 </body></html>
