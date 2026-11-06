@@ -410,6 +410,10 @@ begin
       if not found then
         raise exception 'Insufficient stock at the selected branch for product %', v_group.product_name;
       end if;
+      -- Keep tracked batch quantities aligned with POS stock consumption.
+      perform public.consume_product_batches(
+        p_business_id,p_branch_id,v_group.product_id,v_group.quantity
+      );
     end loop;
 
     v_receipt := coalesce(nullif(p_transaction->>'receipt',''), 'WL-' || substr(p_event_id,1,12));
@@ -501,6 +505,80 @@ grant execute on function public.sync_branch_transaction(uuid,uuid,text,text,jso
 -- Prevent use of the old auto-first-branch RPC by normal authenticated clients.
 -- The new client must call sync_branch_transaction with an explicit branch.
 revoke all on function public.sync_local_transaction(uuid,text,text,jsonb) from authenticated;
+
+-- Preserve batch/expiry traceability when a stock transfer is approved.
+-- Helper function is installed by migration 011 in the same installer.
+create or replace function public.approve_branch_stock_transfer(
+  p_transfer_id uuid
+) returns jsonb
+language plpgsql security definer
+set search_path = ''
+as $
+declare
+  v_transfer public.branch_stock_transfers%rowtype;
+  v_item record;
+  v_unbatched numeric;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  select * into v_transfer from public.branch_stock_transfers
+   where id=p_transfer_id for update;
+  if not found then raise exception 'Transfer request not found'; end if;
+  if v_transfer.status<>'pending' then raise exception 'Only pending transfers can be approved'; end if;
+  if not public.has_business_role(v_transfer.business_id,
+    array['owner','admin','manager']::public.business_role[]) then
+    raise exception 'Only an owner, admin, or manager can approve a transfer';
+  end if;
+
+  for v_item in
+    select product_id, sum(quantity)::numeric as quantity, min(product_name) as product_name
+    from public.branch_stock_transfer_items
+    where transfer_id=p_transfer_id and business_id=v_transfer.business_id
+    group by product_id order by product_id
+  loop
+    perform 1 from public.branch_inventory
+     where business_id=v_transfer.business_id
+       and branch_id=v_transfer.source_branch_id
+       and product_id=v_item.product_id
+     for update;
+    update public.branch_inventory
+      set quantity_on_hand=quantity_on_hand-v_item.quantity,updated_at=now()
+      where business_id=v_transfer.business_id
+        and branch_id=v_transfer.source_branch_id
+        and product_id=v_item.product_id
+        and quantity_on_hand>=v_item.quantity;
+    if not found then
+      raise exception 'Insufficient source-branch stock for product %',v_item.product_name;
+    end if;
+
+    v_unbatched:=public.transfer_product_batches(
+      v_transfer.business_id,v_transfer.source_branch_id,
+      v_transfer.destination_branch_id,v_item.product_id,v_item.quantity
+    );
+
+    insert into public.branch_inventory(business_id,branch_id,product_id,quantity_on_hand,updated_at)
+    values(v_transfer.business_id,v_transfer.destination_branch_id,v_item.product_id,v_item.quantity,now())
+    on conflict(branch_id,product_id) do update
+      set quantity_on_hand=public.branch_inventory.quantity_on_hand+excluded.quantity_on_hand,
+          updated_at=now();
+  end loop;
+
+  update public.branch_stock_transfers
+    set status='completed',approved_by=auth.uid(),completed_at=now()
+    where id=p_transfer_id;
+
+  insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+  values(v_transfer.business_id,auth.uid(),'branch_stock_transfer_approved',
+    'branch_stock_transfers',p_transfer_id::text,
+    jsonb_build_object('source_branch_id',v_transfer.source_branch_id,
+      'destination_branch_id',v_transfer.destination_branch_id,
+      'batch_traceability','FIFO batch quantities moved where available'));
+
+  return jsonb_build_object('status','completed','transfer_id',p_transfer_id);
+end;
+$;
+
+revoke all on function public.approve_branch_stock_transfer(uuid) from public;
+grant execute on function public.approve_branch_stock_transfer(uuid) to authenticated;
 
 -- Only managers can reject a pending transfer; the reason is preserved for audit.
 create or replace function public.reject_branch_stock_transfer(
@@ -740,6 +818,74 @@ drop policy if exists adjustments_no_direct_write on public.stock_adjustments;
 create policy adjustments_no_direct_write on public.stock_adjustments for all to authenticated
 using(false) with check(false);
 
+-- Batch movement helpers. They consume tracked lots in FEFO order and
+-- preserve lot number, expiry date and unit cost when stock moves between branches.
+-- Any returned remainder represents unbatched opening or legacy stock.
+create or replace function public.consume_product_batches(
+ p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_quantity numeric
+) returns numeric
+language plpgsql security definer set search_path=''
+as $
+declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
+begin
+ if p_quantity is null or p_quantity<=0 then return 0; end if;
+ for v_batch in
+   select id,quantity_on_hand
+   from public.product_batches
+   where business_id=p_business_id and branch_id=p_branch_id
+     and product_id=p_product_id and quantity_on_hand>0
+   order by expiry_date asc nulls last,created_at asc,id
+   for update
+ loop
+   exit when v_remaining<=0;
+   v_take:=least(v_remaining,v_batch.quantity_on_hand);
+   update public.product_batches set quantity_on_hand=quantity_on_hand-v_take,updated_at=now()
+   where id=v_batch.id;
+   v_remaining:=v_remaining-v_take;
+ end loop;
+ return greatest(v_remaining,0);
+end;
+$;
+
+create or replace function public.transfer_product_batches(
+ p_business_id uuid,p_source_branch_id uuid,p_destination_branch_id uuid,
+ p_product_id uuid,p_quantity numeric
+) returns numeric
+language plpgsql security definer set search_path=''
+as $
+declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
+begin
+ if p_quantity is null or p_quantity<=0 then return 0; end if;
+ for v_batch in
+   select id,batch_number,expiry_date,quantity_on_hand,unit_cost
+   from public.product_batches
+   where business_id=p_business_id and branch_id=p_source_branch_id
+     and product_id=p_product_id and quantity_on_hand>0
+   order by expiry_date asc nulls last,created_at asc,id
+   for update
+ loop
+   exit when v_remaining<=0;
+   v_take:=least(v_remaining,v_batch.quantity_on_hand);
+   update public.product_batches set quantity_on_hand=quantity_on_hand-v_take,updated_at=now()
+   where id=v_batch.id;
+   insert into public.product_batches(
+     business_id,branch_id,product_id,batch_number,expiry_date,quantity_on_hand,unit_cost
+   ) values(
+     p_business_id,p_destination_branch_id,p_product_id,v_batch.batch_number,
+     v_batch.expiry_date,v_take,v_batch.unit_cost
+   )
+   on conflict(branch_id,product_id,batch_number) do update
+     set quantity_on_hand=public.product_batches.quantity_on_hand+excluded.quantity_on_hand,
+         expiry_date=excluded.expiry_date,unit_cost=excluded.unit_cost,updated_at=now();
+   v_remaining:=v_remaining-v_take;
+ end loop;
+ return greatest(v_remaining,0);
+end;
+$;
+
+revoke all on function public.consume_product_batches(uuid,uuid,uuid,numeric) from public;
+revoke all on function public.transfer_product_batches(uuid,uuid,uuid,uuid,numeric) from public;
+
 create or replace function public.request_stock_adjustment(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_adjustment_type text,
  p_quantity numeric,p_reason text
@@ -796,6 +942,7 @@ begin
      where business_id=v.business_id and branch_id=v.branch_id and product_id=v.product_id
        and quantity_on_hand>=v.quantity;
      if not found then raise exception 'Insufficient stock for this adjustment'; end if;
+     perform public.consume_product_batches(v.business_id,v.branch_id,v.product_id,v.quantity);
    end if;
  end if;
  update public.stock_adjustments set status=case when p_approve then 'approved' else 'rejected' end,
@@ -914,6 +1061,8 @@ with checks(component, installed) as (
     ('Branch-aware transaction RPC', to_regprocedure('public.sync_branch_transaction(uuid,uuid,text,text,jsonb)') is not null),
     ('Legacy transaction RPC disabled for authenticated users', not has_function_privilege('authenticated', to_regprocedure('public.sync_local_transaction(uuid,text,text,jsonb)'), 'EXECUTE')),
     ('Transfer rejection RPC', to_regprocedure('public.reject_branch_stock_transfer(uuid,text)') is not null),
+    ('Batch FEFO consumption helper', to_regprocedure('public.consume_product_batches(uuid,uuid,uuid,numeric)') is not null),
+    ('Batch-preserving transfer helper', to_regprocedure('public.transfer_product_batches(uuid,uuid,uuid,uuid,numeric)') is not null),
     ('Cashbook table', to_regclass('public.cashbook_entries') is not null),
     ('Receivables/payables table', to_regclass('public.financial_obligations') is not null),
     ('Financial payment ledger', to_regclass('public.financial_obligation_payments') is not null),
