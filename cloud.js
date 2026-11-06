@@ -7,12 +7,21 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    #wlCloudBox{background:#1b2b47;border:1px solid #40516d;border-radius:12px;padding:12px;color:#fff;font-size:12px}
-    #wlCloudBox button{border:0;border-radius:8px;padding:8px 10px;background:#d6ad57;color:#152238;font-weight:700;margin:5px 4px 0 0}
-    #wlCloudBox input,#wlCloudBox select{width:100%;padding:9px;border:1px solid #52627b;border-radius:8px;background:#101b31;color:#fff;margin:5px 0}
-    #wlCloudBox .muted{color:#bac6d8;font-size:10px}#wlCloudBox .cloud-actions{display:flex;flex-wrap:wrap}
-    #wlCloudBox .cloud-status{margin:6px 0;color:#f0d28b;overflow-wrap:anywhere}
-    #wlCloudBox details{margin-top:8px}#wlCloudBox summary{cursor:pointer;color:#f0d28b;font-weight:700}#wlCloudBox .branch-stock{display:grid;grid-template-columns:1fr auto;gap:5px;padding:6px 0;border-bottom:1px solid #34435b}#wlCloudBox .branch-note{color:#bac6d8;font-size:10px;margin:6px 0;overflow-wrap:anywhere}
+    #wlCloudBox{background:linear-gradient(135deg,#fff 0%,#f5faf6 100%);border:1px solid #dcebe1;border-radius:16px;padding:16px;color:#203b2b;font-size:12px;box-shadow:0 8px 24px rgba(7,91,53,.06)}
+    #wlCloudBox>div:first-child{color:#075b35;letter-spacing:.7px;font-size:12px}
+    #wlCloudBox button{border:1px solid #087a43;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,#087a43,#075b35);color:#fff;font-weight:750;margin:5px 5px 0 0}
+    #wlCloudBox button:hover{filter:brightness(1.05)}
+    #wlCloudBox input,#wlCloudBox select{width:100%;min-width:0;box-sizing:border-box;padding:10px 11px;border:1px solid #dce8df;border-radius:9px;background:#fff;color:#203b2b;margin:5px 0}
+    #wlCloudBox .muted{color:#718078;font-size:10px;line-height:1.55}#wlCloudBox .cloud-actions{display:flex;flex-wrap:wrap;gap:5px}
+    #wlCloudBox .cloud-status{margin:8px 0;color:#087a43;overflow-wrap:anywhere;line-height:1.5}
+    #wlCloudBox details{margin-top:10px;padding:10px 12px;border:1px solid #e2ece5;border-radius:12px;background:rgba(255,255,255,.8)}
+    #wlCloudBox summary{cursor:pointer;color:#075b35;font-weight:800}
+    #wlCloudBox .branch-stock{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 2px;border-bottom:1px solid #e8f0ea;color:#31483a}
+    #wlCloudBox .branch-note{color:#718078;font-size:10px;margin:7px 0;overflow-wrap:anywhere}
+    #wlCloudBox .branch-create-grid{display:grid;grid-template-columns:1fr 1.4fr auto;gap:7px;align-items:center;margin:10px 0}
+    #wlCloudBox .branch-create-grid input{margin:0}
+    #wlCloudBox .branch-create-grid button{margin:0;white-space:nowrap}
+    @media(max-width:620px){#wlCloudBox{padding:13px;border-radius:13px}#wlCloudBox .branch-create-grid{grid-template-columns:1fr}#wlCloudBox .branch-create-grid button{width:100%;min-height:42px}#wlCloudBox .cloud-actions button{flex:1 1 auto}}
     #wlDeveloperBox{margin-top:14px;background:#111d32;border:1px solid #b58c3d;border-radius:13px;padding:15px;color:#fff;font-size:12px}
     #wlDeveloperBox h3{margin:0 0 8px;color:#f0d28b;font-size:15px}
     #wlDeveloperBox button{border:0;border-radius:8px;padding:8px 10px;background:#d6ad57;color:#152238;font-weight:700;margin:5px 5px 5px 0}
@@ -47,9 +56,15 @@
         <select id="wlBusinessSelect" aria-label="Choose business"></select>
         <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Upload local records</button><button id="wlDownloadNow">Download cloud records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
         <details id="wlBranchManager" open><summary>Branch management</summary>
-          <div class="muted" style="margin:7px 0">Create branches, select a working branch, assign staff and inspect branch stock.</div>
+          <div class="muted" style="margin:7px 0">Manage outlets, choose the active working location, assign staff and review stock by branch.</div>
+          <label class="muted" for="wlBranchSelect">Active working branch</label>
           <select id="wlBranchSelect" aria-label="Select active branch"><option value="">Loading branches…</option></select>
-          <div class="cloud-actions"><button id="wlCreateBranch">＋ Create branch</button><button id="wlRefreshBranches">Refresh branches</button></div>
+          <div class="branch-create-grid">
+            <input id="wlNewBranchName" type="text" maxlength="100" placeholder="New branch name" aria-label="New branch name">
+            <input id="wlNewBranchAddress" type="text" maxlength="240" placeholder="Branch address (optional)" aria-label="Branch address">
+            <button id="wlCreateBranch" type="button">＋ Add branch</button>
+          </div>
+          <div class="cloud-actions"><button id="wlRefreshBranches" type="button">Refresh branch list</button></div>
           <div id="wlBranchStatus" class="cloud-status">Select a business to load its branches.</div>
           <div id="wlBranchInventory" class="muted"></div>
           <details><summary>Assign staff to this branch</summary>
@@ -159,15 +174,23 @@
   }
   async function createBranch() {
     if (!activeBusiness) return say('Select a business workspace first.');
-    const name = prompt('New branch name:');
-    if (!name || name.trim().length < 2) return;
-    const address = prompt('Branch address (optional):') || '';
-    $('wlBranchStatus').textContent = 'Creating branch…';
+    const name = $('wlNewBranchName')?.value.trim() || '';
+    const address = $('wlNewBranchAddress')?.value.trim() || '';
+    if (name.length < 2) {
+      $('wlBranchStatus').textContent = 'Enter a branch name containing at least two characters.';
+      $('wlNewBranchName')?.focus();
+      return;
+    }
+    $('wlCreateBranch').disabled = true;
+    $('wlBranchStatus').textContent = 'Creating branch securely…';
     const {data,error} = await client.rpc('create_business_branch', {
-      p_business_id:activeBusiness.id,p_name:name.trim(),p_address:address.trim() || null
+      p_business_id:activeBusiness.id,p_name:name,p_address:address || null
     });
+    $('wlCreateBranch').disabled = false;
     if (error) { $('wlBranchStatus').textContent = 'Could not create branch: ' + error.message; return; }
-    $('wlBranchStatus').textContent = 'Branch created successfully.';
+    $('wlNewBranchName').value = '';
+    $('wlNewBranchAddress').value = '';
+    $('wlBranchStatus').textContent = 'Branch created successfully. It is now selected as the working branch.';
     await loadBranches(data?.branch_id);
   }
   async function loadBranches(preferredId) {
