@@ -166,8 +166,7 @@ begin
     select p.id,p.name into v_product,v_name
     from public.products p
     where p.business_id=p_business_id
-      and p.client_record_id=v_item->>'product_client_record_id'
-      and p.is_active=true;
+      and p.client_record_id=v_item->>'product_client_record_id';
     v_qty := (v_item->>'quantity')::numeric;
     select coalesce(sum(si.line_total),0)/nullif(sum(si.quantity),0)
       into v_price
