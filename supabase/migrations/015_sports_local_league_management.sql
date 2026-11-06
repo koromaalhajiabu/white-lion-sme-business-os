@@ -273,15 +273,16 @@ totals as (
     sum(goals_for)::integer as goals_for,sum(goals_against)::integer as goals_against
   from played group by business_id,competition_id,season_id,club_id
 )
-select c.business_id,c.competition_id,t.season_id,c.id as club_id,c.name as club_name,
+select c.business_id,c.competition_id,s.id as season_id,c.id as club_id,c.name as club_name,
   coalesce(t.played,0) as played,coalesce(t.won,0) as won,coalesce(t.drawn,0) as drawn,
   coalesce(t.lost,0) as lost,coalesce(t.goals_for,0) as goals_for,
   coalesce(t.goals_against,0) as goals_against,
   coalesce(t.goals_for,0)-coalesce(t.goals_against,0) as goal_difference,
   coalesce(t.won,0)*co.points_win+coalesce(t.drawn,0)*co.points_draw+coalesce(t.lost,0)*co.points_loss as points
-from public.league_clubs c
-join public.league_competitions co on co.id=c.competition_id and co.business_id=c.business_id
-left join totals t on t.club_id=c.id and t.business_id=c.business_id and t.competition_id=c.competition_id
+from public.league_seasons s
+join public.league_competitions co on co.id=s.competition_id and co.business_id=s.business_id
+join public.league_clubs c on c.competition_id=s.competition_id and c.business_id=s.business_id
+left join totals t on t.club_id=c.id and t.business_id=c.business_id and t.competition_id=c.competition_id and t.season_id=s.id
 where c.status='active';
 
 create or replace view public.league_player_statistics with (security_invoker=true) as
