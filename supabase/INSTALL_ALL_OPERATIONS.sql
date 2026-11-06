@@ -906,7 +906,7 @@ with checks(component, installed) as (
     ('Branch membership table', to_regclass('public.branch_members') is not null),
     ('Branch stock transfer tables', to_regclass('public.branch_stock_transfers') is not null and to_regclass('public.branch_stock_transfer_items') is not null),
     ('Branch-aware transaction RPC', to_regprocedure('public.sync_branch_transaction(uuid,uuid,text,text,jsonb)') is not null),
-    ('Legacy transaction RPC locked down', exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='sync_local_transaction')),
+    ('Legacy transaction RPC disabled for authenticated users', not has_function_privilege('authenticated', to_regprocedure('public.sync_local_transaction(uuid,text,text,jsonb)'), 'EXECUTE')),
     ('Transfer rejection RPC', to_regprocedure('public.reject_branch_stock_transfer(uuid,text)') is not null),
     ('Cashbook table', to_regclass('public.cashbook_entries') is not null),
     ('Receivables/payables table', to_regclass('public.financial_obligations') is not null),
