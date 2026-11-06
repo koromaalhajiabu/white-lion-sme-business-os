@@ -198,7 +198,7 @@ begin
  if auth.uid() is null then raise exception 'Authentication required'; end if;
  select role into v_role from public.business_members
  where business_id=p_business_id and user_id=auth.uid() and is_active;
- if not found or v_role not in ('owner','admin','manager','storekeeper') then
+ if not public.has_business_role(p_business_id,array['owner','admin','manager','storekeeper']::public.business_role[]) then
    raise exception 'Not authorised to request stock adjustments';
  end if;
  if p_adjustment_type not in ('increase','decrease') or p_quantity is null or p_quantity<=0
@@ -230,7 +230,7 @@ begin
  if not found then raise exception 'Adjustment request not found'; end if;
  select role into v_role from public.business_members
  where business_id=v.business_id and user_id=auth.uid() and is_active;
- if not found or v_role not in ('owner','admin','manager') then
+ if not public.has_business_role(v.business_id,array['owner','admin','manager']::public.business_role[]) then
    raise exception 'Only owner, admin or manager can decide adjustments';
  end if;
  if v.status<>'pending' then raise exception 'Only pending adjustments can be decided'; end if;
@@ -268,7 +268,7 @@ begin
  if not found then raise exception 'Receivable or payable record not found'; end if;
  select role into v_role from public.business_members
  where business_id=v.business_id and user_id=auth.uid() and is_active;
- if not found or v_role not in ('owner','admin','manager','accountant') then
+ if not public.has_business_role(v.business_id,array['owner','admin','manager','accountant']::public.business_role[]) then
    raise exception 'Not authorised to record financial payments';
  end if;
  if p_amount is null or p_amount<=0 or p_amount>v.amount-v.amount_paid then
