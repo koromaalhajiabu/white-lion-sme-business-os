@@ -191,7 +191,7 @@ language sql
 stable
 security definer
 set search_path=public,auth
-as $
+as $wl_league$
   select auth.uid() is not null and (
     exists (select 1 from public.business_members bm
       where bm.business_id=p_business_id and bm.user_id=auth.uid()
@@ -203,7 +203,7 @@ as $
           (cm.role in ('club_manager','disciplinary_officer') and (cm.club_id is null or cm.club_id=p_club_id))
         ))
   );
-$;
+$wl_league$;
 
 create or replace function public.league_user_can_manage_fixture(p_business_id uuid,p_competition_id uuid,p_fixture_id uuid)
 returns boolean
@@ -211,7 +211,7 @@ language sql
 stable
 security definer
 set search_path=public,auth
-as $
+as $wl_league$
   select auth.uid() is not null and (
     exists (select 1 from public.business_members bm
       where bm.business_id=p_business_id and bm.user_id=auth.uid()
@@ -225,7 +225,7 @@ as $
         and cm.user_id=auth.uid() and cm.is_active and cm.role='referee'
         and (cm.club_id is null or cm.club_id in (f.home_club_id,f.away_club_id)))
   );
-$;
+$wl_league$;
 
 revoke all on function public.league_user_can_manage_club(uuid,uuid,uuid) from public;
 revoke all on function public.league_user_can_manage_fixture(uuid,uuid,uuid) from public;
