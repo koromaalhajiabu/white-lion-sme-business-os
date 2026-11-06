@@ -20,6 +20,10 @@ begin
   end if;
 
   select count(*) into v_business_count from public.businesses;
+
+  -- Remove restrictive return references before cascading business workspaces.
+  delete from public.offline_sale_return_items;
+  delete from public.offline_sale_returns;
   delete from public.businesses;
 
   -- Deactivate all non-developer logins now, preserving a 30-day recovery path.
