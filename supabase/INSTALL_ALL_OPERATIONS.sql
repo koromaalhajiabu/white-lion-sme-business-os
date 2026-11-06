@@ -2,7 +2,7 @@
 -- SINGLE INSTALLER: Branch-aware operations + finance + inventory controls
 -- Prerequisite: migrations 001–009 must already be installed.
 -- Run this entire file ONCE in Supabase SQL Editor.
--- This applies migrations 010 and 011 inside one transaction.
+-- This script applies migrations 010 and 011 in one transaction.
 -- Do not separately run migrations 010/011 if you run this installer.
 
 begin;
@@ -11,8 +11,6 @@ begin;
 -- White Lion SME Business OS — Migration 010
 -- Branch-scoped transaction posting, transfer rejection, and branch stock write controls.
 -- Legacy transactions remain unchanged; new postings must name an active branch.
-
-begin;
 
 -- Extend transfer decisions without deleting or rewriting existing requests.
 alter table public.branch_stock_transfers
@@ -513,7 +511,7 @@ create or replace function public.approve_branch_stock_transfer(
 ) returns jsonb
 language plpgsql security definer
 set search_path = ''
-as $
+as $$
 declare
   v_transfer public.branch_stock_transfers%rowtype;
   v_item record;
@@ -575,7 +573,7 @@ begin
 
   return jsonb_build_object('status','completed','transfer_id',p_transfer_id);
 end;
-$;
+$$;
 
 revoke all on function public.approve_branch_stock_transfer(uuid) from public;
 grant execute on function public.approve_branch_stock_transfer(uuid) to authenticated;
@@ -629,7 +627,6 @@ grant execute on function public.reject_branch_stock_transfer(uuid,text) to auth
 -- MIGRATION 011: FINANCE AND INVENTORY CONTROLS
 -- White Lion SME Business OS — Migration 011
 -- Financial registers, product batches/expiry and controlled stock adjustments.
-begin;
 
 create table if not exists public.cashbook_entries (
   id uuid primary key default gen_random_uuid(),
@@ -825,7 +822,7 @@ create or replace function public.consume_product_batches(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_quantity numeric
 ) returns numeric
 language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
 begin
  if p_quantity is null or p_quantity<=0 then return 0; end if;
@@ -845,14 +842,14 @@ begin
  end loop;
  return greatest(v_remaining,0);
 end;
-$;
+$$;
 
 create or replace function public.transfer_product_batches(
  p_business_id uuid,p_source_branch_id uuid,p_destination_branch_id uuid,
  p_product_id uuid,p_quantity numeric
 ) returns numeric
 language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
 begin
  if p_quantity is null or p_quantity<=0 then return 0; end if;
@@ -881,7 +878,7 @@ begin
  end loop;
  return greatest(v_remaining,0);
 end;
-$;
+$$;
 
 revoke all on function public.consume_product_batches(uuid,uuid,uuid,numeric) from public;
 revoke all on function public.transfer_product_batches(uuid,uuid,uuid,uuid,numeric) from public;
@@ -1050,7 +1047,6 @@ grant execute on function public.request_stock_adjustment(uuid,uuid,uuid,text,nu
 grant execute on function public.decide_stock_adjustment(uuid,boolean,text) to authenticated;
 
 commit;
-
 
 -- POST-INSTALL VERIFICATION
 -- Expected result: every row should show INSTALLED.
