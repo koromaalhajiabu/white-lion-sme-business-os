@@ -45,6 +45,12 @@
         <button id="wlOpsObligationSave">Save receivable / payable</button><div id="wlOpsObligations" class="ops-muted"></div>
         <div class="ops-muted">Finance overview is business-wide. Trading balance is a simple sales-minus-purchases-minus-expenses estimate, not audited profit or a formal accrual P&L. Cashbook entries remain separate to avoid double-counting.</div>
       </details>
+      <details id="wlOpsAudit" hidden><summary>Audit trail & compliance</summary>
+        <div class="ops-muted">Business-scoped activity history. Only authorised management roles can view this panel. Events are read from the protected audit log; this screen cannot edit or delete audit records.</div>
+        <div class="ops-grid"><input id="wlOpsAuditSearch" placeholder="Filter by action, record or actor"><button id="wlOpsAuditRefresh">Refresh audit trail</button></div>
+        <div class="ops-grid"><select id="wlOpsAuditPeriod"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="all">All available history</option></select><button id="wlOpsAuditExport">Export visible events (CSV)</button></div>
+        <div id="wlOpsAuditSummary" class="ops-muted"></div><div id="wlOpsAuditRows" class="ops-muted">Loading audit events…</div>
+      </details>
       <details><summary>Advanced inventory, barcode & expiry</summary>
         <div class="ops-grid"><input id="wlOpsBarcode" placeholder="Scan or enter product barcode"><button id="wlOpsBarcodeFind">Find product</button></div><div class="ops-grid"><select id="wlOpsBarcodeProduct"></select><button id="wlOpsBarcodeSave">Save barcode to product</button></div>
         <button id="wlOpsScanStart">Open camera scanner</button><button id="wlOpsScanStop">Stop scanner</button><video id="wlOpsVideo" playsinline hidden></video><div id="wlOpsBarcodeResult" class="ops-muted"></div>
@@ -64,6 +70,9 @@
     bind('wlOpsObligationSave',saveObligation);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
+    bind('wlOpsAuditRefresh',renderAuditLog);bind('wlOpsAuditExport',exportAuditLog);
+    document.getElementById('wlOpsAuditSearch').addEventListener('input',filterAuditLog);
+    document.getElementById('wlOpsAuditPeriod').addEventListener('change',renderAuditLog);
     document.getElementById('wlOpsSource').addEventListener('change',renderTransferStock);
   }
   function say(msg,bad=false){const el=document.getElementById('wlOpsStatus');if(el){el.textContent=msg;el.style.color=bad?'#ffb4b4':'#f0d28b';}}
@@ -75,11 +84,14 @@
     const {data:membership,error:membershipError}=await client.from('business_members').select('role').eq('business_id',business.id).eq('user_id',api.getSession?.()?.user?.id).eq('is_active',true).maybeSingle();
     if(membershipError)return say(membershipError.message,true);memberRole=membership?.role||null;
     const finance=document.getElementById('wlOpsFinance');if(finance)finance.hidden=!['owner','admin','manager','accountant'].includes(memberRole);
+    const audit=document.getElementById('wlOpsAudit');if(audit)audit.hidden=!['owner','admin','manager','accountant'].includes(memberRole);
+
     const [p,b]=await Promise.all([
       client.from('products').select('id,name,sku,barcode,client_record_id').eq('business_id',business.id).eq('is_active',true).order('name'),
       client.from('branches').select('id,name,is_active').eq('business_id',business.id).eq('is_active',true).order('created_at')
     ]);
     if(p.error)return say(p.error.message,true);if(b.error)return say(b.error.message,true);
+    if(document.getElementById('wlOpsAudit')&&!document.getElementById('wlOpsAudit').hidden)await renderAuditLog();
     products=p.data||[];
     const branches=b.data||branchRows;
     const opts=branches.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');document.getElementById('wlOpsPendingBranch').innerHTML=opts;
@@ -265,6 +277,41 @@
     const {error}=await client.rpc('decide_stock_adjustment',{p_adjustment_id:id,p_approve:approve,p_note:note});
     if(error)return say(error.message,true);say('Stock adjustment '+(approve?'approved':'rejected')+'.');await renderAdjustments();
   }
+
+  let auditEvents=[];
+  async function renderAuditLog(){
+    const el=document.getElementById('wlOpsAuditRows'),summary=document.getElementById('wlOpsAuditSummary');if(!el||!summary)return;
+    if(!['owner','admin','manager','accountant'].includes(memberRole)){el.textContent='You do not have permission to view this audit trail.';return;}
+    el.textContent='Loading business activity…';
+    const period=document.getElementById('wlOpsAuditPeriod')?.value||'30';
+    let query=client.from('audit_logs').select('id,actor_user_id,action,entity_table,entity_id,details,created_at').eq('business_id',business.id).order('created_at',{ascending:false}).limit(250);
+    if(period!=='all'){const since=new Date(Date.now()-Number(period)*86400000).toISOString();query=query.gte('created_at',since);}
+    const {data,error}=await query;
+    if(error){el.textContent='Audit trail unavailable: '+error.message;summary.textContent='No data was changed.';return;}
+    auditEvents=data||[];
+    summary.textContent=auditEvents.length+' event(s) loaded · Read-only · Business: '+(business.name||'Selected workspace');
+    filterAuditLog();
+  }
+  function filterAuditLog(){
+    const el=document.getElementById('wlOpsAuditRows');if(!el)return;
+    const q=(document.getElementById('wlOpsAuditSearch')?.value||'').trim().toLowerCase();
+    const rows=auditEvents.filter(x=>!q||[x.action,x.entity_table,x.entity_id,x.actor_user_id,JSON.stringify(x.details||{})].join(' ').toLowerCase().includes(q));
+    el.innerHTML=rows.map(x=>{
+      const detail=JSON.stringify(x.details||{});
+      return '<div class="ops-row"><strong>'+esc(String(x.action||'Activity').replace(/_/g,' '))+'</strong><div class="ops-muted">'+esc(x.entity_table||'Record')+' · '+esc(x.entity_id||'—')+' · '+esc(new Date(x.created_at).toLocaleString())+'</div><div class="ops-muted">Actor: '+esc(x.actor_user_id?String(x.actor_user_id).slice(0,8)+'…':'System')+'</div><details><summary>Event details</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+esc(detail)+'</pre></details></div>';
+    }).join('')||'No audit events match this filter.';
+  }
+  function exportAuditLog(){
+    const q=(document.getElementById('wlOpsAuditSearch')?.value||'').trim().toLowerCase();
+    const rows=auditEvents.filter(x=>!q||[x.action,x.entity_table,x.entity_id,x.actor_user_id,JSON.stringify(x.details||{})].join(' ').toLowerCase().includes(q));
+    if(!rows.length)return say('There are no visible audit events to export.',true);
+    const keys=['created_at','action','entity_table','entity_id','actor_user_id','details'];
+    const cell=v=>{let s=typeof v==='object'?JSON.stringify(v):String(v??'');if(/^[=+@\\-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+    const csv=[keys.join(','),...rows.map(r=>keys.map(k=>cell(r[k])).join(','))].join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='white-lion-audit-trail-'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);say(rows.length+' audit event(s) exported.');
+  }
+
   window.addEventListener('whiteLionCloudReady',()=>init().catch(e=>say(e.message,true)));
   window.addEventListener('whiteLionWorkspaceChanged',()=>{stopScanner();setTimeout(()=>init().catch(e=>say(e.message,true)),0);});
   window.addEventListener('whiteLionBranchChanged',()=>{if(client&&business){const current=api?.getSelectedBranch?.()?.id;if(current&&document.getElementById('wlOpsSource'))document.getElementById('wlOpsSource').value=current;renderTransferStock();renderBatches();renderAdjustments();renderPendingCount();}});
