@@ -1,5 +1,5 @@
-const CACHE='white-lion-sme-v25';
-const FILES=['./','./index.html','./manifest.webmanifest','./cloud.js?v=19','./operations.js?v=7'];
+const CACHE='white-lion-sme-v26';
+const FILES=['./','./index.html','./manifest.webmanifest','./cloud.js?v=19','./operations.js?v=8'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return response}).catch(()=>caches.match('./index.html'))))});
