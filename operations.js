@@ -4,20 +4,28 @@
   let api,client,business,memberRole=null,scannerStream=null,products=[],branchesCache=[];
   const css=document.createElement('style');
   css.textContent=`
-    #wlOpsPanel{margin-top:12px;padding:14px;background:#14233b;border:1px solid #52627b;border-radius:12px;color:#fff;font-size:12px}
-    #wlOpsPanel h3{color:#f0d28b;font-size:14px;margin:0 0 8px}
-    #wlOpsPanel h4{margin:12px 0 6px;color:#f0d28b}
-    #wlOpsPanel input,#wlOpsPanel select,#wlOpsPanel textarea{width:100%;min-width:0;padding:9px;margin:4px 0;border:1px solid #52627b;border-radius:8px;background:#101b31;color:#fff}
-    #wlOpsPanel button{border:0;border-radius:8px;padding:8px 10px;margin:4px 4px 4px 0;background:#d6ad57;color:#152238;font-weight:700}
-    #wlOpsPanel button:disabled{opacity:.5}
-    #wlOpsPanel .ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-    #wlOpsPanel .ops-muted{color:#bac6d8;font-size:10px;overflow-wrap:anywhere}
-    #wlOpsPanel .ops-row{padding:8px 0;border-top:1px solid #40516d}
-    #wlOpsPanel .ops-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
-    #wlOpsPanel .ops-tile{background:#203653;border-radius:8px;padding:8px}
-    #wlOpsPanel .ops-tile strong{display:block;font-size:14px;color:#f0d28b}
-    #wlOpsPanel video{width:100%;max-height:210px;background:#080f1b;border-radius:8px}
-    @media(max-width:560px){#wlOpsPanel .ops-grid{grid-template-columns:1fr}#wlOpsPanel .ops-summary{grid-template-columns:1fr 1fr}}
+    #wlOpsPanel{margin-top:16px;padding:20px;background:#fff;border:1px solid #e2ebe5;border-radius:16px;color:#203b2b;font-size:12px;box-shadow:0 8px 26px rgba(12,55,34,.055)}
+    #wlOpsPanel h3{color:#075b35;font-size:15px;font-weight:800;letter-spacing:.2px;margin:0 0 10px}
+    #wlOpsPanel h4{margin:18px 0 8px;color:#075b35;font-size:12px;font-weight:800;letter-spacing:.15px}
+    #wlOpsPanel summary{cursor:pointer;list-style:none;padding:13px 15px;margin:8px 0;border:1px solid #e3ebe5;border-radius:11px;background:linear-gradient(110deg,#f5faf6,#fff);color:#17432b;font-weight:800;font-size:12px}
+    #wlOpsPanel summary::-webkit-details-marker{display:none}
+    #wlOpsPanel summary:after{content:'+';float:right;color:#0072c6;font-size:16px;line-height:12px}
+    #wlOpsPanel details[open]>summary:after{content:'−'}
+    #wlOpsPanel details[open]>summary{border-color:#cfe5d5;background:#eff8f1}
+    #wlOpsPanel input,#wlOpsPanel select,#wlOpsPanel textarea{width:100%;min-width:0;padding:10px 11px;margin:4px 0;border:1px solid #dce8df;border-radius:9px;background:#fff;color:#203b2b;font:inherit}
+    #wlOpsPanel input:focus,#wlOpsPanel select:focus,#wlOpsPanel textarea:focus{outline:0;border-color:#62b77b;box-shadow:0 0 0 3px rgba(30,181,58,.11)}
+    #wlOpsPanel button{border:1px solid #087a43;border-radius:9px;padding:9px 12px;margin:5px 5px 5px 0;background:linear-gradient(135deg,#087a43,#075b35);color:#fff;font-weight:750;font-size:11px;box-shadow:0 4px 10px rgba(8,122,67,.12)}
+    #wlOpsPanel button:hover{filter:brightness(1.04);transform:translateY(-1px)}
+    #wlOpsPanel button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    #wlOpsPanel .ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    #wlOpsPanel .ops-muted{color:#718078;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
+    #wlOpsPanel .ops-row{padding:11px 2px;border-top:1px solid #e8eee9;color:#31483a;line-height:1.55}
+    #wlOpsPanel .ops-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+    #wlOpsPanel .ops-tile{background:#f1f8f3;border:1px solid #e0eee4;border-radius:10px;padding:11px;color:#617467}
+    #wlOpsPanel .ops-tile strong{display:block;font-size:15px;color:#075b35;margin-top:4px}
+    #wlOpsPanel video{width:100%;max-height:210px;background:#102c1d;border-radius:10px}
+    #wlOpsPanel .ops-row button{padding:6px 9px}
+    @media(max-width:560px){#wlOpsPanel{padding:14px;border-radius:14px}#wlOpsPanel .ops-grid{grid-template-columns:1fr}#wlOpsPanel .ops-summary{grid-template-columns:1fr 1fr}#wlOpsPanel summary{padding:12px}}
   `;
   document.head.appendChild(css);
   const money=n=>(business?.currency_code||'SLE')+' '+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
