@@ -303,7 +303,7 @@ begin
  if auth.uid() is null then raise exception 'Authentication required'; end if;
  select role into v_role from public.business_members
  where business_id=p_business_id and user_id=auth.uid() and is_active;
- if not found or v_role not in ('owner','admin','manager','storekeeper') then
+ if not public.has_business_role(p_business_id,array['owner','admin','manager','storekeeper']::public.business_role[]) then
    raise exception 'Not authorised to receive stock batches';
  end if;
  if v_role='storekeeper' and not exists(select 1 from public.branch_members
