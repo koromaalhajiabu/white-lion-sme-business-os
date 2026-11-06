@@ -432,6 +432,93 @@ tbody tr:hover{background:#f8fcf9}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
+
+
+/* PREMIUM WORKSPACE PASS — reports, organisation profile and record management */
+#view:has(.report-kpis) .report-kpi{
+  position:relative;overflow:hidden;padding:18px 17px 16px;
+  border:1px solid #dcebe1;border-radius:15px;
+  background:linear-gradient(145deg,#fff 0%,#f8fcf9 100%);
+  box-shadow:0 8px 22px rgba(7,91,53,.055);
+}
+#view:has(.report-kpis) .report-kpi:before{
+  content:"";position:absolute;inset:0 auto 0 0;width:3px;
+  background:linear-gradient(180deg,#1eb53a,#0072c6);
+}
+#view:has(.report-kpis) .report-kpi span{font-size:10px;letter-spacing:.35px;color:#61796b}
+#view:has(.report-kpis) .report-kpi b{font-size:clamp(18px,2vw,24px);color:#075f35;letter-spacing:-.7px}
+#view:has(.report-kpis) .report-kpi small{color:#819187;font-size:10px}
+#view:has(.report-kpis) .report-chart-panel,
+#view:has(.report-kpis) .report-lower>.panel{border-color:#deebe2;box-shadow:0 9px 25px rgba(7,91,53,.055)}
+#view:has(.report-kpis) .sales-chart-track{background:#edf5ef}
+#view:has(.report-kpis) .sales-chart-bar{background:linear-gradient(180deg,#1eb53a,#087a43);box-shadow:0 3px 9px rgba(8,122,67,.16)}
+#view:has(.report-kpis) .expense-track{background:#edf3f7}
+#view:has(.report-kpis) .expense-track i{background:linear-gradient(90deg,#087a43,#1eb53a)}
+#view:has(.report-kpis) .report-net{color:#087a43}
+#view:has(.report-kpis) .chart-foot{border-color:#e5eee8}
+#view:has(.report-kpis) #csvExport{background:#087a43;border-color:#087a43;color:#fff}
+#view:has(.report-kpis) #csvExport:hover{background:#075f35}
+
+#view:has(#settingsForm) .page-title{padding:2px 0 15px;border-bottom:1px solid #e2ece5}
+#view:has(#settingsForm) .panel{border:1px solid #dfeae3;box-shadow:0 9px 26px rgba(7,91,53,.055)}
+#view:has(#settingsForm) .notice{
+  color:#315f43;background:linear-gradient(100deg,#eff9f1,#f4f9fc);
+  border:1px solid #d7eadd;border-left:4px solid #1eb53a;
+  border-radius:11px;padding:13px 15px;line-height:1.65;
+}
+#view:has(#settingsForm) #settingsForm .form-grid{gap:17px}
+#view:has(#settingsForm) #settingsForm .field label{
+  color:#426451;font-size:10px;font-weight:800;letter-spacing:.45px;
+}
+#view:has(#settingsForm) #settingsForm input,
+#view:has(#settingsForm) #settingsForm select{
+  min-height:45px;border-color:#dce8df;background:#fff;
+}
+#view:has(#settingsForm) #settingsForm button{min-height:43px;padding-inline:19px}
+#view:has(#settingsForm) .panel:has(#backupBtn){
+  background:linear-gradient(135deg,#fff 0%,#f6fbf7 100%);
+}
+#view:has(#settingsForm) .panel:has(#backupBtn) h3{color:#075f35}
+#view:has(#settingsForm) #backupBtn{border-color:#cfe2d4;color:#075f35}
+#view:has(#settingsForm) label[for="restoreFile"]{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #0072c6;border-radius:10px;background:#0072c6;color:#fff;
+  padding:10px 15px;font-size:12px;font-weight:750;cursor:pointer;
+}
+
+#view:has(#addBtn) .catalogue-toolbar{
+  align-items:center;padding:12px;border:1px solid #e0ebe4;
+  border-radius:13px;background:linear-gradient(100deg,#f5faf6,#fff);
+}
+#view:has(#addBtn) .catalogue-toolbar .pill{margin-left:auto}
+#view:has(#addBtn) #tableArea .table-wrap{
+  border:1px solid #e4ece6;border-radius:12px;overflow:auto;
+}
+#view:has(#addBtn) #tableArea th{
+  background:#f1f8f3;color:#557463;border-bottom-color:#dfebe2;
+}
+#view:has(#addBtn) #tableArea td{border-bottom-color:#edf3ef}
+#view:has(#addBtn) #tableArea tbody tr:hover{background:#f7fbf8}
+#view:has(#addBtn) .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+#view:has(#addBtn) .row-actions .btn{white-space:nowrap}
+#view:has(#addBtn) #addBtn{background:#087a43;border-color:#087a43;color:#fff}
+#view:has(#addBtn) #filter{min-height:41px}
+
+@media(max-width:720px){
+  #view:has(.report-kpis) .report-kpi{padding:13px 11px}
+  #view:has(.report-kpis) .report-kpi b{font-size:17px}
+  #view:has(#settingsForm) .panel{padding:14px}
+  #view:has(#settingsForm) #settingsForm .form-grid{gap:13px}
+  #view:has(#settingsForm) #settingsForm button{width:100%}
+  #view:has(#settingsForm) .panel:has(#backupBtn) .toolbar{display:grid;grid-template-columns:1fr 1fr}
+  #view:has(#settingsForm) #backupBtn,
+  #view:has(#settingsForm) label[for="restoreFile"]{width:100%;text-align:center}
+  #view:has(#addBtn) .catalogue-toolbar .pill{margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){
+  #view:has(.report-kpis) .report-kpi{transition:none}
+}
+
 </style>
 </head>
 <body>
