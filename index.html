@@ -519,6 +519,58 @@ tbody tr:hover{background:#f8fcf9}
   #view:has(.report-kpis) .report-kpi{transition:none}
 }
 
+
+/* USER-SELECTABLE LIGHT / DARK APPEARANCE */
+html[data-theme="dark"]{
+ color-scheme:dark;
+ --bg:#101722;--ink:#e8edf5;--muted:#a3afc0;--line:#2b3748;--white:#182333;
+ --shadow:0 8px 26px rgba(0,0,0,.22);--shadow-hover:0 16px 38px rgba(0,0,0,.3);
+}
+html[data-theme="dark"] body{background:#101722;color:#e8edf5}
+html[data-theme="dark"] .topbar{background:rgba(20,30,44,.96);border-color:#2b3748;color:#e8edf5}
+html[data-theme="dark"] .crumb,
+html[data-theme="dark"] .welcome h1,
+html[data-theme="dark"] .page-title h1,
+html[data-theme="dark"] .stat strong,
+html[data-theme="dark"] .panel h3,
+html[data-theme="dark"] .quick b{color:#e8edf5}
+html[data-theme="dark"] .stat,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .module-card,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .quick,
+html[data-theme="dark"] .report-box{background:#182333;border-color:#2b3748;color:#e8edf5;box-shadow:var(--shadow)}
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .table-wrap{border-color:#2b3748}
+html[data-theme="dark"] th{background:#202d40;color:#aebbd0;border-color:#334156}
+html[data-theme="dark"] td{color:#d4dce8;border-color:#2b3748}
+html[data-theme="dark"] tbody tr:hover{background:#202d40}
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] .search,
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .field textarea,
+html[data-theme="dark"] .inventory-filter{background:#202d40;color:#e8edf5;border-color:#3a485d}
+html[data-theme="dark"] .btn.primary{background:#cda85d;color:#17243a;border-color:#cda85d}
+html[data-theme="dark"] .btn.gold{color:#17243a}
+html[data-theme="dark"] .field label,
+html[data-theme="dark"] .panel-sub,
+html[data-theme="dark"] .welcome p,
+html[data-theme="dark"] .page-title p,
+html[data-theme="dark"] .stat-head,
+html[data-theme="dark"] .stat small{color:#a3afc0}
+html[data-theme="dark"] .modal-back{background:rgba(0,0,0,.78)}
+html[data-theme="dark"] .modal-head h2{color:#e8edf5}
+html[data-theme="dark"] .x{background:#2b3748;color:#e8edf5}
+html[data-theme="dark"] .tag,
+html[data-theme="dark"] .report-box,
+html[data-theme="dark"] .notice{background:#202d40;color:#d8e0ec;border-color:#3a485d}
+html[data-theme="dark"] .quick:hover{background:#263449;border-color:#cda85d}
+html[data-theme="dark"] .footer{color:#8492a6}
+.theme-toggle{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:8px 11px}
+.theme-toggle span:first-child{font-size:15px;line-height:1}
+@media(max-width:720px){.theme-toggle{padding:8px 9px}.theme-toggle #themeLabel{font-size:10px}}
+
 </style>
 </head>
 <body>
@@ -553,7 +605,7 @@ tbody tr:hover{background:#f8fcf9}
 <main class="main">
 <header class="topbar">
   <div style="display:flex;align-items:center;gap:12px"><button class="btn small mobile-menu" id="menuBtn">☰</button><div class="crumb" id="crumb">Overview</div></div>
-  <div class="top-actions"><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
+  <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
 </header>
 <div class="wl-install-banner" id="wlInstallBanner" hidden><div class="wl-install-copy"><b>Install White Lion SME</b><small id="wlInstallHint">Add the business system to your home screen for quick access.</small></div><button class="wl-install-button" id="wlInstallButton" type="button">Install app</button></div>
 <section class="content" id="view"></section>
@@ -987,7 +1039,29 @@ async function restore(e){const f=e.target.files[0];if(!f)return;try{const data=
 function csv(rows){const keys=['receipt','date','customer','payment','total'];const lines=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))];const a=document.createElement('a'),blob=new Blob([lines.join('\n')],{type:'text/csv'});a.href=URL.createObjectURL(blob);a.download='white-lion-sales.csv';a.click();URL.revokeObjectURL(a.href)}
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=47',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+
+/* Persist each user's appearance preference on this device. */
+(()=>{
+ const root=document.documentElement,button=document.getElementById('themeToggle'),icon=document.getElementById('themeIcon'),label=document.getElementById('themeLabel'),meta=document.querySelector('meta[name="theme-color"]');
+ let theme='light';
+ try{theme=localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(_){}
+ const apply=next=>{
+  theme=next==='dark'?'dark':'light';
+  root.setAttribute('data-theme',theme);
+  if(icon)icon.textContent=theme==='dark'?'☀':'☾';
+  if(label)label.textContent=theme==='dark'?'Light mode':'Dark mode';
+  if(button){button.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');button.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'}
+  if(meta)meta.setAttribute('content',theme==='dark'?'#101722':'#14243d');
+ };
+ apply(theme);
+ if(button)button.addEventListener('click',()=>{
+  const next=theme==='dark'?'light':'dark';
+  apply(next);
+  try{localStorage.setItem('wl-sme-theme',next)}catch(_){}
+ });
+})();
+
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=48',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=27" defer></script>
 <script src="./operations.js?v=12" defer></script>
