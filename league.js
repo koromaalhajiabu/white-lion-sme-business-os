@@ -203,8 +203,8 @@
     }));
   }
   function bindForms(){
-    document.querySelectorAll('[data-league-form="event"]').forEach(f=>{const club=f.querySelector('[name="club_id"]'),player=f.querySelector('[name="player_id"]');club?.addEventListener('change',()=>{const rows=(cache.players||[]).filter(p=>p.club_id===club.value);player.innerHTML=selectOptions(rows,'id','full_name','Select player');});});
-    document.querySelectorAll('[data-league-form]').forEach(f=>f.addEventListener('submit',async e=>{
+    document.querySelectorAll('[data-league-form="event"]').forEach(f=>{if(f.dataset.leagueEventBound==='1')return;f.dataset.leagueEventBound='1';const club=f.querySelector('[name="club_id"]'),player=f.querySelector('[name="player_id"]');club?.addEventListener('change',()=>{const rows=(cache.players||[]).filter(p=>p.club_id===club.value);player.innerHTML=selectOptions(rows,'id','full_name','Select player');});});
+    document.querySelectorAll('[data-league-form]').forEach(f=>{if(f.dataset.leagueBound==='1')return;f.dataset.leagueBound='1';f.addEventListener('submit',async e=>{
       e.preventDefault();const kind=f.dataset.leagueForm,d=Object.fromEntries(new FormData(f).entries()),b=business(),c=client();
       await save(async()=>{
         let payload={...d,business_id:b.id};
@@ -221,7 +221,7 @@
         if(kind==='competition'){competitionId='';seasonId='';activeTab='overview'}
         if(kind==='season')seasonId='';
       },({competition:'Competition created.',season:'Season created.',club:'Club registered.',player:'Player registered.',fixture:'Fixture scheduled.',event:'Match event saved.',discipline:'Disciplinary record saved.',access:'Competition role assigned.'})[kind]);
-    }));
+    });});
   }
   async function save(work,message){
     hideNotice();try{await work();await render();notice(message)}catch(e){notice(e.message||'The change could not be saved. Check your role and database setup.')}
