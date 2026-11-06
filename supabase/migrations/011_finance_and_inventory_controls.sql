@@ -189,6 +189,74 @@ drop policy if exists adjustments_no_direct_write on public.stock_adjustments;
 create policy adjustments_no_direct_write on public.stock_adjustments for all to authenticated
 using(false) with check(false);
 
+-- Batch movement helpers. They consume tracked lots in FEFO order and
+-- preserve lot number, expiry date and unit cost when stock moves between branches.
+-- Any returned remainder represents unbatched opening or legacy stock.
+create or replace function public.consume_product_batches(
+ p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_quantity numeric
+) returns numeric
+language plpgsql security definer set search_path=''
+as $
+declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
+begin
+ if p_quantity is null or p_quantity<=0 then return 0; end if;
+ for v_batch in
+   select id,quantity_on_hand
+   from public.product_batches
+   where business_id=p_business_id and branch_id=p_branch_id
+     and product_id=p_product_id and quantity_on_hand>0
+   order by expiry_date asc nulls last,created_at asc,id
+   for update
+ loop
+   exit when v_remaining<=0;
+   v_take:=least(v_remaining,v_batch.quantity_on_hand);
+   update public.product_batches set quantity_on_hand=quantity_on_hand-v_take,updated_at=now()
+   where id=v_batch.id;
+   v_remaining:=v_remaining-v_take;
+ end loop;
+ return greatest(v_remaining,0);
+end;
+$;
+
+create or replace function public.transfer_product_batches(
+ p_business_id uuid,p_source_branch_id uuid,p_destination_branch_id uuid,
+ p_product_id uuid,p_quantity numeric
+) returns numeric
+language plpgsql security definer set search_path=''
+as $
+declare v_remaining numeric:=p_quantity; v_batch record; v_take numeric;
+begin
+ if p_quantity is null or p_quantity<=0 then return 0; end if;
+ for v_batch in
+   select id,batch_number,expiry_date,quantity_on_hand,unit_cost
+   from public.product_batches
+   where business_id=p_business_id and branch_id=p_source_branch_id
+     and product_id=p_product_id and quantity_on_hand>0
+   order by expiry_date asc nulls last,created_at asc,id
+   for update
+ loop
+   exit when v_remaining<=0;
+   v_take:=least(v_remaining,v_batch.quantity_on_hand);
+   update public.product_batches set quantity_on_hand=quantity_on_hand-v_take,updated_at=now()
+   where id=v_batch.id;
+   insert into public.product_batches(
+     business_id,branch_id,product_id,batch_number,expiry_date,quantity_on_hand,unit_cost
+   ) values(
+     p_business_id,p_destination_branch_id,p_product_id,v_batch.batch_number,
+     v_batch.expiry_date,v_take,v_batch.unit_cost
+   )
+   on conflict(branch_id,product_id,batch_number) do update
+     set quantity_on_hand=public.product_batches.quantity_on_hand+excluded.quantity_on_hand,
+         expiry_date=excluded.expiry_date,unit_cost=excluded.unit_cost,updated_at=now();
+   v_remaining:=v_remaining-v_take;
+ end loop;
+ return greatest(v_remaining,0);
+end;
+$;
+
+revoke all on function public.consume_product_batches(uuid,uuid,uuid,numeric) from public;
+revoke all on function public.transfer_product_batches(uuid,uuid,uuid,uuid,numeric) from public;
+
 create or replace function public.request_stock_adjustment(
  p_business_id uuid,p_branch_id uuid,p_product_id uuid,p_adjustment_type text,
  p_quantity numeric,p_reason text
@@ -245,6 +313,7 @@ begin
      where business_id=v.business_id and branch_id=v.branch_id and product_id=v.product_id
        and quantity_on_hand>=v.quantity;
      if not found then raise exception 'Insufficient stock for this adjustment'; end if;
+     perform public.consume_product_batches(v.business_id,v.branch_id,v.product_id,v.quantity);
    end if;
  end if;
  update public.stock_adjustments set status=case when p_approve then 'approved' else 'rejected' end,
