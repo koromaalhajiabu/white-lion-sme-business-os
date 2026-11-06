@@ -31,7 +31,7 @@
       <details open><summary>Stock transfers & approvals</summary>
         <div class="ops-grid"><select id="wlOpsSource"></select><select id="wlOpsDestination"></select><select id="wlOpsProduct"></select><input id="wlOpsTransferQty" type="number" min="0.001" step="0.001" placeholder="Quantity"></div>
         <input id="wlOpsTransferNote" placeholder="Transfer note (optional)"><button id="wlOpsTransferCreate">Submit transfer request</button>
-        <div id="wlOpsTransfers" class="ops-muted"></div><h4>Assign older offline transactions</h4><div class="ops-muted">Use this only when you know which branch handled transactions recorded before signing in. This does not change their totals.</div><select id="wlOpsPendingBranch"></select><button id="wlOpsAssignPending">Assign unassigned pending transactions</button><div id="wlOpsPendingCount" class="ops-muted"></div>
+        <div id="wlOpsTransferStock" class="ops-muted"></div><div id="wlOpsTransfers" class="ops-muted"></div><h4>Assign older offline transactions</h4><div class="ops-muted">Use this only when you know which branch handled transactions recorded before signing in. This does not change their totals.</div><select id="wlOpsPendingBranch"></select><button id="wlOpsAssignPending">Assign unassigned pending transactions</button><div id="wlOpsPendingCount" class="ops-muted"></div>
       </details>
       <details id="wlOpsFinance"><summary>Financial management & accounting</summary>
         <div id="wlOpsFinanceSummary" class="ops-summary"></div>
@@ -109,7 +109,7 @@
       Object.assign(row,row.cloudConflictSnapshot.fields||{});
       if(type==='products'&&row.cloudConflictSnapshot.branchId){
         const branchId=row.cloudConflictSnapshot.branchId;
-        await put('branchInventory',{id:String(branchId)+'|'+String(row.id),branchId,productId:row.id,quantity:Number(row.stock||0)});
+        await put('branchInventory',{id:String(branchId)+'|'+String(row.id),businessId:business.id,branchId,productId:row.id,quantity:Number(row.stock||0)});
       }
       row.cloudSyncedFor=business.id;row.cloudSyncedAt=new Date().toISOString();
     }else{
@@ -123,8 +123,9 @@
   }
   async function renderPendingCount(){
     const [sales,purchases]=await Promise.all([all('sales'),all('purchases')]);
-    const pending=[...sales.filter(x=>!x.cloudSyncedFor&&!x.branchId),...purchases.filter(x=>!x.cloudSyncedFor&&!x.branchId)];
-    const localMain=[...sales.filter(x=>!x.cloudSyncedFor&&x.branchId==='local-main'),...purchases.filter(x=>!x.cloudSyncedFor&&x.branchId==='local-main')];
+    const eligible=row=>!row.cloudSyncedFor&&(!row.localBusinessId||row.localBusinessId===business?.id);
+    const pending=[...sales.filter(x=>eligible(x)&&!x.branchId),...purchases.filter(x=>eligible(x)&&!x.branchId)];
+    const localMain=[...sales.filter(x=>eligible(x)&&x.branchId==='local-main'),...purchases.filter(x=>eligible(x)&&x.branchId==='local-main')];
     const el=document.getElementById('wlOpsPendingCount');if(el)el.textContent=pending.length+' unassigned and '+localMain.length+' local-main pending transaction(s).';
   }
   async function assignPendingTransactions(){
@@ -132,9 +133,18 @@
     if(!confirm('Assign all unassigned and local-main unsynced sales and purchases to this branch?'))return;
     let changed=0;
     for(const type of ['sales','purchases'])for(const row of await all(type)){
-      if(!row.cloudSyncedFor&&(!row.branchId||row.branchId==='local-main')){row.branchId=branchId;await put(type,row);changed++;}
+      if(!row.cloudSyncedFor&&(!row.localBusinessId||row.localBusinessId===business.id)&&(!row.branchId||row.branchId==='local-main')){row.branchId=branchId;row.localBusinessId=business.id;await put(type,row);changed++;}
     }
     say(changed+' pending transaction(s) assigned to the selected branch.');await renderPendingCount();
+  }
+  async function renderTransferStock(){
+    const el=document.getElementById('wlOpsTransferStock');if(!el||!client||!business)return;
+    const branchId=document.getElementById('wlOpsSource')?.value;
+    if(!branchId){el.textContent='Select a source branch to inspect available stock.';return;}
+    const {data,error}=await client.from('branch_inventory').select('product_id,quantity_on_hand').eq('business_id',business.id).eq('branch_id',branchId).order('updated_at',{ascending:false});
+    if(error){el.textContent='Source stock unavailable: '+error.message;return;}
+    const names=new Map(products.map(p=>[p.id,p.name]));
+    el.innerHTML='<div class="ops-muted">Available source stock</div>'+((data||[]).map(x=>'<div class="ops-row">'+esc(names.get(x.product_id)||x.product_id)+' · '+Number(x.quantity_on_hand||0).toLocaleString()+' available</div>').join('')||'<div class="ops-muted">No stock is recorded at this source branch.</div>');
   }
   async function createTransfer(){
     const source=document.getElementById('wlOpsSource').value,dest=document.getElementById('wlOpsDestination').value;
@@ -256,7 +266,7 @@
   }
   window.addEventListener('whiteLionCloudReady',()=>init().catch(e=>say(e.message,true)));
   window.addEventListener('whiteLionWorkspaceChanged',()=>{stopScanner();setTimeout(()=>init().catch(e=>say(e.message,true)),0);});
-  window.addEventListener('whiteLionBranchChanged',()=>{if(client&&business){renderBatches();renderAdjustments();}});
+  window.addEventListener('whiteLionBranchChanged',()=>{if(client&&business){const current=api?.getSelectedBranch?.()?.id;if(current&&document.getElementById('wlOpsSource'))document.getElementById('wlOpsSource').value=current;renderTransferStock();renderBatches();renderAdjustments();renderPendingCount();}});
   window.addEventListener('whiteLionCloudDownloaded',()=>{if(client&&business)init().catch(e=>say(e.message,true));});
   window.addEventListener('pagehide',stopScanner);
 })();
