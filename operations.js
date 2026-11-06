@@ -48,7 +48,7 @@
       <details><summary>Advanced inventory, barcode & expiry</summary>
         <div class="ops-grid"><input id="wlOpsBarcode" placeholder="Scan or enter product barcode"><button id="wlOpsBarcodeFind">Find product</button></div><div class="ops-grid"><select id="wlOpsBarcodeProduct"></select><button id="wlOpsBarcodeSave">Save barcode to product</button></div>
         <button id="wlOpsScanStart">Open camera scanner</button><button id="wlOpsScanStop">Stop scanner</button><video id="wlOpsVideo" playsinline hidden></video><div id="wlOpsBarcodeResult" class="ops-muted"></div>
-        <h4>Receive batch / expiry tracking</h4>
+        <h4>Receive batch / expiry tracking</h4><div class="ops-muted">Tracked batches are consumed first-expiring-first-out when synced sales, stock reductions or transfers are posted. Offline activity updates cloud batch balances after sync.</div>
         <select id="wlOpsBatchProduct"></select><div class="ops-grid"><input id="wlOpsBatchNo" placeholder="Batch / lot number"><input id="wlOpsExpiry" type="date"></div>
         <div class="ops-grid"><input id="wlOpsBatchQty" type="number" min="0.001" step="0.001" placeholder="Quantity"><input id="wlOpsBatchCost" type="number" min="0" step="0.01" placeholder="Unit cost"></div>
         <button id="wlOpsBatchSave">Receive batch and add stock</button><div id="wlOpsBatches" class="ops-muted"></div>
