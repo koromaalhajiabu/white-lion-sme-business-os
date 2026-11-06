@@ -480,20 +480,93 @@
     $('wlDevStatus').textContent = 'Business membership updated and audited.';
     await loadDeveloperDashboard();
   }
+  const WL_INDUSTRY_GROUPS = [
+    {label:"Retail and trading", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting"], items:["Supermarket","Mini-market","Grocery shop","Provision store","Wholesale shop","Retail store","Boutique / clothing shop","Shoe shop","Electronics shop","Mobile phone shop","Computer and accessories shop","Furniture shop","Building materials shop","Hardware store","Paint shop","Electrical supply shop","Plumbing supply shop","Automotive spare-parts shop","Agricultural supply shop","Stationery and bookshop"]},
+    {label:"Food, hospitality and entertainment", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting","restaurant","appointments"], items:["Restaurant","Fast-food outlet","Cafeteria","Bakery","Pastry shop","Bar or lounge","Hotel","Guesthouse","Lodge","Catering business","Ice cream or beverage shop","Event and entertainment business"]},
+    {label:"Healthcare and pharmaceutical", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting","pharmacy","healthcare","compliance"], items:["Pharmacy","Medical supply store","Medical equipment supplier","Optical shop","Dental supply business","Healthcare product retailer"]},
+    {label:"Automotive and transport", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting","transport","fleet","services"], items:["Fuel station","Car dealership","Vehicle spare-parts dealer","Auto repair workshop","Tyre shop","Car wash business","Vehicle rental company","Transport and logistics company","Delivery business"]},
+    {label:"Construction and industrial", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting","manufacturing","projects"], items:["Construction company","Building contractor","Hardware wholesaler","Cement distributor","Sand and gravel supplier","Steel and iron merchant","Furniture manufacturer","Manufacturing company","Industrial equipment supplier","Welding and fabrication workshop"]},
+    {label:"Professional and personal services", modules:["sales_pos","customers","suppliers","expenses","employees","accounting","services","appointments","projects"], items:["Hair salon","Barbershop","Beauty salon","Spa","Laundry and dry-cleaning business","Cleaning company","Security service company","Repair and maintenance company","Computer repair shop","Printing business","Photography studio","Consultancy firm","Marketing and advertising agency"]},
+    {label:"Education and training", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","employees","accounting","school"], items:["Private school","Training centre","Vocational institution","Computer training centre","Driving school","Educational supply shop","Bookshop and learning-material distributor"]},
+    {label:"Agriculture and fisheries", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","accounting","manufacturing"], items:["Farm business","Poultry farm","Livestock business","Fish farm","Fishing supply business","Agricultural produce wholesaler","Food processing business"]},
+    {label:"Property and rental", modules:["customers","suppliers","expenses","accounting","property","projects","services"], items:["Real estate agency","Property management company","Equipment rental business","Vehicle hire business","Event equipment rental company","Property maintenance company"]},
+    {label:"Financial and administrative services", modules:["customers","expenses","employees","accounting","compliance","services"], items:["Accounting and bookkeeping firm","Insurance agency","Microfinance business","Cooperative society","Business administration service provider"]},
+    {label:"General and multi-industry", modules:["sales_pos","inventory","purchasing","customers","suppliers","expenses","employees","accounting","services","projects"], items:["General business","Multi-industry business","Other / not listed"]}
+  ];
+
+  function showBusinessSetupDialog() {
+    return new Promise(resolve => {
+      const existing = document.getElementById('wlIndustrySetupModal');
+      if (existing) existing.remove();
+      const modal = document.createElement('div');
+      modal.id = 'wlIndustrySetupModal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(7,17,32,.72);display:flex;align-items:center;justify-content:center;padding:14px;font-family:inherit';
+      const groups = WL_INDUSTRY_GROUPS.map(group =>
+        '<optgroup label="' + escapeHtml(group.label) + '">' +
+        group.items.map(item => '<option value="' + escapeHtml(item) + '">' + escapeHtml(item) + '</option>').join('') +
+        '</optgroup>'
+      ).join('');
+      modal.innerHTML = '<form id="wlIndustrySetupForm" style="width:min(520px,100%);max-height:92vh;overflow:auto;background:#fff;color:#17243a;border-radius:18px;padding:22px;box-shadow:0 25px 80px #0005">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:5px"><h2 style="margin:0;font-size:19px">Register a business</h2><button type="button" id="wlIndustrySetupClose" aria-label="Close" style="border:0;border-radius:8px;padding:7px 11px;background:#eef1f5;font-size:18px">×</button></div>' +
+        '<p style="margin:0 0 16px;color:#748197;font-size:12px">Choose the business type. White Lion SME will activate the recommended modules for this workspace.</p>' +
+        '<label style="display:block;font-size:11px;font-weight:700;margin:12px 0 6px">Business / organisation name</label><input id="wlIndustryBusinessName" required minlength="2" maxlength="120" placeholder="Enter business name" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #dfe5ee;border-radius:10px">' +
+        '<label style="display:block;font-size:11px;font-weight:700;margin:14px 0 6px">Industry / business type</label><select id="wlIndustryBusinessType" required style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #dfe5ee;border-radius:10px;background:#fff">' + groups + '</select>' +
+        '<label style="display:block;font-size:11px;font-weight:700;margin:14px 0 6px">Default currency code</label><input id="wlIndustryCurrency" required maxlength="3" value="SLE" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #dfe5ee;border-radius:10px;text-transform:uppercase">' +
+        '<div id="wlIndustryModulePreview" style="margin-top:13px;padding:11px;border-radius:10px;background:#f5f7fa;color:#65738a;font-size:11px;line-height:1.6"></div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button type="button" id="wlIndustrySetupCancel" style="border:1px solid #dfe5ee;background:#fff;border-radius:9px;padding:10px 14px">Cancel</button><button type="submit" style="border:0;background:#14243d;color:#fff;border-radius:9px;padding:10px 16px;font-weight:700">Create workspace</button></div></form>';
+      document.body.appendChild(modal);
+      const form = modal.querySelector('#wlIndustrySetupForm');
+      const type = modal.querySelector('#wlIndustryBusinessType');
+      const preview = modal.querySelector('#wlIndustryModulePreview');
+      const updatePreview = () => {
+        const group = WL_INDUSTRY_GROUPS.find(g => g.items.includes(type.value));
+        const modules = ['core', ...(group?.modules || [])];
+        preview.innerHTML = '<strong>Modules to activate</strong><br>' + modules.map(escapeHtml).join(' · ') +
+          '<br><span style="color:#8a6d36">Specialized workflows may still require configuration and testing.</span>';
+      };
+      const close = value => { modal.remove(); resolve(value); };
+      type.addEventListener('change', updatePreview);
+      updatePreview();
+      modal.querySelector('#wlIndustrySetupClose').onclick = () => close(null);
+      modal.querySelector('#wlIndustrySetupCancel').onclick = () => close(null);
+      modal.addEventListener('click', e => { if (e.target === modal) close(null); });
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const group = WL_INDUSTRY_GROUPS.find(g => g.items.includes(type.value));
+        close({
+          name: modal.querySelector('#wlIndustryBusinessName').value.trim(),
+          industry: type.value,
+          currency: modal.querySelector('#wlIndustryCurrency').value.trim().toUpperCase(),
+          modules: ['core', ...(group?.modules || [])]
+        });
+      });
+      modal.querySelector('#wlIndustryBusinessName').focus();
+    });
+  }
+
   async function createBusiness() {
-    const name = prompt('Enter the business or organisation name:');
-    if (!name || name.trim().length < 2) return;
-    const industry = prompt('Industry profile (e.g. Retail, Pharmacy, Restaurant, Services):', 'Multi-industry') || 'Multi-industry';
-    const currency = prompt('Default currency code:', 'SLE') || 'SLE';
+    const setup = await showBusinessSetupDialog();
+    if (!setup) return;
+    if (setup.name.length < 2 || !/^[A-Z]{3}$/.test(setup.currency)) {
+      return say('Enter a business name and a valid three-letter currency code.');
+    }
     say('Creating business workspace…');
     const { data, error } = await client.rpc('create_business', {
-      p_name: name.trim(), p_industry: industry.trim(), p_currency_code: currency.trim().toUpperCase()
+      p_name: setup.name, p_industry: setup.industry, p_currency_code: setup.currency
     });
     if (error) return say('Could not create workspace: ' + error.message);
+    const { error: moduleError } = await client.from('business_industry_modules')
+      .update({ is_enabled: true })
+      .eq('business_id', data)
+      .in('module_key', setup.modules);
     await loadBusinesses();
     const created = (window.__wlBusinesses || []).find(b => b.id === data);
     if (created) await selectBusiness(created);
-    say('Business workspace created successfully.');
+    if (moduleError) {
+      say('Workspace created, but industry modules could not be activated: ' + moduleError.message + '. Ask the developer to verify the module permissions.');
+      return;
+    }
+    say('Business workspace created. ' + setup.modules.length + ' industry modules activated.');
   }
 
   function syncStatus(message) {
