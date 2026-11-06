@@ -88,6 +88,9 @@ begin
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
+  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper','accountant']::public.business_role[]) then
+    raise exception 'Active business membership and platform access required';
+  end if;
   if not found then raise exception 'Active business membership required'; end if;
   if v_role not in ('owner','admin','manager','cashier','storekeeper','accountant') then
     raise exception 'Not authorised to synchronise records';
@@ -303,6 +306,9 @@ begin
   where bm.business_id = p_business_id
     and bm.user_id = auth.uid()
     and bm.is_active = true;
+  if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
+    raise exception 'Active business membership and platform access required';
+  end if;
   if not public.has_business_role(p_business_id,array['owner','admin','manager','cashier','storekeeper']::public.business_role[]) then
     raise exception 'Active business membership and platform access required';
   end if;
