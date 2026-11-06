@@ -307,7 +307,7 @@
     if(!rows.length)return say('There are no visible audit events to export.',true);
     const keys=['created_at','action','entity_table','entity_id','actor_user_id','details'];
     const cell=v=>{let s=typeof v==='object'?JSON.stringify(v):String(v??'');if(/^[=+@\\-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
-    const csv=[keys.join(','),...rows.map(r=>keys.map(k=>cell(r[k])).join(','))].join('\\n');
+    const csv=[keys.join(','),...rows.map(r=>keys.map(k=>cell(r[k])).join(','))].join('\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download='white-lion-audit-trail-'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);say(rows.length+' audit event(s) exported.');
   }
