@@ -586,6 +586,37 @@ html[data-theme="dark"] .footer{color:#8492a6}
 #appearanceBarToggle{border:0;border-radius:9px;background:#075b35;color:#fff;font-weight:800;padding:10px 15px;min-height:40px;white-space:nowrap}
 html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-color:#3a485d}html[data-theme="dark"] #appearanceBar small{color:#a3afc0}
 
+
+/* Consistent dark surfaces across every workspace and dynamically rendered module. */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .main,
+html[data-theme="dark"] .content{background:#101722;color:#e8edf5}
+html[data-theme="dark"] #view .panel,
+html[data-theme="dark"] #view .stat,
+html[data-theme="dark"] #view .module-card,
+html[data-theme="dark"] #view .quick,
+html[data-theme="dark"] #view .report-box,
+html[data-theme="dark"] #view .notice,
+html[data-theme="dark"] #view .card,
+html[data-theme="dark"] #view .table-wrap,
+html[data-theme="dark"] #view .toolbar,
+html[data-theme="dark"] #view .empty{background-color:#182333;color:#e8edf5;border-color:#35445a}
+html[data-theme="dark"] #view h1,
+html[data-theme="dark"] #view h2,
+html[data-theme="dark"] #view h3,
+html[data-theme="dark"] #view h4,
+html[data-theme="dark"] #view p,
+html[data-theme="dark"] #view label,
+html[data-theme="dark"] #view strong,
+html[data-theme="dark"] #view td,
+html[data-theme="dark"] #view th{color:#e0e7f0}
+html[data-theme="dark"] #view input,
+html[data-theme="dark"] #view select,
+html[data-theme="dark"] #view textarea{background:#202d40!important;color:#e8edf5!important;border-color:#46566d!important}
+html[data-theme="dark"] #view input::placeholder,
+html[data-theme="dark"] #view textarea::placeholder{color:#9eacc0}
+html[data-theme="dark"] #view button:not(.primary):not(.danger){background:#202d40;color:#e8edf5;border-color:#46566d}
+html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-color:#3a485d}
 </style>
 </head>
 <body>
@@ -1057,31 +1088,39 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-/* Persist each user's appearance preference on this device. */
+/* Reliable delegated appearance control: works for all three theme buttons. */
 (()=>{
- const root=document.documentElement,buttons=[document.getElementById('themeToggle'),document.getElementById('sideThemeToggle'),document.getElementById('appearanceBarToggle')].filter(Boolean),icon=document.getElementById('themeIcon'),label=document.getElementById('themeLabel'),sideLabel=document.getElementById('sideThemeLabel'),sideButton=document.getElementById('sideThemeToggle'),barLabel=document.getElementById('appearanceBarLabel'),barButton=document.getElementById('appearanceBarToggle'),meta=document.querySelector('meta[name="theme-color"]');
- let theme='light';
- try{theme=localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(_){}
+ const root=document.documentElement,meta=document.querySelector('meta[name="theme-color"]');
+ const read=()=>{try{return localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(_){return root.getAttribute('data-theme')==='dark'?'dark':'light'}};
  const apply=next=>{
-  theme=next==='dark'?'dark':'light';
+  const theme=next==='dark'?'dark':'light';
   root.setAttribute('data-theme',theme);
+  root.style.colorScheme=theme;
+  if(meta)meta.setAttribute('content',theme==='dark'?'#101722':'#14243d');
+  const icon=document.getElementById('themeIcon');
+  const label=document.getElementById('themeLabel');
+  const sideLabel=document.getElementById('sideThemeLabel');
+  const barLabel=document.getElementById('appearanceBarLabel');
+  const barButton=document.getElementById('appearanceBarToggle');
+  const sideButton=document.getElementById('sideThemeToggle');
   if(icon)icon.textContent=theme==='dark'?'☀':'☾';
   if(label)label.textContent=theme==='dark'?'Light mode':'Dark mode';
   if(sideLabel)sideLabel.textContent=theme==='dark'?'Dark mode':'Light mode';
   if(barLabel)barLabel.textContent='Current theme: '+(theme==='dark'?'Dark mode':'Light mode');
   if(barButton)barButton.textContent='Switch to '+(theme==='dark'?'light':'dark')+' mode';
   if(sideButton){sideButton.textContent=theme==='dark'?'☀':'☾';sideButton.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode')}
-  buttons.forEach(button=>{button.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');button.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'});
-  if(meta)meta.setAttribute('content',theme==='dark'?'#101722':'#14243d');
+  ['themeToggle','sideThemeToggle','appearanceBarToggle'].forEach(id=>{const el=document.getElementById(id);if(el){el.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');el.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'}});
+  try{localStorage.setItem('wl-sme-theme',theme)}catch(_){}
  };
- apply(theme);
- buttons.forEach(button=>button.addEventListener('click',()=>{
-  const next=theme==='dark'?'light':'dark';
-  apply(next);
-  try{localStorage.setItem('wl-sme-theme',next)}catch(_){}
- }));
+ window.wlSetAppearance=apply;
+ apply(read());
+ document.addEventListener('click',event=>{
+  const button=event.target.closest('#themeToggle,#sideThemeToggle,#appearanceBarToggle');
+  if(!button)return;
+  event.preventDefault();
+  apply(root.getAttribute('data-theme')==='dark'?'light':'dark');
+ },true);
 })();
-
 if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=50',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=27" defer></script>
