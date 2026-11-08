@@ -1,5 +1,5 @@
 name: Supabase off-site backup
-# Database URI diagnostics are deliberately separated from credential testing.
+# Database URI is parsed without a generic URL parser to support reserved password characters.
 
 on:
   workflow_dispatch:
