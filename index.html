@@ -4,24 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>
-/* TEMPORARY DIAGNOSTIC — reports any script error visibly on the page. Safe to remove later. */
+/* TEMPORARY DIAGNOSTIC v2 — reports any script error visibly on the page. Safe to remove later. */
 window.__wlErrors = [];
 window.addEventListener('error', function (e) {
   window.__wlErrors.push((e.message || 'Unknown error') + ' @ ' + (e.filename || '?') + ':' + e.lineno + ':' + e.colno);
 });
-window.addEventListener('DOMContentLoaded', function () {
-  setTimeout(function () {
-    var box = document.createElement('div');
-    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#b00020;color:#fff;font:11px monospace;padding:10px;max-height:45vh;overflow:auto;white-space:pre-wrap';
-    var lines = [];
-    lines.push('cloud.js loaded: ' + (typeof window.whiteLionCloud !== 'undefined'));
-    lines.push('wlCloudBox in DOM: ' + !!document.getElementById('wlCloudBox'));
-    lines.push('errors: ' + window.__wlErrors.length);
-    if (window.__wlErrors.length) lines = lines.concat(window.__wlErrors);
-    box.textContent = 'WL DEBUG\n' + lines.join('\n');
-    document.body.prepend(box);
-  }, 1500);
-});
+function wlShowDebugBanner() {
+  var box = document.getElementById('wlDebugBanner');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'wlDebugBanner';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:13px monospace;padding:12px;max-height:60vh;overflow:auto;white-space:pre-wrap;border-bottom:4px solid #fff';
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.style.cssText = 'display:block;margin-top:8px;padding:6px 10px;background:#fff;color:#b00020;border:0;border-radius:4px;font-weight:700';
+    closeBtn.onclick = function () { box.remove(); };
+    box.appendChild(document.createElement('div')).id = 'wlDebugText';
+    box.appendChild(closeBtn);
+    (document.body || document.documentElement).prepend(box);
+  }
+  var text = document.getElementById('wlDebugText');
+  var lines = [];
+  lines.push('WL DEBUG v2 — ' + new Date().toLocaleTimeString());
+  lines.push('cloud.js loaded: ' + (typeof window.whiteLionCloud !== 'undefined'));
+  lines.push('wlCloudBox in DOM: ' + !!document.getElementById('wlCloudBox'));
+  lines.push('errors: ' + window.__wlErrors.length);
+  if (window.__wlErrors.length) lines = lines.concat(window.__wlErrors);
+  text.textContent = lines.join('\n');
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wlShowDebugBanner);
+} else {
+  wlShowDebugBanner();
+}
+window.addEventListener('load', function () { setTimeout(wlShowDebugBanner, 2000); });
 </script>
 <meta name="theme-color" content="#075b35">
 <meta name="description" content="White Lion SME Business Operating System">
@@ -1144,7 +1160,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=66',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=67',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
