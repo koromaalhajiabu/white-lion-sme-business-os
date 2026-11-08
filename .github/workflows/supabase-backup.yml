@@ -22,17 +22,15 @@ jobs:
 
       - name: Verify required secrets
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
-          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret" && exit 1)
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret" && exit 1)
           test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
 
       - name: Export Supabase table data and Auth user metadata via service-role API
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://nclncqlgnxnijlumznnt.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BACKUP_DATA_DIR: backup/data
         run: python3 scripts/backup_supabase_api.py
