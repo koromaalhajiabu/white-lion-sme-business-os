@@ -1543,6 +1543,8 @@ revoke all on function public.match_bank_statement_line(uuid,uuid) from public;
 grant execute on function public.import_bank_statement_lines(uuid,jsonb) to authenticated;
 grant execute on function public.match_bank_statement_line(uuid,uuid) to 
 
+
+
 -- ============================================================
 -- MIGRATION 018: DOUBLE-ENTRY GENERAL LEDGER
 -- Kept in sync with supabase/migrations/018_double_entry_general_ledger.sql
@@ -1955,9 +1957,18 @@ begin
   where a.business_id=p_business_id and a.is_active
     and a.account_type in ('asset','liability','equity')
   group by a.id,a.account_code,a.account_name,a.account_type,a.normal_balance
-  order by a.account_type,a.account_code;
+  union all
+  select '3999'::text,'Accumulated earnings (unclosed)'::text,'equity'::text,
+    coalesce(sum(case when a.account_type='income' then l.credit-l.debit
+                      else l.debit-l.credit end),0)::numeric
+  from public.chart_of_accounts a
+  join public.journal_lines l on l.account_id=a.id and l.business_id=a.business_id
+  join public.journal_entries j on j.id=l.journal_entry_id and j.business_id=l.business_id
+  where a.business_id=p_business_id and a.account_type in ('income','expense')
+    and j.status='posted' and j.journal_date<=coalesce(p_as_of,current_date)
+  order by 3,1;
 end;
-$$;
+$;
 
 create or replace function public.accounting_cash_flow(
   p_business_id uuid,p_from date default date_trunc('month',current_date)::date,p_to date default current_date
