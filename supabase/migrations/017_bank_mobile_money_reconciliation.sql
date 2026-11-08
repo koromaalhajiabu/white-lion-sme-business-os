@@ -21,6 +21,9 @@ create table if not exists public.bank_accounts (
   foreign key(branch_id,business_id) references public.branches(id,business_id) on delete set null (branch_id)
 );
 
+create unique index if not exists cashbook_entries_id_business_uidx
+  on public.cashbook_entries(id,business_id);
+
 alter table public.cashbook_entries
   add column if not exists bank_account_id uuid;
 
@@ -57,6 +60,9 @@ create table if not exists public.bank_statement_lines (
 create unique index if not exists bank_statement_external_ref_uidx
   on public.bank_statement_lines(bank_account_id,reference)
   where reference is not null and reference <> '';
+create unique index if not exists bank_statement_cashbook_match_uidx
+  on public.bank_statement_lines(matched_cashbook_entry_id)
+  where matched_cashbook_entry_id is not null;
 create index if not exists bank_statement_reconcile_idx
   on public.bank_statement_lines(business_id,bank_account_id,transaction_date,status);
 create index if not exists bank_accounts_business_idx
@@ -111,7 +117,7 @@ begin
   if not public.has_business_role(v_business_id,array['owner','admin','accountant']::public.business_role[]) then
     raise exception 'Only an owner, administrator or accountant can import statements';
   end if;
-  if jsonb_typeof(p_lines)<>'array' or jsonb_array_length(p_lines)=0 or jsonb_array_length(p_lines)>5000 then
+  if p_lines is null or jsonb_typeof(p_lines)<>'array' or jsonb_array_length(p_lines)=0 or jsonb_array_length(p_lines)>5000 then
     raise exception 'Provide between 1 and 5000 statement rows';
   end if;
   if exists (
@@ -120,7 +126,7 @@ begin
     where x.transaction_date is null
        or length(trim(coalesce(x.description,'')))=0
        or x.amount is null or x.amount<=0
-       or x.direction not in ('debit','credit')
+       or x.direction is null or x.direction not in ('debit','credit')
   ) then raise exception 'Every row needs a date, description, positive amount and debit/credit direction'; end if;
 
   insert into public.bank_statement_lines(
