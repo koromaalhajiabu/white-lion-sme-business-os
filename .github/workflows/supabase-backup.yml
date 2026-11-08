@@ -36,7 +36,14 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p backup/database
-          pg_dump "$SUPABASE_DB_URL" --format=custom --compress=6 --no-owner --no-privileges --file="backup/database/white-lion-${GITHUB_RUN_ID}.dump"
+          # Accept PostgreSQL URI strings and libpq keyword strings.
+          # libpq expects dbname=, while some connection forms use database=.
+          DB_CONN="$SUPABASE_DB_URL"
+          if [[ "$DB_CONN" == database=* ]]; then
+            DB_CONN="dbname=${DB_CONN#database=}"
+          fi
+          DB_CONN="${DB_CONN// database=/ dbname=}"
+          pg_dump "$DB_CONN" --format=custom --compress=6 --no-owner --no-privileges --file="backup/database/white-lion-${GITHUB_RUN_ID}.dump"
           pg_restore --list "backup/database/white-lion-${GITHUB_RUN_ID}.dump" > "backup/database/white-lion-${GITHUB_RUN_ID}.contents.txt"
 
       - name: Back up private business documents
