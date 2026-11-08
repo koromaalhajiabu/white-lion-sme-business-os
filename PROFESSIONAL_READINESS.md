@@ -20,11 +20,12 @@ These are repository-level findings. They do not independently prove every featu
 
 1. **A first double-entry ledger foundation is now implemented in migration 018.** It adds a chart of accounts, balanced immutable journal posting, source triggers for new cloud-synced sales/purchases/expenses/returns and obligation payments, manual journals, trial balance, income statement, balance sheet and cash-flow reports. This is not an audited accounting package: historical records are not backfilled, manual cashbook entries are not automatically journaled, new synced stock-managed sales now post COGS using moving weighted-average cost; purchases, batch receipts, approved stock adjustments and branch transfers update branch-level inventory valuation. Existing stock opens at tracked batch costs where available, otherwise product.cost_price. Historical sales are not backfilled, and opening balances and period close/reversals still need a controlled workflow. The existing reports correctly label the operating balance as indicative rather than audited profit.
 2. **Bank/mobile-money reconciliation was missing.** Migration 017 now adds a secure foundation for finance users to create bank/mobile-money accounts, import statement rows through an RPC, and match statement lines to cashbook entries. The operations control centre now includes a CSV import and matching interface. This is manual statement import; it is not a direct bank API connection. The interface still needs live Supabase and device acceptance testing.
-3. **Backup is not a full cloud backup.** The browser JSON backup covers local IndexedDB records. Supabase database exports and private Storage object bytes still need separate off-site backup and tested restoration.
+3. **Backup automation is scaffolded but not yet proven.** A GitHub Actions workflow now exports the PostgreSQL database and private `business-documents` objects, encrypts the archive, and retains the artifact for 30 days. It requires four repository Actions secrets and a successful manual run. A full restore in a separate Supabase project remains mandatory.
 4. **Offline conflict handling needs real multi-device tests.** Idempotent sync receipts exist, but test simultaneous edits, duplicate retries, partial network loss, device replacement and conflict recovery.
 5. **Financial reports are operational summaries, not audited accounts.** Do not represent the current net sales less recorded expenses figure as net profit or available cash.
 6. **Production security needs independent verification.** Test cross-business isolation with separate accounts, role escalation attempts, branch scoping, storage access, account recovery and audit coverage.
-7. **Mobile/PWA quality needs device testing.** Test install/update behaviour, offline launch, theme persistence, navigation, forms, keyboard handling, printing and small-screen tables on Android and iPhone.
+7. **Mobile/PWA quality needs device testing.** Test install/update behaviour, offline launch, theme persistence, language selection (including Arabic RTL), navigation, forms, keyboard handling, printing and small-screen tables on Android and iPhone.
+8. **Subscription billing is not implemented.** There is no verified subscription checkout, payment-provider integration, renewal handling or automatic entitlement enforcement. This must be designed with the chosen payment provider and commercial plan/pricing before being advertised.
 
 ## New changes in this release
 
@@ -38,6 +39,10 @@ These are repository-level findings. They do not independently prove every featu
 - Added the same migration to `supabase/INSTALL_ALL_OPERATIONS.sql` so the operations installer includes the new reconciliation schema and RPCs.
 - Added a finance-only reconciliation interface to the Operations Control Centre: account setup, CSV statement import, unmatched-line review and guarded matching to cashbook entries.
 - Linked new cashbook entries to a selected bank/mobile-money account so they can be reconciled later.
+- Added `.github/workflows/supabase-backup.yml` for scheduled/manual encrypted PostgreSQL and private Storage backups; it requires `SUPABASE_DB_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `BACKUP_ENCRYPTION_PASSPHRASE` GitHub Actions secrets.
+- Added `scripts/backup_supabase_storage.py` and `scripts/restore_supabase_storage.py` for private object backup and non-overwriting restoration.
+- Expanded `BACKUP_GUIDE.md` with secret configuration, checksum/HMAC verification and separate-project recovery steps.
+- Updated the README to reflect the implemented ledger and current billing/backup limitations.
 - Migrations 017, 018 and 019 are committed to GitHub. The user confirmed migration 017 reconciliation and migration 018 accounting installation/report checks. Migration 019 is committed but has not yet been applied or functionally tested. Apply migration 019 alone, then test purchases, stock receipts, sales, adjustments, transfers, inventory valuation and balanced COGS journals before relying on gross profit.
 
 ## Required acceptance tests before calling the platform production-ready
@@ -49,11 +54,13 @@ These are repository-level findings. They do not independently prove every featu
 - A statement import rejects malformed rows, skips duplicate external references, and reports inserted counts.
 - A statement line cannot be matched to another business, another bank account, a wrong amount or the wrong debit/credit direction.
 - A cashbook entry cannot be reconciled more than once.
-- A full backup and restoration are tested in a separate Supabase project, including Storage objects.
+- The scheduled backup workflow succeeds with all four secrets configured; the encrypted archive passes checksum and HMAC verification.
+- A full database and Storage restoration succeeds in a separate Supabase project, including document downloads.
+- Subscription plan, pricing, payment-provider checkout, renewals, cancellation, failed-payment handling and entitlement enforcement are tested before commercial launch.
 - Android and iPhone PWA installation, offline launch, update and theme persistence are verified.
 
 ## Release status
 
 The GitHub Actions deployment workflow for the latest dark-mode correction completed successfully. That confirms the repository workflow completed; it is not a substitute for live browser, Supabase or device acceptance testing.
 
-**Current assessment:** strong feature foundation; not yet independently certified for production accounting or disaster recovery. Next work: apply and verify migration 019, test weighted-average inventory valuation and COGS with controlled demo purchases/sales, reconcile the opening inventory value, then implement controlled historical migration, opening balances and period closing before treating the statements as complete.
+**Current assessment:** strong feature foundation; not yet independently certified for production accounting, disaster recovery or commercial subscription billing. The backup automation is committed but remains unverified until the repository secrets are configured, a backup run succeeds and a recovery drill is completed. Before commercial launch, finish the accounting acceptance tests, validate opening inventory and balances, test multi-device offline conflict handling and security boundaries, verify Android/iPhone PWA behaviour, and implement subscription billing only after the payment provider and plan/pricing model are selected.
