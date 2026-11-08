@@ -1,0 +1,60 @@
+name: Supabase off-site backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Verify required secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          test -n "$SUPABASE_DB_URL" || (echo "Missing SUPABASE_DB_URL secret" && exit 1)
+          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret" && exit 1)
+
+      - name: Export database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backup/database
+          pg_dump "$SUPABASE_DB_URL" --format=custom --compress=6 --no-owner --no-privileges --file="backup/database/white-lion-${GITHUB_RUN_ID}.dump"
+          pg_restore --list "backup/database/white-lion-${GITHUB_RUN_ID}.dump" > "backup/database/white-lion-${GITHUB_RUN_ID}.contents.txt"
+
+      - name: Back up private business documents
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BACKUP_BUCKET: business-documents
+          BACKUP_STORAGE_DIR: backup/storage
+        run: python3 scripts/backup_supabase_storage.py
+
+      - name: Create backup manifest
+        run: |
+          printf 'Repository: %s\nCommit: %s\nRun: %s\nCreated UTC: %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
+
+      - name: Upload encrypted-at-rest GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: white-lion-supabase-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 30
+          if-no-files-found: error
