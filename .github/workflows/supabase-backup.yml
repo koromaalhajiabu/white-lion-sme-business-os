@@ -36,13 +36,21 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p backup/database
-          # Accept PostgreSQL URI strings and libpq keyword strings.
-          # libpq expects dbname=, while some connection forms use database=.
-          DB_CONN="$SUPABASE_DB_URL"
-          if [[ "$DB_CONN" == database=* ]]; then
-            DB_CONN="dbname=${DB_CONN#database=}"
+          # Normalise the database keyword regardless of whether the connection
+          # string uses spaces, tabs, or URI-style query separators.
+          DB_CONN="$(python3 - <<'PY'
+          import os
+          import re
+          value = os.environ["SUPABASE_DB_URL"]
+          value = re.sub(r"(?i)(?<![A-Za-z0-9_])database=", "dbname=", value)
+          print(value)
+          PY
+          )"
+          # Never print the connection string: it contains credentials.
+          if [[ "$DB_CONN" == *"database="* ]]; then
+            echo "Connection string still contains an unsupported database= option."
+            exit 1
           fi
-          DB_CONN="${DB_CONN// database=/ dbname=}"
           pg_dump "$DB_CONN" --format=custom --compress=6 --no-owner --no-privileges --file="backup/database/white-lion-${GITHUB_RUN_ID}.dump"
           pg_restore --list "backup/database/white-lion-${GITHUB_RUN_ID}.dump" > "backup/database/white-lion-${GITHUB_RUN_ID}.contents.txt"
 
@@ -56,7 +64,7 @@ jobs:
 
       - name: Create backup manifest
         run: |
-          printf 'Repository: %s\nCommit: %s\nRun: %s\nCreated UTC: %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
+          printf 'Repository: %s\\nCommit: %s\\nRun: %s\\nCreated UTC: %s\\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
 
       - name: Encrypt complete backup before artifact upload
         env:
@@ -64,9 +72,9 @@ jobs:
         run: |
           test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
           tar -czf /tmp/white-lion-backup.tar.gz backup/
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
-            -in /tmp/white-lion-backup.tar.gz \
-            -out white-lion-supabase-backup.tar.gz.enc \
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \\
+            -in /tmp/white-lion-backup.tar.gz \\
+            -out white-lion-supabase-backup.tar.gz.enc \\
             -pass env:BACKUP_ENCRYPTION_PASSPHRASE
           sha256sum white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.sha256
           openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.hmac
