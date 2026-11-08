@@ -84,6 +84,20 @@
         <div class="ops-grid"><select id="wlOpsBankImportAccount"><option value="">Select account for statement import</option></select><input id="wlOpsBankCsv" type="file" accept=".csv,text/csv"></div>
         <button id="wlOpsBankImport">Import CSV statement</button><button id="wlOpsBankRefresh">Refresh reconciliation</button>
         <div id="wlOpsBankRows" class="ops-muted">Bank accounts and statement lines will appear here after migration 017 is installed.</div>
+        <h4>General ledger & financial statements</h4>
+        <div class="ops-muted">Double-entry accounting for new synced sales, purchases, expenses, returns and receivable/payable payments. Historical transactions are not backdated automatically. Inventory cost-of-goods-sold is not yet recognised because historical cost layers are not tracked.</div>
+        <button id="wlLedgerInit" type="button">Prepare chart of accounts</button>
+        <div id="wlLedgerAccounts" class="ops-muted">Chart of accounts will load after migration 018.</div>
+        <div class="ops-grid"><input id="wlLedgerFrom" type="date"><input id="wlLedgerTo" type="date"></div>
+        <div class="ops-grid"><button id="wlLedgerTrial" type="button">Trial balance</button><button id="wlLedgerIncome" type="button">Profit & loss</button></div>
+        <div class="ops-grid"><button id="wlLedgerBalance" type="button">Balance sheet</button><button id="wlLedgerCash" type="button">Cash flow</button></div>
+        <div id="wlLedgerReport" class="ops-muted">Choose a financial report to view posted ledger entries.</div>
+        <h4>Manual journal entry</h4>
+        <div class="ops-muted">Two-line journal entry. Debits and credits must balance. Posted journals are locked; corrections require a reversing journal.</div>
+        <input id="wlLedgerMemo" maxlength="500" placeholder="Journal description">
+        <div class="ops-grid"><select id="wlLedgerDebitAccount"></select><input id="wlLedgerDebit" type="number" min="0.01" step="0.01" placeholder="Debit amount"></div>
+        <div class="ops-grid"><select id="wlLedgerCreditAccount"></select><input id="wlLedgerCredit" type="number" min="0.01" step="0.01" placeholder="Credit amount"></div>
+        <button id="wlLedgerPost" type="button">Post balanced journal</button>
         <h4>Receivables & payables</h4>
         <div class="ops-grid"><select id="wlOpsObligationType"><option value="receivable">Customer owes us</option><option value="payable">We owe supplier</option></select><input id="wlOpsParty" placeholder="Customer / supplier name"></div>
         <input id="wlOpsObligationDesc" placeholder="Description / reference"><div class="ops-grid"><input id="wlOpsObligationAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><input id="wlOpsDueDate" type="date"></div>
@@ -113,6 +127,7 @@
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOwnerRefresh',renderOwnerDashboard);
     document.getElementById('wlOwnerPeriod').addEventListener('change',renderOwnerDashboard);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
+    bind('wlLedgerInit',initializeLedger);bind('wlLedgerTrial',()=>loadLedgerReport('trial'));bind('wlLedgerIncome',()=>loadLedgerReport('income'));bind('wlLedgerBalance',()=>loadLedgerReport('balance'));bind('wlLedgerCash',()=>loadLedgerReport('cash'));bind('wlLedgerPost',postLedgerJournal);
     bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBankCreate',createBankAccount);bind('wlOpsBankImport',importBankStatement);bind('wlOpsBankRefresh',renderBankReconciliation);document.getElementById('wlOpsBankRows').addEventListener('click',handleBankMatch);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
@@ -153,9 +168,60 @@
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
     const ownerDashboard=document.getElementById('wlOwnerDashboard');
     if(ownerDashboard)ownerDashboard.hidden=!['owner','admin'].includes(memberRole);
+    const ledgerFrom=document.getElementById('wlLedgerFrom'),ledgerTo=document.getElementById('wlLedgerTo');
+    if(ledgerFrom)ledgerFrom.value=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10);
+    if(ledgerTo)ledgerTo.value=new Date().toISOString().slice(0,10);
+    await loadLedgerAccounts();
     await renderBankReconciliation();
     await Promise.all([renderTransfers(),renderFinance(),renderCashbookRegister(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts(),renderOwnerDashboard()]);
     say('Operations controls loaded for '+business.name+'.');
+  }
+  async function initializeLedger(){
+    if(!['owner','admin','accountant'].includes(memberRole))return say('Only owners, administrators or accountants can prepare the chart of accounts.',true);
+    const {data,error}=await client.rpc('initialize_accounting',{p_business_id:business.id});
+    if(error)return say('Accounting setup failed: '+error.message,true);
+    say('Chart of accounts ready ('+(data?.account_count??'')+' accounts).');await loadLedgerAccounts();
+  }
+  async function loadLedgerAccounts(){
+    const box=document.getElementById('wlLedgerAccounts');if(!box||!client||!business)return;
+    const {data,error}=await client.from('chart_of_accounts').select('id,account_code,account_name,account_type,normal_balance,is_active').eq('business_id',business.id).eq('is_active',true).order('account_code');
+    if(error){box.textContent='Ledger not installed or unavailable: '+error.message;return;}
+    const accounts=data||[];
+    const options=accounts.map(a=>'<option value="'+esc(a.account_code)+'">'+esc(a.account_code)+' · '+esc(a.account_name)+'</option>').join('');
+    ['wlLedgerDebitAccount','wlLedgerCreditAccount'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=options||'<option value="">No accounts available</option>';});
+    box.innerHTML=accounts.map(a=>'<div class="ops-row"><strong>'+esc(a.account_code)+' · '+esc(a.account_name)+'</strong><div class="ops-muted">'+esc(a.account_type)+' · Normal '+esc(a.normal_balance)+'</div></div>').join('')||'No chart accounts found. Use Prepare chart of accounts.';
+  }
+  function ledgerTable(rows,columns){
+    if(!rows?.length)return '<div class="ops-row">No posted entries for this period.</div>';
+    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:420px"><thead><tr>'+columns.map(c=>'<th style="text-align:left;padding:8px;border-bottom:1px solid #dce8df">'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+columns.map(c=>'<td style="padding:8px;border-bottom:1px solid #e8eee9">'+esc(c.format?c.format(row[c.key]):row[c.key]??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  }
+  async function loadLedgerReport(kind){
+    const box=document.getElementById('wlLedgerReport');if(!box)return;
+    box.textContent='Loading report…';
+    const from=document.getElementById('wlLedgerFrom').value||null,to=document.getElementById('wlLedgerTo').value||new Date().toISOString().slice(0,10);
+    let rpc,args,columns;
+    if(kind==='trial'){rpc='accounting_trial_balance';args={p_business_id:business.id,p_from:from,p_to:to};columns=[{key:'account_code',label:'Code'},{key:'account_name',label:'Account'},{key:'account_type',label:'Type'},{key:'total_debit',label:'Debit',format:money},{key:'total_credit',label:'Credit',format:money},{key:'net_balance',label:'Balance',format:money}];}
+    else if(kind==='income'){rpc='accounting_income_statement';args={p_business_id:business.id,p_from:from,p_to:to};columns=[{key:'account_code',label:'Code'},{key:'account_name',label:'Account'},{key:'account_type',label:'Type'},{key:'amount',label:'Amount',format:money}];}
+    else if(kind==='balance'){rpc='accounting_balance_sheet';args={p_business_id:business.id,p_as_of:to};columns=[{key:'account_code',label:'Code'},{key:'account_name',label:'Account'},{key:'account_type',label:'Type'},{key:'amount',label:'Balance',format:money}];}
+    else{rpc='accounting_cash_flow';args={p_business_id:business.id,p_from:from,p_to:to};columns=[{key:'account_name',label:'Cash account'},{key:'cash_in',label:'Cash in',format:money},{key:'cash_out',label:'Cash out',format:money},{key:'net_cash_flow',label:'Net cash flow',format:money}];}
+    const {data,error}=await client.rpc(rpc,args);
+    if(error){box.textContent='Report unavailable: '+error.message;return;}
+    const rows=data||[];
+    if(kind==='trial'){
+      const debit=rows.reduce((n,x)=>n+Number(x.total_debit||0),0),credit=rows.reduce((n,x)=>n+Number(x.total_credit||0),0);
+      box.innerHTML='<div class="ops-summary"><div class="ops-tile"><span>Total debits</span><strong>'+money(debit)+'</strong></div><div class="ops-tile"><span>Total credits</span><strong>'+money(credit)+'</strong></div><div class="ops-tile"><span>Difference</span><strong>'+money(debit-credit)+'</strong></div></div>'+ledgerTable(rows,columns);
+    }else box.innerHTML=ledgerTable(rows,columns);
+  }
+  async function postLedgerJournal(){
+    if(!['owner','admin','accountant'].includes(memberRole))return say('Only owners, administrators or accountants can post manual journals.',true);
+    const memo=document.getElementById('wlLedgerMemo').value.trim(),debitCode=document.getElementById('wlLedgerDebitAccount').value,creditCode=document.getElementById('wlLedgerCreditAccount').value,debit=Number(document.getElementById('wlLedgerDebit').value),credit=Number(document.getElementById('wlLedgerCredit').value);
+    if(memo.length<2||!debitCode||!creditCode||!Number.isFinite(debit)||!Number.isFinite(credit)||debit<=0||credit<=0)return say('Enter a description, two accounts and positive debit and credit amounts.',true);
+    if(Math.abs(debit-credit)>0.005)return say('The journal is not balanced. Debit and credit must be equal.',true);
+    const lines=[{code:debitCode,debit,credit:0,description:memo},{code:creditCode,debit:0,credit,description:memo}];
+    const {data,error}=await client.rpc('post_general_journal',{p_business_id:business.id,p_journal_date:new Date().toISOString().slice(0,10),p_memo:memo,p_lines:lines});
+    if(error)return say('Journal not posted: '+error.message,true);
+    document.getElementById('wlLedgerMemo').value='';document.getElementById('wlLedgerDebit').value='';document.getElementById('wlLedgerCredit').value='';
+    say('Journal posted and locked: '+String(data).slice(0,8));await loadLedgerReport('trial');
   }
   async function fetchBusinessRows(table,columns,orderColumn){
     const rows=[],pageSize=1000;let offset=0;
