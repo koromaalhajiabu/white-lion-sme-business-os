@@ -1541,7 +1541,10 @@ $$;
 revoke all on function public.import_bank_statement_lines(uuid,jsonb) from public;
 revoke all on function public.match_bank_statement_line(uuid,uuid) from public;
 grant execute on function public.import_bank_statement_lines(uuid,jsonb) to authenticated;
-grant execute on function public.match_bank_statement_line(uuid,uuid) to 
+grant execute on function public.match_bank_statement_line(uuid,uuid) to authenticated;
+
+commit;
+
 
 
 
