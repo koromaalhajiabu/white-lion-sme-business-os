@@ -36,12 +36,40 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p backup/database
-          # Convert any unsupported database= option without printing credentials.
-          DB_CONN="$(python3 -c 'import os,re; print(re.sub(r"(?i)(?<![A-Za-z0-9_])database=", "dbname=", os.environ["SUPABASE_DB_URL"]))')"
-          if [[ "$DB_CONN" == *"database="* ]]; then
-            echo "Connection string still contains an unsupported database= option."
-            exit 1
-          fi
+          # Rebuild the URI safely so passwords containing @, #, /, %, brackets,
+          # colons, or other reserved characters cannot corrupt the hostname.
+          # The regex anchors on Supabase's pooler domain and captures the
+          # complete password before that known host. Credentials are never printed.
+          DB_CONN="$(python3 - <<'PY'
+          import os
+          import re
+          from urllib.parse import quote, unquote
+
+          raw = os.environ["SUPABASE_DB_URL"].strip()
+          pattern = re.compile(
+              r"^(postgres(?:ql)?://)([^:/@]+):(.+)@([^/@]+\.pooler\.supabase\.com)(:\d+/[^?#]*(?:\?[^#]*)?)$",
+              re.IGNORECASE,
+          )
+          match = pattern.match(raw)
+          if not match:
+              raise SystemExit(
+                  "SUPABASE_DB_URL must be a valid Supabase Session Pooler URI "
+                  "with a hostname ending in .pooler.supabase.com and port 5432."
+              )
+
+          scheme, username, password, host, suffix = match.groups()
+          # Decode once then encode exactly once; this handles both raw and
+          # already-percent-encoded passwords without double-encoding.
+          encoded_password = quote(unquote(password), safe="")
+          rebuilt = f"{scheme}{username}:{encoded_password}@{host}{suffix}"
+          rebuilt = re.sub(
+              r"(?i)(?<![A-Za-z0-9_])database=",
+              "dbname=",
+              rebuilt,
+          )
+          print(rebuilt)
+          PY
+          )"
           pg_dump "$DB_CONN" --format=custom --compress=6 --no-owner --no-privileges --file="backup/database/white-lion-${GITHUB_RUN_ID}.dump"
           pg_restore --list "backup/database/white-lion-${GITHUB_RUN_ID}.dump" > "backup/database/white-lion-${GITHUB_RUN_ID}.contents.txt"
 
@@ -55,7 +83,7 @@ jobs:
 
       - name: Create backup manifest
         run: |
-          printf 'Repository: %s\nCommit: %s\nRun: %s\nCreated UTC: %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
+          printf 'Repository: %s\\nCommit: %s\\nRun: %s\\nCreated UTC: %s\\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
 
       - name: Encrypt complete backup before artifact upload
         env:
@@ -63,9 +91,9 @@ jobs:
         run: |
           test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
           tar -czf /tmp/white-lion-backup.tar.gz backup/
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
-            -in /tmp/white-lion-backup.tar.gz \
-            -out white-lion-supabase-backup.tar.gz.enc \
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \\
+            -in /tmp/white-lion-backup.tar.gz \\
+            -out white-lion-supabase-backup.tar.gz.enc \\
             -pass env:BACKUP_ENCRYPTION_PASSPHRASE
           sha256sum white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.sha256
           openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.hmac
