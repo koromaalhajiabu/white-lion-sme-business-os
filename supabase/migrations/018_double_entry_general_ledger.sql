@@ -237,10 +237,7 @@ returns trigger language plpgsql security definer set search_path=''
 as $$
 declare v_cogs numeric(18,2); v_lines jsonb;
 begin
-  select coalesce(sum(round(i.quantity*p.cost_price,2)),0) into v_cogs
-  from public.offline_sale_items i
-  join public.products p on p.id=i.product_id and p.business_id=i.business_id
-  where i.sale_id=new.id and i.business_id=new.business_id;
+  v_cogs:=0; -- Historical cost layers are not yet tracked; do not invent COGS.
   v_lines=jsonb_build_array(
     jsonb_build_object('code','1100','debit',new.total,'credit',0,'description','Sale receivable'),
     jsonb_build_object('code','4000','debit',0,'credit',new.total,'description','Sales revenue')
@@ -257,8 +254,9 @@ begin
 end;
 $$;
 drop trigger if exists trg_account_for_offline_sale on public.offline_sales;
-create trigger trg_account_for_offline_sale after insert on public.offline_sales
-for each row execute function public.account_for_offline_sale();
+drop trigger if exists trg_account_for_offline_sale on public.offline_sales;
+create constraint trigger trg_account_for_offline_sale after insert on public.offline_sales
+ deferrable initially deferred for each row execute function public.account_for_offline_sale();
 
 create or replace function public.account_for_offline_purchase()
 returns trigger language plpgsql security definer set search_path=''
