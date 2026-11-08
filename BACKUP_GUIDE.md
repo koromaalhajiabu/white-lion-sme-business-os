@@ -20,14 +20,20 @@ Add these four **Actions secrets** (never commit them to a file):
 3. `SUPABASE_SERVICE_ROLE_KEY` — the project's service-role key. This key is used only inside the GitHub-hosted backup runner; never place it in frontend code or public repository files.
 4. `BACKUP_ENCRYPTION_PASSPHRASE` — a long, unique passphrase. Store it in a password manager. Without it, encrypted backups cannot be decrypted.
 
-Then open Actions → **Supabase off-site backup** → **Run workflow**. Confirm the run succeeds and that the artifact contains the encrypted archive and checksum. A successful workflow run is the first proof that backup configuration works; it does not prove restoration until the restore test below succeeds.
+Then open Actions → **Supabase off-site backup** → **Run workflow**. Confirm the run succeeds and that the artifact contains the encrypted archive, checksum and HMAC signature. A successful workflow run is the first proof that backup configuration works; it does not prove restoration until the restore test below succeeds.
 
 ## Restore procedure
 Always restore into a separate recovery Supabase project first. Never test restoration over the live production database.
 
 1. Download the encrypted artifact from a successful workflow run.
 2. Verify its checksum with `sha256sum -c white-lion-supabase-backup.tar.gz.enc.sha256`.
-3. Decrypt it using the same passphrase:
+3. Set `BACKUP_ENCRYPTION_PASSPHRASE` to the same passphrase, then verify the HMAC before decrypting:
+   ```bash
+   expected=$(awk '{print $2}' white-lion-supabase-backup.tar.gz.enc.hmac)
+   actual=$(openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc | awk '{print $2}')
+   test "$actual" = "$expected" || { echo "Backup authentication failed"; exit 1; }
+   ```
+4. Decrypt it using the same passphrase:
    ```bash
    openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
      -in white-lion-supabase-backup.tar.gz.enc \
@@ -35,14 +41,14 @@ Always restore into a separate recovery Supabase project first. Never test resto
      -pass env:BACKUP_ENCRYPTION_PASSPHRASE
    tar -xzf white-lion-supabase-backup.tar.gz
    ```
-4. Restore the database dump to the recovery project's database:
+5. Restore the database dump to the recovery project's database:
    ```bash
    pg_restore --no-owner --no-privileges \
      --dbname="$RECOVERY_SUPABASE_DB_URL" \
      backup/database/white-lion-*.dump
    ```
-5. Create the private `business-documents` bucket in the recovery project, then run `scripts/restore_supabase_storage.py` with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_BACKUP_BUCKET=business-documents` set to the recovery project. The restore utility never overwrites existing object names; resolve conflicts deliberately before retrying.
-6. Verify users/authentication configuration, business records, row-level security, Storage policies and document downloads in the recovery project. Record the date and result of the test.
+6. Create the private `business-documents` bucket in the recovery project, then run `scripts/restore_supabase_storage.py` with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_BACKUP_BUCKET=business-documents` set to the recovery project. The restore utility never overwrites existing object names; resolve conflicts deliberately before retrying.
+7. Verify users/authentication configuration, business records, row-level security, Storage policies and document downloads in the recovery project. Record the date and result of the test.
 
 Database restore may require project-specific extension, role, or Supabase-managed schema adjustments. Review restore output rather than assuming a zero-error restore. Auth secrets and external provider configuration may need to be reconfigured in the recovery project.
 
