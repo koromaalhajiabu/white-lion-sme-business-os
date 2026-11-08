@@ -18,7 +18,7 @@ These are repository-level findings. They do not independently prove every featu
 
 ## Important gaps and risks
 
-1. **Full double-entry accounting is not present in the reviewed migrations.** There is no general ledger journal, chart of accounts, posting rules, trial balance or audited financial statements. The existing reports correctly label the operating balance as indicative rather than audited profit.
+1. **A first double-entry ledger foundation is now implemented in migration 018.** It adds a chart of accounts, balanced immutable journal posting, source triggers for new cloud-synced sales/purchases/expenses/returns and obligation payments, manual journals, trial balance, income statement, balance sheet and cash-flow reports. This is not an audited accounting package: historical records are not backfilled, manual cashbook entries are not automatically journaled, inventory COGS is deliberately not posted until reliable historical cost layers are available, and opening balances and period close/reversals still need a controlled workflow. The existing reports correctly label the operating balance as indicative rather than audited profit.
 2. **Bank/mobile-money reconciliation was missing.** Migration 017 now adds a secure foundation for finance users to create bank/mobile-money accounts, import statement rows through an RPC, and match statement lines to cashbook entries. The operations control centre now includes a CSV import and matching interface. This is manual statement import; it is not a direct bank API connection. The interface still needs live Supabase and device acceptance testing.
 3. **Backup is not a full cloud backup.** The browser JSON backup covers local IndexedDB records. Supabase database exports and private Storage object bytes still need separate off-site backup and tested restoration.
 4. **Offline conflict handling needs real multi-device tests.** Idempotent sync receipts exist, but test simultaneous edits, duplicate retries, partial network loss, device replacement and conflict recovery.
@@ -26,13 +26,18 @@ These are repository-level findings. They do not independently prove every featu
 6. **Production security needs independent verification.** Test cross-business isolation with separate accounts, role escalation attempts, branch scoping, storage access, account recovery and audit coverage.
 7. **Mobile/PWA quality needs device testing.** Test install/update behaviour, offline launch, theme persistence, navigation, forms, keyboard handling, printing and small-screen tables on Android and iPhone.
 
-## New change in this release
+## New changes in this release
 
+- Added `supabase/migrations/018_double_entry_general_ledger.sql` and included it in `supabase/INSTALL_ALL_OPERATIONS.sql`.
+- Added a finance UI for chart-of-accounts setup, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting and balanced manual journal posting.
+- The ledger is designed to post new synced sales, purchases, expenses, returns and receivable/payable payments. Cash sales are routed to cash/bank; credit sales are routed to receivables. Historical records are not automatically rewritten.
+- Inventory cost of goods sold is intentionally not posted yet because the current product cost field is not a reliable historical cost-layer record. The P&L therefore must not be treated as complete gross profit until inventory valuation is implemented.
+- Manual cashbook entries are not automatically posted to the ledger in this release to avoid double-counting with existing payment workflows.
 - Added `supabase/migrations/017_bank_mobile_money_reconciliation.sql`.
 - Added the same migration to `supabase/INSTALL_ALL_OPERATIONS.sql` so the operations installer includes the new reconciliation schema and RPCs.
 - Added a finance-only reconciliation interface to the Operations Control Centre: account setup, CSV statement import, unmatched-line review and guarded matching to cashbook entries.
 - Linked new cashbook entries to a selected bank/mobile-money account so they can be reconciled later.
-- The new SQL is committed to GitHub but has **not** been executed against Supabase by this repository change. Run the updated installer or the migration file once in the Supabase SQL Editor, then verify the objects and test with sample records before using real statements.
+- Migrations 017 and 018 are committed to GitHub. Migration 017 was applied and its reconciliation flow was smoke-tested by the user. Migration 018 has **not** yet been executed against Supabase. Run migration 018 alone in the SQL Editor, then verify the objects and reports before posting live accounting transactions.
 
 ## Required acceptance tests before calling the platform production-ready
 
@@ -50,4 +55,4 @@ These are repository-level findings. They do not independently prove every featu
 
 The GitHub Actions deployment workflow for the latest dark-mode correction completed successfully. That confirms the repository workflow completed; it is not a substitute for live browser, Supabase or device acceptance testing.
 
-**Current assessment:** strong feature foundation; not yet independently certified for production accounting or disaster recovery. The next engineering work is to build the double-entry ledger and financial statements, then execute the acceptance tests above.
+**Current assessment:** strong feature foundation; not yet independently certified for production accounting or disaster recovery. Next work: apply and verify migration 018, test balanced/unbalanced journal protection and source posting with controlled demo transactions, then implement reliable inventory valuation, opening balances, historical migration and period closing before treating the statements as complete.
