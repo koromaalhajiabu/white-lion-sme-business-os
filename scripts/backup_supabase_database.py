@@ -6,20 +6,24 @@ import subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-PROJECT_REF = "nclncqlgnxnijlumznnt"
-
 def connection():
     raw = os.environ.get("SUPABASE_DB_URL", "").strip()
     if not raw:
         raise SystemExit("SUPABASE_DB_URL is empty.")
     try:
         parsed = urlsplit(raw)
+    except ValueError as exc:
+        raise SystemExit(f"Connection URI parsing failed ({type(exc).__name__}); check that the full URI was copied without surrounding quotes or line breaks.")
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise SystemExit("Connection URI scheme is invalid; it must start with postgres:// or postgresql://.")
+    try:
         host = parsed.hostname or ""
+    except ValueError:
+        raise SystemExit("Connection URI hostname is malformed.")
+    try:
         port = parsed.port or 5432
     except ValueError:
-        raise SystemExit("SUPABASE_DB_URL is malformed. Copy the Session Pooler URI from Supabase Connect.")
-    if parsed.scheme not in ("postgres", "postgresql"):
-        raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://.")
+        raise SystemExit("Connection URI port is malformed; copy the Session Pooler URI with port 5432.")
     if not host.endswith(".pooler.supabase.com"):
         raise SystemExit("Use the Supabase Session Pooler hostname, not the direct database hostname.")
     if port != 5432:
