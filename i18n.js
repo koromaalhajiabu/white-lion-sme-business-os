@@ -42,7 +42,7 @@ function translateAttributes(el){
   const key=el.getAttribute('data-wl-original-'+attr)||el.getAttribute(attr);
   if(!el.hasAttribute('data-wl-original-'+attr))el.setAttribute('data-wl-original-'+attr,key);
   const value=LANGS[current].t[key];
-  if(value)el.setAttribute(attr,value);else el.setAttribute(attr,key);
+  const next=value||key;if(el.getAttribute(attr)!==next)el.setAttribute(attr,next);
  });
 }
 function setLanguage(code){
