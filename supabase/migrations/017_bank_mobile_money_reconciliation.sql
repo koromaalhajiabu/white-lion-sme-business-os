@@ -26,6 +26,8 @@ create unique index if not exists cashbook_entries_id_business_uidx
 
 alter table public.cashbook_entries
   add column if not exists bank_account_id uuid;
+create index if not exists cashbook_bank_account_date_idx
+  on public.cashbook_entries(business_id,bank_account_id,entry_date desc);
 
 do $$
 begin
@@ -117,7 +119,9 @@ begin
   if not public.has_business_role(v_business_id,array['owner','admin','accountant']::public.business_role[]) then
     raise exception 'Only an owner, administrator or accountant can import statements';
   end if;
-  if p_lines is null or jsonb_typeof(p_lines)<>'array' or jsonb_array_length(p_lines)=0 or jsonb_array_length(p_lines)>5000 then
+  if p_lines is null then raise exception 'Statement rows are required'; end if;
+  if jsonb_typeof(p_lines)<>'array' then raise exception 'Statement rows must be a JSON array'; end if;
+  if jsonb_array_length(p_lines)=0 or jsonb_array_length(p_lines)>5000 then
     raise exception 'Provide between 1 and 5000 statement rows';
   end if;
   if exists (
