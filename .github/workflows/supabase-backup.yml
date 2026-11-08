@@ -37,7 +37,7 @@ jobs:
 
       - name: Back up private business documents
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://nclncqlgnxnijlumznnt.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_BACKUP_BUCKET: business-documents
           BACKUP_STORAGE_DIR: backup/storage
