@@ -639,6 +639,88 @@ html[dir="rtl"] .sidebar{border-right:0;border-left:1px solid rgba(255,255,255,.
  html[dir="rtl"] .sidebar{left:auto;right:-280px}
  html[dir="rtl"] .sidebar.open{left:auto;right:0}
 }
+
+/* WHITE LION — refined navigation and section transitions */
+html{scroll-behavior:smooth}
+.nav button{min-height:42px;border:1px solid transparent;position:relative;overflow:hidden;isolation:isolate;transition:background .22s ease,color .22s ease,border-color .22s ease,box-shadow .22s ease,transform .22s cubic-bezier(.2,.75,.25,1)}
+.nav button:active{transform:scale(.975)}
+.nav button:focus-visible,.quick:focus-visible,.btn:focus-visible{outline:3px solid rgba(205,168,93,.48);outline-offset:3px}
+.nav button.active{border-color:rgba(225,194,128,.17);background:linear-gradient(105deg,rgba(205,168,93,.25),rgba(255,255,255,.075));box-shadow:inset 3px 0 #e5c77f,0 7px 18px rgba(0,0,0,.12)}
+.nav button.active:after{content:'';position:absolute;right:11px;width:6px;height:6px;border-radius:50%;background:#e5c77f;box-shadow:0 0 0 4px rgba(229,199,127,.12)}
+.nav button .ico{flex:0 0 20px;transition:transform .22s ease,color .22s ease}
+.nav button:hover .ico,.nav button.active .ico{transform:translateX(1px) scale(1.08);color:#f3d99f}
+.content.page-transition>*{animation:wlSectionEnter .34s cubic-bezier(.2,.75,.25,1) both}
+.content.page-transition>*:nth-child(2){animation-delay:.035s}
+.content.page-transition>*:nth-child(3){animation-delay:.065s}
+.content.page-transition>*:nth-child(4){animation-delay:.09s}
+@keyframes wlSectionEnter{from{opacity:0;transform:translate3d(0,12px,0);filter:blur(2px)}to{opacity:1;transform:translate3d(0,0,0);filter:blur(0)}}
+.quick,.btn,.module-card{transition:transform .2s cubic-bezier(.2,.75,.25,1),box-shadow .2s ease,border-color .2s ease,background .2s ease}
+.quick:active,.btn:active{transform:translateY(1px) scale(.985)}
+.sidebar{transition:left .28s cubic-bezier(.22,.75,.25,1),box-shadow .28s ease}
+@media(max-width:720px){.nav button{min-height:44px;padding:11px 13px}.content.page-transition>*{animation-duration:.28s}.sidebar.open{box-shadow:18px 0 48px rgba(7,17,32,.28)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.content.page-transition>*{animation:none!important}.nav button,.quick,.btn,.sidebar{transition:none!important}}
+
+/* SIERRA LEONE NATIONAL FLAG THEME — final app-wide override */
+:root{
+ --navy:#087a43;--navy2:#075f35;--gold:#0072c6;--gold2:#8fc8ec;
+ --bg:#f4f8f5;--ink:#173126;--muted:#71847a;--line:#dfeae3;
+ --white:#fff;--green:#1eb53a;--red:#c94c55;--blue:#0072c6;
+ --shadow:0 8px 26px rgba(7,91,53,.07);
+ --shadow-hover:0 16px 38px rgba(7,91,53,.13);
+}
+body{background:linear-gradient(180deg,#f5faf6 0%,#f3f7f5 100%);color:#173126}
+.sidebar{background:linear-gradient(160deg,#087a43 0%,#075f35 58%,#064b2c 100%);border-right:1px solid rgba(255,255,255,.14)}
+.sidebar:before{height:7px;background:linear-gradient(to bottom,#1eb53a 0 33.33%,#fff 33.33% 66.66%,#0072c6 66.66% 100%)}
+.brand-mark{background:linear-gradient(145deg,#1eb53a 0 38%,#fff 38% 66%,#0072c6 66% 100%);color:#075b35;border:1px solid rgba(255,255,255,.75)}
+.brand small,.nav-label,.side-foot{color:rgba(255,255,255,.76)}
+.business-switch{background:rgba(0,65,37,.36);border-color:rgba(255,255,255,.25)}
+.nav button{color:rgba(255,255,255,.88)}
+.nav .ico{color:#fff}
+.nav button:hover,.nav button.active{background:#0072c6;color:#fff;border-color:rgba(255,255,255,.18)}
+.nav button.active{box-shadow:inset 3px 0 #fff,0 7px 18px rgba(0,0,0,.12)}
+.nav button.active:after{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.15)}
+.nav button:hover .ico,.nav button.active .ico{color:#fff}
+.topbar{background:rgba(255,255,255,.96);border-bottom:0}
+.topbar:after{height:4px;background:linear-gradient(to right,#1eb53a 0 33.33%,#fff 33.33% 66.66%,#0072c6 66.66% 100%)}
+.eyebrow{color:#087a43}
+.btn.primary{background:#087a43;border-color:#087a43;color:#fff}
+.btn.primary:hover{background:#075f35;border-color:#075f35}
+.btn.gold{background:#0072c6;border-color:#0072c6;color:#fff}
+.btn.gold:hover{background:#005da6;border-color:#005da6}
+.btn:focus-visible,.quick:focus-visible,.nav button:focus-visible{outline:3px solid rgba(0,114,198,.35);outline-offset:3px}
+.stat-icon,.inventory-product-mark{background:#e8f5ec;color:#087a43}
+.quick:hover{border-color:#8bc8a0;background:#f7fcf8}
+.field input:focus,.field select:focus,.field textarea:focus,.search:focus{border-color:#0072c6;box-shadow:0 0 0 3px rgba(0,114,198,.12)}
+.pos-command-strip{border-color:#cfe5d5;background:linear-gradient(105deg,#f2fbf4 0%,#fff 58%,#f2f8fc 100%)}
+.pos-command-mark{background:linear-gradient(145deg,#1eb53a,#087a43);color:#fff;box-shadow:0 4px 12px rgba(30,181,58,.16)}
+.pos-checkout #retailComplete{background:linear-gradient(120deg,#087a43,#075f35);border-color:#075f35;color:#fff;box-shadow:0 8px 18px rgba(7,122,67,.18)}
+.pos-checkout #retailComplete:hover{box-shadow:0 10px 22px rgba(7,122,67,.25)}
+.pos-checkout-actions{border-color:#cfe5d5;background:rgba(246,252,247,.97)}
+.wl-install-banner{border-color:#cfe5d5;background:linear-gradient(110deg,#f1fbf4,#fff)}
+.wl-install-copy b{color:#075f35}
+.wl-install-button{background:#087a43;color:#fff}
+.inventory-note{border-color:#cfe5d5;background:#f4fbf5;color:#37664a}
+.footer{border-top:1px solid #dfeae3;color:#75877d}
+.pill{background:#e8f5ec;color:#087a43}
+.pill.warn{background:#fff4df;color:#956313}
+.pill.neutral{background:#eef3f6;color:#526879}
+@media(max-width:720px){.sidebar:before{height:6px}}
+
+
+/* FINAL DARK THEME OVERRIDES — intentionally last in the stylesheet */
+html[data-theme="dark"]{color-scheme:dark;--bg:#0d1420;--ink:#e7edf6;--muted:#aab6c8;--line:#2a374a;--white:#172235;--shadow:0 8px 26px rgba(0,0,0,.28);background:#0d1420;color:#e7edf6}
+html[data-theme="dark"] body,html[data-theme="dark"] .main,html[data-theme="dark"] .content{background:#0d1420!important;color:#e7edf6!important}
+html[data-theme="dark"] .topbar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
+html[data-theme="dark"] .crumb,html[data-theme="dark"] #view h1,html[data-theme="dark"] #view h2,html[data-theme="dark"] #view h3,html[data-theme="dark"] #view h4,html[data-theme="dark"] #view b,html[data-theme="dark"] #view strong,html[data-theme="dark"] #view label{color:#e7edf6}
+html[data-theme="dark"] #view .panel,html[data-theme="dark"] #view .stat,html[data-theme="dark"] #view .module-card,html[data-theme="dark"] #view .quick,html[data-theme="dark"] #view .report-box,html[data-theme="dark"] #view .report-kpi,html[data-theme="dark"] #view .report-chart-panel,html[data-theme="dark"] #view .intel-insight,html[data-theme="dark"] #view .card,html[data-theme="dark"] #view .modal{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important;box-shadow:0 8px 26px rgba(0,0,0,.25)!important}
+html[data-theme="dark"] #view p,html[data-theme="dark"] #view small,html[data-theme="dark"] #view .panel-sub,html[data-theme="dark"] #view .stat-head,html[data-theme="dark"] #view .empty{color:#aab6c8}
+html[data-theme="dark"] #view input,html[data-theme="dark"] #view select,html[data-theme="dark"] #view textarea,html[data-theme="dark"] #view .search,html[data-theme="dark"] #view .field input,html[data-theme="dark"] #view .field select,html[data-theme="dark"] #view .field textarea{background:#101a2a!important;color:#e7edf6!important;border-color:#39485e!important}
+html[data-theme="dark"] #view button:not(.primary):not(.gold),html[data-theme="dark"] .topbar button{background:#223149;color:#e7edf6;border-color:#39485e}
+html[data-theme="dark"] #view table,html[data-theme="dark"] #view th,html[data-theme="dark"] #view td{color:#e7edf6;border-color:#2a374a}
+html[data-theme="dark"] #view th{background:#223149!important}
+html[data-theme="dark"] #view tr:hover{background:#202d40}
+html[data-theme="dark"] #appearanceBar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
+html[data-theme="dark"] .footer{color:#8795aa}
 </style>
 </head>
 <body>
@@ -825,89 +907,7 @@ async function render(){
   const printReceipt=sale=>{
     const rows=(sale.items||[]).map(i=>'<tr><td>'+esc(i.name)+'</td><td>'+Number(i.quantity)+'</td><td>'+money(i.unitPrice)+'</td><td>'+money(Number(i.quantity)*Number(i.unitPrice))+'</td></tr>').join('');
     const w=window.open('','_blank','width=420,height=720');if(!w){toast('Allow pop-ups to print receipts');return}
-    w.document.write('<!doctype html><html><head><title>'+esc(sale.receipt)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:13px Arial;padding:18px;color:#111}h2,p{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{padding:7px 3px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}.right{text-align:right}.total{font-size:17px;font-weight:bold;text-align:right;margin-top:12px} .muted{text-align:center;color:#666;font-size:10px;margin-top:20px}
-/* WHITE LION — refined navigation and section transitions */
-html{scroll-behavior:smooth}
-.nav button{min-height:42px;border:1px solid transparent;position:relative;overflow:hidden;isolation:isolate;transition:background .22s ease,color .22s ease,border-color .22s ease,box-shadow .22s ease,transform .22s cubic-bezier(.2,.75,.25,1)}
-.nav button:active{transform:scale(.975)}
-.nav button:focus-visible,.quick:focus-visible,.btn:focus-visible{outline:3px solid rgba(205,168,93,.48);outline-offset:3px}
-.nav button.active{border-color:rgba(225,194,128,.17);background:linear-gradient(105deg,rgba(205,168,93,.25),rgba(255,255,255,.075));box-shadow:inset 3px 0 #e5c77f,0 7px 18px rgba(0,0,0,.12)}
-.nav button.active:after{content:'';position:absolute;right:11px;width:6px;height:6px;border-radius:50%;background:#e5c77f;box-shadow:0 0 0 4px rgba(229,199,127,.12)}
-.nav button .ico{flex:0 0 20px;transition:transform .22s ease,color .22s ease}
-.nav button:hover .ico,.nav button.active .ico{transform:translateX(1px) scale(1.08);color:#f3d99f}
-.content.page-transition>*{animation:wlSectionEnter .34s cubic-bezier(.2,.75,.25,1) both}
-.content.page-transition>*:nth-child(2){animation-delay:.035s}
-.content.page-transition>*:nth-child(3){animation-delay:.065s}
-.content.page-transition>*:nth-child(4){animation-delay:.09s}
-@keyframes wlSectionEnter{from{opacity:0;transform:translate3d(0,12px,0);filter:blur(2px)}to{opacity:1;transform:translate3d(0,0,0);filter:blur(0)}}
-.quick,.btn,.module-card{transition:transform .2s cubic-bezier(.2,.75,.25,1),box-shadow .2s ease,border-color .2s ease,background .2s ease}
-.quick:active,.btn:active{transform:translateY(1px) scale(.985)}
-.sidebar{transition:left .28s cubic-bezier(.22,.75,.25,1),box-shadow .28s ease}
-@media(max-width:720px){.nav button{min-height:44px;padding:11px 13px}.content.page-transition>*{animation-duration:.28s}.sidebar.open{box-shadow:18px 0 48px rgba(7,17,32,.28)}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.content.page-transition>*{animation:none!important}.nav button,.quick,.btn,.sidebar{transition:none!important}}
-
-/* SIERRA LEONE NATIONAL FLAG THEME — final app-wide override */
-:root{
- --navy:#087a43;--navy2:#075f35;--gold:#0072c6;--gold2:#8fc8ec;
- --bg:#f4f8f5;--ink:#173126;--muted:#71847a;--line:#dfeae3;
- --white:#fff;--green:#1eb53a;--red:#c94c55;--blue:#0072c6;
- --shadow:0 8px 26px rgba(7,91,53,.07);
- --shadow-hover:0 16px 38px rgba(7,91,53,.13);
-}
-body{background:linear-gradient(180deg,#f5faf6 0%,#f3f7f5 100%);color:#173126}
-.sidebar{background:linear-gradient(160deg,#087a43 0%,#075f35 58%,#064b2c 100%);border-right:1px solid rgba(255,255,255,.14)}
-.sidebar:before{height:7px;background:linear-gradient(to bottom,#1eb53a 0 33.33%,#fff 33.33% 66.66%,#0072c6 66.66% 100%)}
-.brand-mark{background:linear-gradient(145deg,#1eb53a 0 38%,#fff 38% 66%,#0072c6 66% 100%);color:#075b35;border:1px solid rgba(255,255,255,.75)}
-.brand small,.nav-label,.side-foot{color:rgba(255,255,255,.76)}
-.business-switch{background:rgba(0,65,37,.36);border-color:rgba(255,255,255,.25)}
-.nav button{color:rgba(255,255,255,.88)}
-.nav .ico{color:#fff}
-.nav button:hover,.nav button.active{background:#0072c6;color:#fff;border-color:rgba(255,255,255,.18)}
-.nav button.active{box-shadow:inset 3px 0 #fff,0 7px 18px rgba(0,0,0,.12)}
-.nav button.active:after{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.15)}
-.nav button:hover .ico,.nav button.active .ico{color:#fff}
-.topbar{background:rgba(255,255,255,.96);border-bottom:0}
-.topbar:after{height:4px;background:linear-gradient(to right,#1eb53a 0 33.33%,#fff 33.33% 66.66%,#0072c6 66.66% 100%)}
-.eyebrow{color:#087a43}
-.btn.primary{background:#087a43;border-color:#087a43;color:#fff}
-.btn.primary:hover{background:#075f35;border-color:#075f35}
-.btn.gold{background:#0072c6;border-color:#0072c6;color:#fff}
-.btn.gold:hover{background:#005da6;border-color:#005da6}
-.btn:focus-visible,.quick:focus-visible,.nav button:focus-visible{outline:3px solid rgba(0,114,198,.35);outline-offset:3px}
-.stat-icon,.inventory-product-mark{background:#e8f5ec;color:#087a43}
-.quick:hover{border-color:#8bc8a0;background:#f7fcf8}
-.field input:focus,.field select:focus,.field textarea:focus,.search:focus{border-color:#0072c6;box-shadow:0 0 0 3px rgba(0,114,198,.12)}
-.pos-command-strip{border-color:#cfe5d5;background:linear-gradient(105deg,#f2fbf4 0%,#fff 58%,#f2f8fc 100%)}
-.pos-command-mark{background:linear-gradient(145deg,#1eb53a,#087a43);color:#fff;box-shadow:0 4px 12px rgba(30,181,58,.16)}
-.pos-checkout #retailComplete{background:linear-gradient(120deg,#087a43,#075f35);border-color:#075f35;color:#fff;box-shadow:0 8px 18px rgba(7,122,67,.18)}
-.pos-checkout #retailComplete:hover{box-shadow:0 10px 22px rgba(7,122,67,.25)}
-.pos-checkout-actions{border-color:#cfe5d5;background:rgba(246,252,247,.97)}
-.wl-install-banner{border-color:#cfe5d5;background:linear-gradient(110deg,#f1fbf4,#fff)}
-.wl-install-copy b{color:#075f35}
-.wl-install-button{background:#087a43;color:#fff}
-.inventory-note{border-color:#cfe5d5;background:#f4fbf5;color:#37664a}
-.footer{border-top:1px solid #dfeae3;color:#75877d}
-.pill{background:#e8f5ec;color:#087a43}
-.pill.warn{background:#fff4df;color:#956313}
-.pill.neutral{background:#eef3f6;color:#526879}
-@media(max-width:720px){.sidebar:before{height:6px}}
-
-
-/* FINAL DARK THEME OVERRIDES — intentionally last in the stylesheet */
-html[data-theme="dark"]{color-scheme:dark;--bg:#0d1420;--ink:#e7edf6;--muted:#aab6c8;--line:#2a374a;--white:#172235;--shadow:0 8px 26px rgba(0,0,0,.28);background:#0d1420;color:#e7edf6}
-html[data-theme="dark"] body,html[data-theme="dark"] .main,html[data-theme="dark"] .content{background:#0d1420!important;color:#e7edf6!important}
-html[data-theme="dark"] .topbar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
-html[data-theme="dark"] .crumb,html[data-theme="dark"] #view h1,html[data-theme="dark"] #view h2,html[data-theme="dark"] #view h3,html[data-theme="dark"] #view h4,html[data-theme="dark"] #view b,html[data-theme="dark"] #view strong,html[data-theme="dark"] #view label{color:#e7edf6}
-html[data-theme="dark"] #view .panel,html[data-theme="dark"] #view .stat,html[data-theme="dark"] #view .module-card,html[data-theme="dark"] #view .quick,html[data-theme="dark"] #view .report-box,html[data-theme="dark"] #view .report-kpi,html[data-theme="dark"] #view .report-chart-panel,html[data-theme="dark"] #view .intel-insight,html[data-theme="dark"] #view .card,html[data-theme="dark"] #view .modal{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important;box-shadow:0 8px 26px rgba(0,0,0,.25)!important}
-html[data-theme="dark"] #view p,html[data-theme="dark"] #view small,html[data-theme="dark"] #view .panel-sub,html[data-theme="dark"] #view .stat-head,html[data-theme="dark"] #view .empty{color:#aab6c8}
-html[data-theme="dark"] #view input,html[data-theme="dark"] #view select,html[data-theme="dark"] #view textarea,html[data-theme="dark"] #view .search,html[data-theme="dark"] #view .field input,html[data-theme="dark"] #view .field select,html[data-theme="dark"] #view .field textarea{background:#101a2a!important;color:#e7edf6!important;border-color:#39485e!important}
-html[data-theme="dark"] #view button:not(.primary):not(.gold),html[data-theme="dark"] .topbar button{background:#223149;color:#e7edf6;border-color:#39485e}
-html[data-theme="dark"] #view table,html[data-theme="dark"] #view th,html[data-theme="dark"] #view td{color:#e7edf6;border-color:#2a374a}
-html[data-theme="dark"] #view th{background:#223149!important}
-html[data-theme="dark"] #view tr:hover{background:#202d40}
-html[data-theme="dark"] #appearanceBar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
-html[data-theme="dark"] .footer{color:#8795aa}
-</style></head><body><h2>'+esc(state.business.name||'White Lion SME')+'</h2><p>'+esc(state.business.phone||'')+'</p><p>SALES RECEIPT</p><hr><p>Receipt: '+esc(sale.receipt)+'</p><p>Date: '+esc(sale.date)+'</p><p>Customer: '+esc(sale.customer||'Walk-in')+'</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table><p class="right">Subtotal: '+money(sale.subtotal??sale.total)+'</p><p class="right">Discount: '+money(sale.discount||0)+'</p><p class="right">Tax: '+money(sale.tax||0)+'</p><div class="total">TOTAL: '+money(sale.total)+'</div><p>Payment: '+esc(sale.payment||'Cash')+'</p><div class="muted">Thank you for shopping with us.<br>Designed by Alhaji Abu Koroma</div><script>window.onload=()=>window.print()<\/script></body></html>');
+    w.document.write('<!doctype html><html><head><title>'+esc(sale.receipt)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:13px Arial;padding:18px;color:#111}h2,p{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{padding:7px 3px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}.right{text-align:right}.total{font-size:17px;font-weight:bold;text-align:right;margin-top:12px} .muted{text-align:center;color:#666;font-size:10px;margin-top:20px}</style></head><body><h2>'+esc(state.business.name||'White Lion SME')+'</h2><p>'+esc(state.business.phone||'')+'</p><p>SALES RECEIPT</p><hr><p>Receipt: '+esc(sale.receipt)+'</p><p>Date: '+esc(sale.date)+'</p><p>Customer: '+esc(sale.customer||'Walk-in')+'</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table><p class="right">Subtotal: '+money(sale.subtotal??sale.total)+'</p><p class="right">Discount: '+money(sale.discount||0)+'</p><p class="right">Tax: '+money(sale.tax||0)+'</p><div class="total">TOTAL: '+money(sale.total)+'</div><p>Payment: '+esc(sale.payment||'Cash')+'</p><div class="muted">Thank you for shopping with us.<br>Designed by Alhaji Abu Koroma</div><script>window.onload=()=>window.print()<\/script></body></html>');
     w.document.close();
   };
   v.innerHTML=pageHeader(industryWording().sales,'A faster counter experience with barcode search, live stock checks and clear payment totals')+
