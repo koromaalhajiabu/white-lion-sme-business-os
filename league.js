@@ -13,6 +13,7 @@
     ['table','League Table'],['stats','Player Statistics'],['discipline','Discipline'],['access','Access & Roles']
   ];
   const currentCompetition = () => (cache.competitions||[]).find(x=>x.id===competitionId);
+  const roleLabel = r => ({competition_admin:'League admin',club_manager:'Club manager',referee:'Referee',disciplinary_officer:'Disciplinary officer',viewer:'Viewer'}[r] || r.replaceAll('_',' '));
   const currentSeason = () => (cache.seasons||[]).find(x=>x.id===seasonId);
   const selectOptions = (items, valueKey='id', labelKey='name', placeholder='Select…') =>
     '<option value="">'+esc(placeholder)+'</option>' + items.map(x=>'<option value="'+esc(x[valueKey])+'">'+esc(x[labelKey])+'</option>').join('');
@@ -41,7 +42,7 @@
   }
   async function load(){
     const c=client(),b=business();
-    if(!c||!b?.id)throw new Error('Sign in and select a business workspace to manage its competitions.');
+    if(!c||!b?.id)throw new Error('Sign in and select a business workspace to manage its football leagues.');
     const {data:competitions,error}=await c.from('league_competitions').select('*').eq('business_id',b.id).order('created_at',{ascending:false});
     if(error)throw error;
     cache.competitions=competitions||[];
@@ -61,25 +62,25 @@
   function base(title,sub,body){
     const c=currentCompetition();
     return '<div class="wl-league"><div class="wl-league-hero"><div><div class="wl-league-kicker">White Lion · Community & Sports</div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div><div class="wl-league-mark">WL</div></div><div id="wlLeagueNotice" class="wl-league-notice" hidden></div>'+
-      '<div class="wl-league-toolbar"><select id="wlLeagueCompetition">'+selectOptions(cache.competitions||[],'id','name','Choose a competition')+'</select>'+
+      '<div class="wl-league-toolbar"><select id="wlLeagueCompetition">'+selectOptions(cache.competitions||[],'id','name','Choose a league')+'</select>'+
       (c?'<select id="wlLeagueSeason">'+selectOptions(cache.seasons||[],'id','name','Choose a season')+'</select>':'')+
-      button('＋ New competition','primary','id="wlLeagueNewCompetition"')+'</div>'+
+      button('＋ New league','primary','id="wlLeagueNewCompetition"')+'</div>'+
       (c?'<div class="wl-league-tabs">'+tabs.map(([id,label])=>'<button class="wl-league-tab '+(activeTab===id?'active':'')+'" data-league-tab="'+id+'">'+label+'</button>').join('')+'</div>':'')+
       body+'</div>';
   }
   function overview(){
     const c=currentCompetition(),s=currentSeason(),clubs=cache.clubs||[],players=cache.players||[],fixtures=(cache.fixtures||[]).filter(x=>!seasonId||x.season_id===seasonId);
     const completed=fixtures.filter(x=>x.status==='completed').length,upcoming=fixtures.filter(x=>x.status==='scheduled').length;
-    return '<div class="wl-league-grid"><div class="wl-league-card"><small>Registered clubs</small><strong>'+clubs.length+'</strong><small>In this competition</small></div><div class="wl-league-card"><small>Registered players</small><strong>'+players.length+'</strong><small>Across all clubs</small></div><div class="wl-league-card"><small>Fixtures completed</small><strong>'+completed+'</strong><small>'+upcoming+' scheduled fixtures</small></div></div>'+
+    return '<div class="wl-league-grid"><div class="wl-league-card"><small>Registered clubs</small><strong>'+clubs.length+'</strong><small>In this league</small></div><div class="wl-league-card"><small>Registered players</small><strong>'+players.length+'</strong><small>Across all clubs</small></div><div class="wl-league-card"><small>Fixtures completed</small><strong>'+completed+'</strong><small>'+upcoming+' scheduled fixtures</small></div></div>'+
       '<div class="wl-league-panel"><h3>'+esc(c.name)+' · '+esc(s?.name||'No season selected')+'</h3><div class="wl-league-sub">'+esc(c.competition_type)+' · '+esc(c.region||'Region not set')+' · '+esc(c.organiser||'Organiser not set')+'</div>'+
       (s?'Season dates: '+esc(s.starts_on||'TBC')+' to '+esc(s.ends_on||'TBC')+' · <span class="wl-league-badge">'+esc(s.status)+'</span>':'Create a season to start scheduling fixtures.')+
       '<form class="wl-league-form" data-league-form="season" style="margin-top:14px">'+field('Season name','name','text',true)+field('Start date','starts_on','date')+field('End date','ends_on','date')+selectField('Season status','status',['planned','active','completed','archived'].map(x=>'<option value="'+x+'">'+x+'</option>').join(''))+'<div class="wl-league-field full">'+button('Save season','primary')+'</div></form>'+
       '<div class="wl-league-actions">'+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div></div>'+
-      '<div class="wl-league-panel"><h3>Competition workflow</h3><div class="wl-league-sub">Set up a competition, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League positions and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>';
+      '<div class="wl-league-panel"><h3>League workflow</h3><div class="wl-league-sub">Set up a league, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League standings and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>';
   }
   function clubsView(){
     const rows=(cache.clubs||[]).map(x=>'<tr><td><b>'+esc(x.name)+'</b><br><small>'+esc(x.short_name||'')+'</small></td><td>'+esc(x.home_venue||'—')+'</td><td>'+esc(x.manager_name||'—')+'</td><td><span class="wl-league-badge">'+esc(x.status)+'</span></td></tr>').join('');
-    return '<div class="wl-league-panel"><h3>Club register</h3><div class="wl-league-sub">Add clubs, home grounds and club contacts to this competition.</div><form class="wl-league-form" data-league-form="club">'+field('Club name','name','text',true)+field('Short name / abbreviation','short_name')+field('Home venue','home_venue')+field('Club manager','manager_name')+field('Contact phone','contact_phone','tel')+field('Club crest URL (optional)','crest_url','url')+'<div class="wl-league-field full">'+button('Save club','primary')+'</div></form></div><div class="wl-league-panel"><h3>Registered clubs · '+(cache.clubs||[]).length+'</h3>'+table(['Club','Home venue','Manager','Status'],rows)+'</div>';
+    return '<div class="wl-league-panel"><h3>Club register</h3><div class="wl-league-sub">Add clubs, home grounds and club contacts to this league.</div><form class="wl-league-form" data-league-form="club">'+field('Club name','name','text',true)+field('Short name / abbreviation','short_name')+field('Home venue','home_venue')+field('Club manager','manager_name')+field('Contact phone','contact_phone','tel')+field('Club crest URL (optional)','crest_url','url')+'<div class="wl-league-field full">'+button('Save club','primary')+'</div></form></div><div class="wl-league-panel"><h3>Registered clubs · '+(cache.clubs||[]).length+'</h3>'+table(['Club','Home venue','Manager','Status'],rows)+'</div>';
   }
   function playersView(){
     const rows=(cache.players||[]).map(p=>'<tr><td><b>'+esc(p.full_name)+'</b></td><td>'+esc((cache.clubs||[]).find(c=>c.id===p.club_id)?.name||'—')+'</td><td>'+esc(p.shirt_number??'—')+'</td><td>'+esc(p.position||'—')+'</td><td>'+esc(p.nationality||'—')+'</td><td>'+esc(p.status)+'</td></tr>').join('');
@@ -106,7 +107,7 @@
     const {data,error}=await client().from('league_standings').select('*').eq('business_id',business().id).eq('competition_id',competitionId).eq('season_id',seasonId).order('points',{ascending:false}).order('goal_difference',{ascending:false}).order('goals_for',{ascending:false});
     if(error)throw error;
     const rows=(data||[]).map((r,i)=>'<tr><td><b>'+(i+1)+'</b></td><td>'+esc(r.club_name)+'</td><td>'+r.played+'</td><td>'+r.won+'</td><td>'+r.drawn+'</td><td>'+r.lost+'</td><td>'+r.goals_for+'</td><td>'+r.goals_against+'</td><td>'+r.goal_difference+'</td><td><b>'+r.points+'</b></td></tr>').join('');
-    return '<div class="wl-league-panel"><h3>Official league table</h3><div class="wl-league-sub">Automatically calculated from completed fixtures using this competition’s points rules. Teams with no completed matches remain on the table.</div>'+table(['Pos','Club','P','W','D','L','GF','GA','GD','Pts'],rows)+'</div>';
+    return '<div class="wl-league-panel"><h3>Official league table</h3><div class="wl-league-sub">Automatically calculated from completed fixtures using this league’s points rules. Teams with no completed matches remain on the table.</div>'+table(['Pos','Club','P','W','D','L','GF','GA','GD','Pts'],rows)+'</div>';
   }
   async function statsView(){
     const {data,error}=await client().from('league_player_statistics').select('*').eq('business_id',business().id).eq('competition_id',competitionId).order('goals',{ascending:false}).order('assists',{ascending:false});
@@ -120,7 +121,7 @@
   }
   function disciplineView(){
     const rows=(cache.discipline||[]).map(d=>'<tr><td>'+esc(d.full_name||'—')+'</td><td>'+esc(d.club_name||'—')+'</td><td>'+esc(d.action_type)+'</td><td>'+esc(d.details)+'</td><td>'+esc(d.status)+'</td></tr>').join('');
-    return '<div class="wl-league-panel"><h3>Disciplinary register</h3><div class="wl-league-sub">Record warnings, cards, suspensions and other competition decisions.</div>'+
+    return '<div class="wl-league-panel"><h3>Disciplinary register</h3><div class="wl-league-sub">Record warnings, cards, suspensions and other league decisions.</div>'+
       (cache.players?.length?'<form class="wl-league-form" data-league-form="discipline">'+selectField('Player','player_id',selectOptions(cache.players,'id','full_name'))+
       selectField('Action','action_type',['warning','yellow_card','red_card','suspension','fine','other'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
       field('Matches suspended','matches_suspended','number',false,'min="0" value="0"')+field('Start date','starts_on','date')+field('End date','ends_on','date')+
@@ -129,18 +130,18 @@
       '<div class="wl-league-panel"><h3>Recent decisions</h3>'+table(['Player','Club','Action','Details','Status'],rows)+'</div>';
   }
   function accessView(){
-    return '<div class="wl-league-panel"><h3>Competition access & roles</h3><div class="wl-league-sub">Assign existing members of this White Lion business to a competition. Use their Supabase user UUID. The person must already be an active member of this business.</div>'+
+    return '<div class="wl-league-panel"><h3>League access & roles</h3><div class="wl-league-sub">Assign existing members of this White Lion business to a league. Use their Supabase user UUID. The person must already be an active member of this business.</div>'+
       '<form class="wl-league-form" data-league-form="access">'+field('Member user UUID','user_id','text',true)+
-      selectField('Competition role','role',['competition_admin','club_manager','referee','disciplinary_officer','viewer'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
+      selectField('League role','role',['competition_admin','club_manager','referee','disciplinary_officer','viewer'].map(x=>'<option value="'+x+'">'+roleLabel(x)+'</option>').join(''))+
       selectField('Limit to club (optional)','club_id',selectOptions(cache.clubs,'id','name','All clubs'))+
-      '<div class="wl-league-field full">'+button('Assign competition role','primary')+'</div></form></div>'+
-      '<div class="wl-league-panel"><h3>Assigned competition members</h3>'+table(['User UUID','Role','Club scope','Status'],(cache.members||[]).map(m=>'<tr><td>'+esc(m.user_id)+'</td><td>'+esc(m.role.replaceAll('_',' '))+'</td><td>'+esc(cache.clubs.find(c=>c.id===m.club_id)?.name||'All clubs')+'</td><td>'+ (m.is_active?'Active':'Inactive')+'</td></tr>').join(''))+'</div>'+
+      '<div class="wl-league-field full">'+button('Assign league role','primary')+'</div></form></div>'+
+      '<div class="wl-league-panel"><h3>Assigned league members</h3>'+table(['User UUID','Role','Club scope','Status'],(cache.members||[]).map(m=>'<tr><td>'+esc(m.user_id)+'</td><td>'+esc(roleLabel(m.role))+'</td><td>'+esc(cache.clubs.find(c=>c.id===m.club_id)?.name||'All clubs')+'</td><td>'+ (m.is_active?'Active':'Inactive')+'</td></tr>').join(''))+'</div>'+
       '<div class="wl-league-panel"><h3>Role responsibilities</h3>'+table(['Role','Access'],[
-        '<tr><td>Competition admin</td><td>Manage seasons, clubs, players, fixtures and competition records</td></tr>',
-        '<tr><td>Club manager</td><td>Maintain player registrations for the competition</td></tr>',
+        '<tr><td>League admin</td><td>Manage seasons, clubs, players, fixtures and league records</td></tr>',
+        '<tr><td>Club manager</td><td>Maintain player registrations for the league</td></tr>',
         '<tr><td>Referee</td><td>Submit fixture results and match events</td></tr>',
         '<tr><td>Disciplinary officer</td><td>Record and manage disciplinary decisions</td></tr>',
-        '<tr><td>Viewer</td><td>Read competition records</td></tr>'
+        '<tr><td>Viewer</td><td>Read league records</td></tr>'
       ].join(''))+'</div>';
   }
   async function disciplineLoad(){
@@ -152,12 +153,12 @@
   async function render(){
     styles();const v=host();if(!v)return;
     if(!client()||!business()?.id){v.innerHTML=base('Sports & Local League Management','Manage local leagues, clubs, players and fixtures inside your business workspace.', '<div class="wl-league-panel">'+empty('Sign in and select an active business workspace. The league module uses your existing secure White Lion account.')+'</div>');return}
-    v.innerHTML='<div class="wl-league-panel">'+empty('Loading competition records…')+'</div>';
+    v.innerHTML='<div class="wl-league-panel">'+empty('Loading league records…')+'</div>';
     try{
       await load();
       let body='';
       if(!competitionId){
-        body='<div class="wl-league-panel"><h3>Create your first competition</h3><div class="wl-league-sub">Start with a district league, community competition, school league, regional championship or cup tournament.</div>'+competitionForm()+'</div>';
+        body='<div class="wl-league-panel"><h3>Create your first league</h3><div class="wl-league-sub">Start with a district league, cup, school league, regional championship or community football tournament.</div>'+competitionForm()+'</div>';
       }else{
         if(activeTab==='overview')body=overview();
         else if(activeTab==='clubs')body=clubsView();
@@ -168,23 +169,23 @@
         else if(activeTab==='discipline'){await disciplineLoad();body=disciplineView()}
         else if(activeTab==='access')body=accessView();
       }
-      v.innerHTML=base('Sports & Local League Management','Run multiple local competitions with secure administration, match records and automatic tables.',body);
+      v.innerHTML=base('Sports & Local League Management','Run multiple local football leagues with secure administration, match records and automatic tables.',body);
       const compSel=document.getElementById('wlLeagueCompetition');if(compSel)compSel.value=competitionId;
       const seasonSel=document.getElementById('wlLeagueSeason');if(seasonSel)seasonSel.value=seasonId;
       bind();
     }catch(e){
-      v.innerHTML=base('Sports & Local League Management','Your competition workspace could not be loaded.','<div class="wl-league-panel"><div class="wl-league-notice">'+esc(e.message||'Unknown error')+'</div><button class="wl-league-btn primary" id="wlLeagueRetry">Try again</button><p class="wl-league-muted">If the database migration has not been run, apply migration 015 before retrying.</p></div>');
+      v.innerHTML=base('Sports & Local League Management','Your league workspace could not be loaded.','<div class="wl-league-panel"><div class="wl-league-notice">'+esc(e.message||'Unknown error')+'</div><button class="wl-league-btn primary" id="wlLeagueRetry">Try again</button><p class="wl-league-muted">If the database migration has not been run, apply migration 016 before retrying.</p></div>');
       document.getElementById('wlLeagueRetry')?.addEventListener('click',render);
     }
   }
   function competitionForm(){
-    return '<form class="wl-league-form" data-league-form="competition">'+field('Competition name','name','text',true)+
-      selectField('Competition type','competition_type',['League','Cup','Tournament','School League','Community League','Other'].map(x=>'<option>'+x+'</option>').join(''))+
+    return '<form class="wl-league-form" data-league-form="competition">'+field('League name','name','text',true)+
+      selectField('League type','competition_type',['League','Cup','Tournament','School League','Community League','Other'].map(x=>'<option>'+x+'</option>').join(''))+
       field('Region / district','region')+field('Organiser','organiser')+
       field('Points for a win','points_win','number',true,'min="0" max="10" value="3"')+
       field('Points for a draw','points_draw','number',true,'min="0" max="10" value="1"')+
       field('Points for a loss','points_loss','number',true,'min="0" max="10" value="0"')+
-      '<div class="wl-league-field full">'+button('Create competition','primary')+'</div></form>';
+      '<div class="wl-league-field full">'+button('Create league','primary')+'</div></form>';
   }
   function bind(){
     document.getElementById('wlLeagueCompetition')?.addEventListener('change',e=>{competitionId=e.target.value;seasonId='';activeTab='overview';render()});
@@ -219,7 +220,7 @@
         const {error}=await c.from(tableName).insert(payload);if(error)throw error;
         if(kind==='competition'){competitionId='';seasonId='';activeTab='overview'}
         if(kind==='season')seasonId='';
-      },({competition:'Competition created.',season:'Season created.',club:'Club registered.',player:'Player registered.',fixture:'Fixture scheduled.',event:'Match event saved.',discipline:'Disciplinary record saved.',access:'Competition role assigned.'})[kind]);
+      },({competition:'League created.',season:'Season created.',club:'Club registered.',player:'Player registered.',fixture:'Fixture scheduled.',event:'Match event saved.',discipline:'Disciplinary record saved.',access:'League role assigned.'})[kind]);
     });});
   }
   async function save(work,message){
