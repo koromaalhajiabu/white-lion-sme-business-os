@@ -2219,17 +2219,8 @@ begin
     where business_id=new.business_id and branch_id=v_branch and product_id=r.product_id
     for update;
     if not found then
-      select cost_price into v_cost from public.products
-      where id=r.product_id and business_id=new.business_id;
-      v_qty_before:=v_stock+r.quantity;
-      v_value_before:=round(v_qty_before*coalesce(v_cost,0),2);
-      insert into public.inventory_cost_balances(business_id,branch_id,product_id,quantity_on_hand,inventory_value)
-      values(new.business_id,v_branch,r.product_id,v_qty_before,v_value_before)
-      on conflict(business_id,branch_id,product_id) do nothing;
-      select quantity_on_hand,inventory_value into v_qty_before,v_value_before
-      from public.inventory_cost_balances
-      where business_id=new.business_id and branch_id=v_branch and product_id=r.product_id
-      for update;
+      -- Do not invent a cost for stock rows created outside a tracked receipt or adjustment flow.
+      continue;
     end if;
     -- The branch stock delta distinguishes stock-managed POS lines from service/non-stock lines.
     v_sold:=greatest(least(r.quantity,v_qty_before-v_stock),0);
@@ -2418,7 +2409,7 @@ declare
   v_dest_value numeric(18,2);
   v_product_cost numeric(18,6);
 begin
-  if old.status='approved' or new.status<>'approved' then return new; end if;
+  if old.status='completed' or new.status<>'completed' then return new; end if;
   for r in
     select product_id,sum(quantity)::numeric(18,3) as quantity
     from public.branch_stock_transfer_items
@@ -2497,6 +2488,12 @@ begin
   order by b.name,p.name;
 end;
 $$;
+revoke all on function public.set_offline_transaction_branch() from public;
+revoke all on function public.apply_offline_purchase_inventory_cost() from public;
+revoke all on function public.apply_offline_sale_inventory_cost() from public;
+revoke all on function public.apply_product_batch_inventory_cost() from public;
+revoke all on function public.apply_stock_adjustment_inventory_cost() from public;
+revoke all on function public.apply_branch_transfer_inventory_cost() from public;
 revoke all on function public.inventory_valuation_report(uuid) from public;
 grant execute on function public.inventory_valuation_report(uuid) to authenticated;
 
