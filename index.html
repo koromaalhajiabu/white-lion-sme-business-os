@@ -624,7 +624,7 @@ html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-c
 <aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-mark">W</div><div><strong>WHITE LION</strong><small>BUSINESS SYSTEMS</small></div></div>
   <div class="business-switch"><small>Active business</small><b id="sideBusiness">My Business</b><span id="sideIndustry" style="font-size:10px;color:#b8c4d8">Multi-industry</span></div>
-  <div class="wl-appearance"><div class="wl-appearance-copy"><span>Appearance</span><small id="sideThemeLabel">Light mode</small></div><button id="sideThemeToggle" type="button" aria-label="Switch to dark mode">☾</button></div>
+  <div class="wl-appearance"><div class="wl-appearance-copy"><span>Appearance</span><small id="sideThemeLabel">Light mode</small></div><button id="sideThemeToggle" type="button" onclick="window.wlToggleAppearance()" aria-label="Switch to dark mode">☾</button></div>
   <div><div class="nav-label">Workspace</div><nav class="nav" id="nav">
     <button class="active" data-page="dashboard"><span class="ico">▦</span>Overview</button>
     <button data-page="sales"><span class="ico">▣</span>Sales & POS</button>
@@ -652,10 +652,10 @@ html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-c
 <main class="main">
 <header class="topbar">
   <div style="display:flex;align-items:center;gap:12px"><button class="btn small mobile-menu" id="menuBtn">☰</button><div class="crumb" id="crumb">Overview</div></div>
-  <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
+  <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" onclick="window.wlToggleAppearance()" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
 </header>
 <div class="wl-install-banner" id="wlInstallBanner" hidden><div class="wl-install-copy"><b>Install White Lion SME</b><small id="wlInstallHint">Add the business system to your home screen for quick access.</small></div><button class="wl-install-button" id="wlInstallButton" type="button">Install app</button></div>
-<div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button">Switch to dark mode</button></div>
+<div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button" onclick="window.wlToggleAppearance()">Switch to dark mode</button></div>
 <section class="content" id="view"></section>
 <div class="footer">Designed by Alhaji Abu Koroma · White Lion Tech Solutions</div>
 </main>
@@ -1113,15 +1113,20 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
   try{localStorage.setItem('wl-sme-theme',theme)}catch(_){}
  };
  window.wlSetAppearance=apply;
+ window.wlToggleAppearance=()=>apply(root.getAttribute('data-theme')==='dark'?'light':'dark');
  apply(read());
- document.addEventListener('click',event=>{
-  const button=event.target.closest('#themeToggle,#sideThemeToggle,#appearanceBarToggle');
-  if(!button)return;
-  event.preventDefault();
-  apply(root.getAttribute('data-theme')==='dark'?'light':'dark');
- },true);
+ ['themeToggle','sideThemeToggle','appearanceBarToggle'].forEach(id=>{
+  const button=document.getElementById(id);
+  if(button){
+   button.type='button';
+   button.onclick=window.wlToggleAppearance;
+   button.addEventListener('keydown',event=>{
+    if(event.key==='Enter'||event.key===' '){event.preventDefault();window.wlToggleAppearance()}
+   });
+  }
+ });
 })();
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=51',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=52',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=27" defer></script>
 <script src="./operations.js?v=12" defer></script>
