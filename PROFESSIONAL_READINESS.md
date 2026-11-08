@@ -30,7 +30,7 @@ These are repository-level findings. They do not independently prove every featu
 
 - Added `supabase/migrations/018_double_entry_general_ledger.sql` and included it in `supabase/INSTALL_ALL_OPERATIONS.sql`.
 - Added `supabase/migrations/019_weighted_average_inventory_cogs.sql` and included it in the consolidated installer.
-- Added a finance UI for chart-of-accounts setup, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting and balanced manual journal posting.
+- Added a finance UI for chart-of-accounts setup, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting, inventory valuation and balanced manual journal posting.
 - The ledger is designed to post new synced sales, purchases, expenses, returns and receivable/payable payments. Cash sales are routed to cash/bank; credit sales are routed to receivables. Historical records are not automatically rewritten.
 - Migration 019 adds branch-level moving weighted-average inventory valuation, cost movement history, automatic COGS and inventory relief for new stock-managed synced sales, plus purchase, batch receipt, approved adjustment and branch-transfer valuation updates. Opening stock is valued using available batch costs and product.cost_price for unbatched quantities. Historical sales are not rewritten; historical COGS is not backfilled. Verify opening values before relying on gross profit.
 - Manual cashbook entries are not automatically posted to the ledger in this release to avoid double-counting with existing payment workflows.
@@ -38,13 +38,13 @@ These are repository-level findings. They do not independently prove every featu
 - Added the same migration to `supabase/INSTALL_ALL_OPERATIONS.sql` so the operations installer includes the new reconciliation schema and RPCs.
 - Added a finance-only reconciliation interface to the Operations Control Centre: account setup, CSV statement import, unmatched-line review and guarded matching to cashbook entries.
 - Linked new cashbook entries to a selected bank/mobile-money account so they can be reconciled later.
-- Migrations 017 and 018 are committed to GitHub. Migration 017 was applied and its reconciliation flow was smoke-tested by the user. Migration 018 has **not** yet been executed against Supabase. Run migration 018 alone in the SQL Editor, then verify the objects and reports before posting live accounting transactions.
+- Migrations 017, 018 and 019 are committed to GitHub. The user confirmed migration 017 reconciliation and migration 018 accounting installation/report checks. Migration 019 is committed but has not yet been applied or functionally tested. Apply migration 019 alone, then test purchases, stock receipts, sales, adjustments, transfers, inventory valuation and balanced COGS journals before relying on gross profit.
 
 ## Required acceptance tests before calling the platform production-ready
 
 - Two separate business accounts cannot read or mutate each other's data.
 - Each role can perform only its permitted actions; denied actions are tested, not just allowed actions.
-- A sale, purchase, return, refund, obligation payment and stock adjustment remain correct after refresh and sync retry.
+- A sale, purchase, return, refund, obligation payment, stock adjustment, branch transfer and inventory-cost movement remain correct after refresh and sync retry; the sale COGS journal must match the inventory cost movement.
 - Two devices reconnecting after offline work do not duplicate transactions or silently overwrite records.
 - A statement import rejects malformed rows, skips duplicate external references, and reports inserted counts.
 - A statement line cannot be matched to another business, another bank account, a wrong amount or the wrong debit/credit direction.
