@@ -61,7 +61,7 @@
       </div>
       <div id="wlCloudWork" hidden>
         <select id="wlBusinessSelect" aria-label="Choose business"></select>
-        <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Upload local records</button><button id="wlDownloadNow">Download cloud records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
+        <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Upload local records</button><button id="wlDiagnoseData" type="button">Check local/cloud data</button><div id="wlDataDiagnostic" class="cloud-status" role="status" aria-live="polite">Diagnostic has not been run. This check will not upload, delete or modify records.</div><button id="wlDownloadNow">Download cloud records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
         <details id="wlBranchManager" open><summary>Branch management</summary>
           <div class="muted" style="margin:7px 0">Manage outlets, choose the active working location, assign staff and review stock by branch.</div>
           <label class="muted" for="wlBranchSelect">Active working branch</label>
@@ -153,6 +153,7 @@
     $('wlSignOut').onclick = async () => { await client.auth.signOut(); session = null; activeBusiness = null; $('wlDeveloperBox').hidden = true; showSignedOut(); };
     $('wlCreateBusiness').onclick = createBusiness;
     $('wlSyncNow').onclick = syncLocalRecords;
+    $('wlDiagnoseData').onclick = diagnoseData;
     $('wlDownloadNow').onclick = downloadCloudRecords;
     $('wlCreateBranch').onclick = createBranch;
     $('wlRefreshBranches').onclick = loadBranches;
@@ -757,6 +758,55 @@
     const el = $('wlSyncStatus');
     if (el) el.textContent = message;
   }
+  async function diagnoseData() {
+    const button = $('wlDiagnoseData');
+    const output = $('wlDataDiagnostic');
+    if (button) { button.disabled = true; button.textContent = 'Checking…'; }
+    if (output) output.textContent = 'Checking local device records and this signed-in account’s cloud workspace. No records will be changed.';
+    try {
+      const stores = ['products','sales','purchases','returns','customers','suppliers','expenses','employees','branchInventory'];
+      const localCounts = {};
+      const localIds = new Set();
+      for (const store of stores) {
+        try {
+          const rows = await all(store);
+          localCounts[store] = rows.length;
+          rows.forEach(row => {
+            if (row.localBusinessId) localIds.add(String(row.localBusinessId));
+            if (row.cloudSyncedFor) localIds.add(String(row.cloudSyncedFor));
+          });
+        } catch (error) {
+          localCounts[store] = 'unavailable';
+        }
+      }
+      let cloudSummary = 'Not signed in; cloud membership check skipped.';
+      if (client && session?.user?.id) {
+        const { data, error } = await client.from('business_members')
+          .select('business_id,role,is_active,businesses(id,name)')
+          .eq('user_id', session.user.id);
+        if (error) {
+          cloudSummary = 'Cloud membership check failed: ' + error.message;
+        } else {
+          const memberships = (data || []).filter(row => row.businesses?.id);
+          cloudSummary = memberships.length
+            ? memberships.map(row => (row.businesses.name || 'Unnamed business') + ' (' + row.role + (row.is_active ? ', active' : ', inactive') + ')').join('; ')
+            : 'No business memberships found for this signed-in account.';
+        }
+      }
+      const localTotal = Object.values(localCounts).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+      const detail = stores.map(name => name + ': ' + localCounts[name]).join(' · ');
+      const identity = activeBusiness ? 'Selected workspace: ' + activeBusiness.name + ' (' + activeBusiness.id + ').' : 'No active business workspace selected.';
+      const ids = localIds.size ? 'Business IDs attached to local records: ' + Array.from(localIds).join(', ') + '.' : 'No business IDs are attached to the inspected local records.';
+      const report = 'READ-ONLY DIAGNOSTIC — Local records found: ' + localTotal + '. ' + detail + '. Cloud: ' + cloudSummary + ' ' + identity + ' ' + ids + ' Nothing was uploaded, deleted or modified.';
+      if (output) output.textContent = report;
+      say('Diagnostic complete. Review the local/cloud data report below the workspace buttons.');
+    } catch (error) {
+      if (output) output.textContent = 'Diagnostic could not complete: ' + (error.message || String(error)) + '. No records were changed.';
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Check local/cloud data'; }
+    }
+  }
+
   async function updateSyncStatus() {
     if (!activeBusiness) return;
     const names = ['products','customers','suppliers','expenses'];
