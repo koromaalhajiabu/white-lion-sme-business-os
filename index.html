@@ -871,6 +871,21 @@ body{background:linear-gradient(180deg,#f5faf6 0%,#f3f7f5 100%);color:#173126}
 .pill.neutral{background:#eef3f6;color:#526879}
 @media(max-width:720px){.sidebar:before{height:6px}}
 
+
+/* FINAL DARK THEME OVERRIDES — intentionally last in the stylesheet */
+html[data-theme="dark"]{color-scheme:dark;--bg:#0d1420;--ink:#e7edf6;--muted:#aab6c8;--line:#2a374a;--white:#172235;--shadow:0 8px 26px rgba(0,0,0,.28);background:#0d1420;color:#e7edf6}
+html[data-theme="dark"] body,html[data-theme="dark"] .main,html[data-theme="dark"] .content{background:#0d1420!important;color:#e7edf6!important}
+html[data-theme="dark"] .topbar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
+html[data-theme="dark"] .crumb,html[data-theme="dark"] #view h1,html[data-theme="dark"] #view h2,html[data-theme="dark"] #view h3,html[data-theme="dark"] #view h4,html[data-theme="dark"] #view b,html[data-theme="dark"] #view strong,html[data-theme="dark"] #view label{color:#e7edf6}
+html[data-theme="dark"] #view .panel,html[data-theme="dark"] #view .stat,html[data-theme="dark"] #view .module-card,html[data-theme="dark"] #view .quick,html[data-theme="dark"] #view .report-box,html[data-theme="dark"] #view .report-kpi,html[data-theme="dark"] #view .report-chart-panel,html[data-theme="dark"] #view .intel-insight,html[data-theme="dark"] #view .card,html[data-theme="dark"] #view .modal{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important;box-shadow:0 8px 26px rgba(0,0,0,.25)!important}
+html[data-theme="dark"] #view p,html[data-theme="dark"] #view small,html[data-theme="dark"] #view .panel-sub,html[data-theme="dark"] #view .stat-head,html[data-theme="dark"] #view .empty{color:#aab6c8}
+html[data-theme="dark"] #view input,html[data-theme="dark"] #view select,html[data-theme="dark"] #view textarea,html[data-theme="dark"] #view .search,html[data-theme="dark"] #view .field input,html[data-theme="dark"] #view .field select,html[data-theme="dark"] #view .field textarea{background:#101a2a!important;color:#e7edf6!important;border-color:#39485e!important}
+html[data-theme="dark"] #view button:not(.primary):not(.gold),html[data-theme="dark"] .topbar button{background:#223149;color:#e7edf6;border-color:#39485e}
+html[data-theme="dark"] #view table,html[data-theme="dark"] #view th,html[data-theme="dark"] #view td{color:#e7edf6;border-color:#2a374a}
+html[data-theme="dark"] #view th{background:#223149!important}
+html[data-theme="dark"] #view tr:hover{background:#202d40}
+html[data-theme="dark"] #appearanceBar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
+html[data-theme="dark"] .footer{color:#8795aa}
 </style></head><body><h2>'+esc(state.business.name||'White Lion SME')+'</h2><p>'+esc(state.business.phone||'')+'</p><p>SALES RECEIPT</p><hr><p>Receipt: '+esc(sale.receipt)+'</p><p>Date: '+esc(sale.date)+'</p><p>Customer: '+esc(sale.customer||'Walk-in')+'</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table><p class="right">Subtotal: '+money(sale.subtotal??sale.total)+'</p><p class="right">Discount: '+money(sale.discount||0)+'</p><p class="right">Tax: '+money(sale.tax||0)+'</p><div class="total">TOTAL: '+money(sale.total)+'</div><p>Payment: '+esc(sale.payment||'Cash')+'</p><div class="muted">Thank you for shopping with us.<br>Designed by Alhaji Abu Koroma</div><script>window.onload=()=>window.print()<\/script></body></html>');
     w.document.close();
   };
