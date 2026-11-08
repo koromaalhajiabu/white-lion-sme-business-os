@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087a43">
+<title>Public league page</title>
+<link rel="icon" href="./icons/white-lion-icon.svg">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f8f5;font:15px/1.55 system-ui,Arial;color:#203b2b}
+.wrap{max-width:760px;margin:0 auto;padding:18px 16px 40px}
+.hero{padding:22px 20px;margin-bottom:16px;border-radius:17px;background:linear-gradient(120deg,#075b35,#0c8f52);color:#fff}
+.hero .kicker{font-size:10px;font-weight:850;letter-spacing:1.6px;text-transform:uppercase;opacity:.85}
+.hero h1{margin:6px 0 5px;font-size:clamp(21px,4vw,28px);letter-spacing:-.5px}
+.hero p{margin:0;font-size:12px;opacity:.9}
+.toolbar{margin-bottom:14px}
+.toolbar select{width:100%;min-height:44px;padding:9px 11px;border:1px solid #d9e8df;border-radius:10px;background:#fff;color:#203b2b;font:inherit;font-size:13px}
+.card{background:#fff;border:1px solid #e0eae3;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px rgba(7,91,53,.045)}
+.card h2{margin:0 0 10px;font-size:14px;color:#17432b}
+.muted{color:#718078;font-size:12px}
+.table-wrap{width:100%;overflow:auto;border:1px solid #e8eee9;border-radius:10px;-webkit-overflow-scrolling:touch}
+.table-wrap table{width:100%;border-collapse:collapse;white-space:nowrap}
+.table-wrap th{background:#f3f8f4;color:#61776a;font-size:9px;text-transform:uppercase;letter-spacing:.4px;padding:10px;text-align:left}
+.table-wrap td{padding:10px;border-top:1px solid #edf2ee;color:#31483a;font-size:12px}
+.foot{text-align:center;color:#8b9a92;font-size:11px;margin-top:18px}
+.error{text-align:center;padding:40px 20px}
+.error h1{color:#075b35;font-size:19px}
+.error p{color:#718078;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><div class="card"><p class="muted">Loading league…</p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://nclncqlgnxnijlumznnt.supabase.co';
+const SUPABASE_KEY='sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dt=v=>v?new Date(v).toLocaleString():'Not scheduled';
+let snapshot=null, seasonId='';
+
+function clubName(id){return (snapshot.clubs||[]).find(c=>c.id===id)?.name||'—';}
+
+function errorCard(title,msg){
+  return '<div class="error"><h1>'+esc(title)+'</h1><p>'+esc(msg)+'</p></div>';
+}
+
+function standingsTable(){
+  const rows=(snapshot.standings||[]).filter(r=>!seasonId||r.season_id===seasonId);
+  if(!rows.length)return '<p class="muted">No completed matches yet.</p>';
+  return '<div class="table-wrap"><table><thead><tr><th>Pos</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr></thead><tbody>'+
+    rows.map((r,i)=>'<tr><td><b>'+(i+1)+'</b></td><td>'+esc(r.club_name)+'</td><td>'+r.played+'</td><td>'+r.won+'</td><td>'+r.drawn+'</td><td>'+r.lost+'</td><td>'+r.goals_for+'</td><td>'+r.goals_against+'</td><td>'+r.goal_difference+'</td><td><b>'+r.points+'</b></td></tr>').join('')+
+    '</tbody></table></div>';
+}
+function fixturesTable(){
+  const rows=(snapshot.fixtures||[]).filter(f=>!seasonId||f.season_id===seasonId);
+  if(!rows.length)return '<p class="muted">No fixtures scheduled yet.</p>';
+  return '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Home</th><th>Away</th><th>Score</th><th>Venue</th><th>Status</th></tr></thead><tbody>'+
+    rows.map(f=>'<tr><td>'+esc(dt(f.kickoff_at))+'</td><td>'+esc(clubName(f.home_club_id))+'</td><td>'+esc(clubName(f.away_club_id))+'</td><td>'+(f.status==='completed'?'<b>'+f.home_score+' - '+f.away_score+'</b>':'—')+'</td><td>'+esc(f.venue||'—')+'</td><td>'+esc(f.status)+'</td></tr>').join('')+
+    '</tbody></table></div>';
+}
+function statsTable(){
+  const rows=[...(snapshot.player_statistics||[])].slice(0,25);
+  if(!rows.length)return '<p class="muted">No match events recorded yet.</p>';
+  return '<div class="table-wrap"><table><thead><tr><th>#</th><th>Player</th><th>Club</th><th>Goals</th><th>Assists</th><th>Yellow</th><th>Red</th></tr></thead><tbody>'+
+    rows.map((p,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(p.full_name)+'</b></td><td>'+esc(p.club_name)+'</td><td>'+p.goals+'</td><td>'+p.assists+'</td><td>'+p.yellow_cards+'</td><td>'+p.red_cards+'</td></tr>').join('')+
+    '</tbody></table></div>';
+}
+
+function render(){
+  const root=document.getElementById('root');
+  const c=snapshot.competition;
+  const seasons=snapshot.seasons||[];
+  document.title=c.name+' · Public league page';
+  root.innerHTML=
+    '<div class="hero"><div class="kicker">White Lion · Public league page</div><h1>'+esc(c.name)+'</h1><p>'+esc(c.competition_type)+' · '+esc(c.region||'Region not set')+' · '+esc(c.organiser||'Organiser not set')+'</p></div>'+
+    (seasons.length?'<div class="toolbar"><select id="seasonSelect" aria-label="Select season">'+seasons.map(s=>'<option value="'+esc(s.id)+'" '+(s.id===seasonId?'selected':'')+'>'+esc(s.name)+'</option>').join('')+'</select></div>':'')+
+    '<div class="card"><h2>League table</h2>'+standingsTable()+'</div>'+
+    '<div class="card"><h2>Fixtures &amp; results</h2>'+fixturesTable()+'</div>'+
+    '<div class="card"><h2>Player statistics</h2>'+statsTable()+'</div>'+
+    '<p class="foot">Read-only public page · Powered by White Lion SME</p>';
+  document.getElementById('seasonSelect')?.addEventListener('change',e=>{seasonId=e.target.value;render();});
+}
+
+async function load(){
+  const root=document.getElementById('root');
+  const token=new URLSearchParams(location.search).get('t');
+  if(!token){root.innerHTML=errorCard('No league link','This page needs a link from a league organiser. Ask them to share their public league link with you.');return;}
+  try{
+    if(!window.supabase?.createClient)throw new Error('offline');
+    const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
+    const {data,error}=await client.rpc('get_public_league_snapshot',{p_token:token});
+    if(error)throw error;
+    if(!data){root.innerHTML=errorCard('League not available','This link is invalid, or the organiser has turned off public sharing for this league.');return;}
+    snapshot=data;
+    seasonId=(snapshot.seasons||[]).find(s=>s.status==='active')?.id||snapshot.seasons?.[0]?.id||'';
+    render();
+  }catch(e){
+    root.innerHTML=errorCard('Could not load this page','Check your internet connection and try again.');
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const CACHE_NAME='white-lion-sme-v76';
+const CACHE_NAME='white-lion-sme-v77';
 const APP_SHELL=[
   './',
   './index.html',
@@ -8,7 +8,7 @@ const APP_SHELL=[
   './cloud.js?v=32',
   './operations.js?v=16',
   './documents.js?v=2',
-  './league.js?v=3',
+  './league.js?v=5',
   './icons/white-lion-icon.svg'
 ];
 
@@ -38,14 +38,16 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
+    const isAppShell = url.pathname === self.registration.scope.replace(self.location.origin, '') ||
+      url.pathname.endsWith('/index.html');
     event.respondWith(
       fetch(request).then(response => {
-        if (response && response.ok) {
+        if (isAppShell && response && response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
         }
         return response;
-      }).catch(() => caches.match('./index.html'))
+      }).catch(() => isAppShell ? caches.match('./index.html') : caches.match(request))
     );
     return;
   }

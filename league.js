@@ -14,6 +14,7 @@
   ];
   const currentCompetition = () => (cache.competitions||[]).find(x=>x.id===competitionId);
   const roleLabel = r => ({competition_admin:'League admin',club_manager:'Club manager',referee:'Referee',disciplinary_officer:'Disciplinary officer',viewer:'Viewer'}[r] || r.replaceAll('_',' '));
+  const publicLink = token => location.origin+location.pathname.replace(/[^/]*$/,'')+'public-league.html?t='+token;
   const currentSeason = () => (cache.seasons||[]).find(x=>x.id===seasonId);
   const selectOptions = (items, valueKey='id', labelKey='name', placeholder='Select…') =>
     '<option value="">'+esc(placeholder)+'</option>' + items.map(x=>'<option value="'+esc(x[valueKey])+'">'+esc(x[labelKey])+'</option>').join('');
@@ -31,7 +32,7 @@
       .wl-league-hero h1{margin:4px 0 5px;font-size:clamp(21px,2.3vw,28px);color:#075b35;letter-spacing:-.6px}.wl-league-hero p{margin:0;color:#718078;font-size:12px;line-height:1.6}.wl-league-kicker{font-size:10px;font-weight:850;letter-spacing:1.5px;color:#087a43;text-transform:uppercase}
       .wl-league-mark{width:48px;height:48px;flex:0 0 48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:900;background:linear-gradient(145deg,#1eb53a 0 36%,#fff 36% 67%,#0072c6 67%);border:1px solid #d9e9de}
       .wl-league-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 14px}.wl-league-toolbar select{flex:1;min-width:190px}
-      .wl-league-btn{border:1px solid #d9e7de;border-radius:9px;padding:9px 12px;background:#fff;color:#244534;font-size:11px;font-weight:800;min-height:39px}.wl-league-btn.primary{background:#087a43;border-color:#087a43;color:#fff}.wl-league-btn.blue{background:#0072c6;border-color:#0072c6;color:#fff}.wl-league-btn:disabled{opacity:.55}
+      .wl-league-btn{display:inline-block;border:1px solid #d9e7de;border-radius:9px;padding:9px 12px;background:#fff;color:#244534;font-size:11px;font-weight:800;min-height:39px;text-decoration:none;line-height:21px}.wl-league-btn.primary{background:#087a43;border-color:#087a43;color:#fff}.wl-league-btn.blue{background:#0072c6;border-color:#0072c6;color:#fff}.wl-league-btn:disabled{opacity:.55}
       .wl-league-tabs{display:flex;gap:6px;overflow:auto;padding:3px 2px 11px;margin-bottom:5px}.wl-league-tab{white-space:nowrap;border:1px solid #e0e9e3;background:#fff;color:#62766a;border-radius:30px;padding:9px 13px;font-size:10px;font-weight:800}.wl-league-tab.active{background:#087a43;border-color:#087a43;color:#fff}
       .wl-league-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}.wl-league-card{background:#fff;border:1px solid #e0eae3;border-radius:14px;padding:15px;box-shadow:0 6px 20px rgba(7,91,53,.045);min-width:0}.wl-league-card small{display:block;color:#718078;font-size:10px}.wl-league-card strong{display:block;color:#075b35;font-size:24px;margin:5px 0 2px}.wl-league-panel{background:#fff;border:1px solid #e0eae3;border-radius:14px;padding:16px;margin-bottom:13px;min-width:0}.wl-league-panel h3{margin:0 0 5px;color:#17432b;font-size:14px}.wl-league-sub{font-size:10px;color:#7b8b81;line-height:1.55;margin-bottom:12px}
       .wl-league-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.wl-league-field{display:grid;gap:5px;min-width:0}.wl-league-field.full{grid-column:1/-1}.wl-league-field span{font-size:10px;color:#526b5b;font-weight:800}.wl-league-field input,.wl-league-field select,.wl-league-field textarea{width:100%;min-width:0;min-height:39px;padding:9px 10px;border:1px solid #dce8df;border-radius:9px;background:#fff;color:#203b2b;font:inherit;font-size:11px}.wl-league-field textarea{min-height:70px;resize:vertical}.wl-league-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}
@@ -76,7 +77,17 @@
       (s?'Season dates: '+esc(s.starts_on||'TBC')+' to '+esc(s.ends_on||'TBC')+' · <span class="wl-league-badge">'+esc(s.status)+'</span>':'Create a season to start scheduling fixtures.')+
       '<form class="wl-league-form" data-league-form="season" style="margin-top:14px">'+field('Season name','name','text',true)+field('Start date','starts_on','date')+field('End date','ends_on','date')+selectField('Season status','status',['planned','active','completed','archived'].map(x=>'<option value="'+x+'">'+x+'</option>').join(''))+'<div class="wl-league-field full">'+button('Save season','primary')+'</div></form>'+
       '<div class="wl-league-actions">'+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div></div>'+
-      '<div class="wl-league-panel"><h3>League workflow</h3><div class="wl-league-sub">Set up a league, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League standings and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>';
+      '<div class="wl-league-panel"><h3>League workflow</h3><div class="wl-league-sub">Set up a league, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League standings and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>'+
+      sharePanel(c);
+  }
+  function sharePanel(c){
+    const link=c.public_share_token?publicLink(c.public_share_token):'';
+    return '<div class="wl-league-panel"><h3>Public league page</h3><div class="wl-league-sub">Share a read-only link so fans, parents and club officials can see this league\'s fixtures, results, table and player statistics — no account needed. Nothing else in your business is visible from this link.</div>'+
+      (c.is_publicly_shared&&link
+        ?'<div class="wl-league-inline"><input id="wlLeagueShareLink" readonly value="'+esc(link)+'" style="flex:1;min-width:220px"><button class="wl-league-btn primary" type="button" id="wlLeagueShareCopy">Copy link</button></div>'+
+         '<div class="wl-league-actions"><a class="wl-league-btn blue" href="'+esc(link)+'" target="_blank" rel="noopener">Open public page</a>'+button('Regenerate link','','type="button" id="wlLeagueShareRegenerate"')+button('Disable public sharing','','type="button" id="wlLeagueShareDisable"')+'</div>'
+        :button('Enable public sharing','primary','type="button" id="wlLeagueShareEnable"'))+
+      '</div>';
   }
   function clubsView(){
     const rows=(cache.clubs||[]).map(x=>'<tr><td><b>'+esc(x.name)+'</b><br><small>'+esc(x.short_name||'')+'</small></td><td>'+esc(x.home_venue||'—')+'</td><td>'+esc(x.manager_name||'—')+'</td><td><span class="wl-league-badge">'+esc(x.status)+'</span></td></tr>').join('');
@@ -197,6 +208,19 @@
       activeTab=({ 'new-season':'overview','new-club':'clubs','new-fixture':'fixtures'})[action]||'overview';render();
     }));
     bindForms();
+    document.getElementById('wlLeagueShareEnable')?.addEventListener('click',()=>{
+      save(async()=>{const token=crypto.randomUUID();const {error}=await client().from('league_competitions').update({is_publicly_shared:true,public_share_token:token}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'Public link enabled.');
+    });
+    document.getElementById('wlLeagueShareDisable')?.addEventListener('click',()=>{
+      save(async()=>{const {error}=await client().from('league_competitions').update({is_publicly_shared:false}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'Public sharing disabled.');
+    });
+    document.getElementById('wlLeagueShareRegenerate')?.addEventListener('click',()=>{
+      save(async()=>{const token=crypto.randomUUID();const {error}=await client().from('league_competitions').update({public_share_token:token}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'Public link regenerated. The previous link no longer works.');
+    });
+    document.getElementById('wlLeagueShareCopy')?.addEventListener('click',async()=>{
+      const input=document.getElementById('wlLeagueShareLink');
+      try{await navigator.clipboard.writeText(input.value);notice('Link copied.');}catch(e){input.select();notice('Select and copy the link above.');}
+    });
     document.querySelectorAll('[data-league-result]').forEach(f=>f.addEventListener('submit',async e=>{
       e.preventDefault();const data=Object.fromEntries(new FormData(f).entries());
       await save(async()=>{const {error}=await client().from('league_fixtures').update({home_score:Number(data.home_score),away_score:Number(data.away_score),status:'completed',finalised_at:new Date().toISOString(),finalised_by:cloud().getSession()?.user?.id}).eq('id',f.dataset.leagueResult).eq('business_id',business().id);if(error)throw error},'Final score saved. League table updated.');

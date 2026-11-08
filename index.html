@@ -1124,7 +1124,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=64',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=65',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1157,5 +1157,5 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
 <script src="./cloud.js?v=32" defer></script>
 <script src="./operations.js?v=16" defer></script>
 <script src="./documents.js?v=2" defer></script>
-<script src="./league.js?v=3" defer></script>
+<script src="./league.js?v=5" defer></script>
 </body></html>
