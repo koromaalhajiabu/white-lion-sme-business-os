@@ -70,11 +70,20 @@
         <h4>Cashbook entry</h4>
         <div class="ops-grid"><select id="wlOpsCashType"><option value="income">Income</option><option value="expense">Expense</option></select><input id="wlOpsCashCategory" placeholder="Category"></div>
         <input id="wlOpsCashDescription" placeholder="Description"><div class="ops-grid"><input id="wlOpsCashAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><select id="wlOpsCashPayment"><option>cash</option><option>mobile money</option><option>bank transfer</option><option>card</option></select></div>
+        <select id="wlOpsCashBankAccount"><option value="">Not linked to a bank / mobile-money account</option></select>
         <div class="ops-grid"><input id="wlOpsCashDate" type="date"><button id="wlOpsCashSave">Save cashbook entry</button></div>
         <h4>Cashbook register</h4><div class="ops-muted">Review recorded cash movements. This register does not connect to bank or mobile-money provider statements.</div>
         <div class="ops-grid"><select id="wlOpsCashbookPeriod"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option><option value="all">All available records</option></select><select id="wlOpsCashbookType"><option value="all">All movement types</option><option value="income">Income only</option><option value="expense">Expenses only</option></select></div>
         <div class="ops-grid"><select id="wlOpsCashbookBranch"><option value="all">All branches</option></select><input id="wlOpsCashbookSearch" placeholder="Search description, category or reference"></div>
         <button id="wlOpsCashbookExport">Export filtered cashbook CSV</button><div id="wlOpsCashbookSummary" class="ops-summary"></div><div id="wlOpsCashbookRows" class="ops-muted">Loading cashbook entries…</div>
+        <h4>Bank & mobile-money reconciliation</h4>
+        <div class="ops-muted">Create an account, import a CSV statement, then match statement rows to cashbook entries. CSV columns required: transaction_date, description, reference, amount, direction (debit/credit). This is a manual import; it does not connect directly to a provider.</div>
+        <div class="ops-grid"><input id="wlOpsBankName" maxlength="100" placeholder="Account name"><input id="wlOpsBankInstitution" maxlength="120" placeholder="Bank / mobile-money provider"></div>
+        <div class="ops-grid"><select id="wlOpsBankType"><option value="bank">Bank account</option><option value="mobile_money">Mobile-money account</option><option value="cash_clearing">Cash clearing account</option><option value="other">Other</option></select><input id="wlOpsBankLast4" inputmode="numeric" maxlength="4" placeholder="Last 4 digits (optional)"></div>
+        <button id="wlOpsBankCreate">Add account</button>
+        <div class="ops-grid"><select id="wlOpsBankImportAccount"><option value="">Select account for statement import</option></select><input id="wlOpsBankCsv" type="file" accept=".csv,text/csv"></div>
+        <button id="wlOpsBankImport">Import CSV statement</button><button id="wlOpsBankRefresh">Refresh reconciliation</button>
+        <div id="wlOpsBankRows" class="ops-muted">Bank accounts and statement lines will appear here after migration 017 is installed.</div>
         <h4>Receivables & payables</h4>
         <div class="ops-grid"><select id="wlOpsObligationType"><option value="receivable">Customer owes us</option><option value="payable">We owe supplier</option></select><input id="wlOpsParty" placeholder="Customer / supplier name"></div>
         <input id="wlOpsObligationDesc" placeholder="Description / reference"><div class="ops-grid"><input id="wlOpsObligationAmount" type="number" min="0.01" step="0.01" placeholder="Amount (SLE)"><input id="wlOpsDueDate" type="date"></div>
@@ -104,7 +113,7 @@
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOwnerRefresh',renderOwnerDashboard);
     document.getElementById('wlOwnerPeriod').addEventListener('change',renderOwnerDashboard);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
-    bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
+    bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBankCreate',createBankAccount);bind('wlOpsBankImport',importBankStatement);bind('wlOpsBankRefresh',renderBankReconciliation);document.getElementById('wlOpsBankRows').addEventListener('click',handleBankMatch);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
     bind('wlOpsAuditRefresh',renderAuditLog);bind('wlOpsAuditExport',exportAuditLog);
@@ -144,6 +153,7 @@
     document.getElementById('wlOpsCashDate').value=new Date().toISOString().slice(0,10);
     const ownerDashboard=document.getElementById('wlOwnerDashboard');
     if(ownerDashboard)ownerDashboard.hidden=!['owner','admin'].includes(memberRole);
+    await renderBankReconciliation();
     await Promise.all([renderTransfers(),renderFinance(),renderCashbookRegister(),renderBatches(),renderAdjustments(),renderPendingCount(),renderConflicts(),renderOwnerDashboard()]);
     say('Operations controls loaded for '+business.name+'.');
   }
@@ -307,10 +317,90 @@
     const csv=[headers.join(','),...rows.map(x=>[x.entry_date,x.entry_type,x.category,x.description,Number(x.amount||0).toFixed(2),x.payment_method,branchNames.get(String(x.branch_id))||'Unassigned / business-wide',x.reference].map(cell).join(','))].join('\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='white-lion-cashbook-register.csv';a.click();URL.revokeObjectURL(url);say('Cashbook CSV exported.');
   }
+  function parseStatementCsv(source){
+    const rows=[];let row=[],field='',quoted=false;
+    for(let i=0;i<source.length;i++){const ch=source[i];
+      if(quoted){if(ch==='"'&&source[i+1]==='"'){field+='"';i++;}else if(ch==='"')quoted=false;else field+=ch;}
+      else if(ch==='"')quoted=true;
+      else if(ch===','){row.push(field);field='';}
+      else if(ch==='\\n'){row.push(field);rows.push(row);row=[];field='';}
+      else if(ch!=='\\r')field+=ch;
+    }
+    if(field.length||row.length){row.push(field);rows.push(row);}
+    return rows;
+  }
+  async function createBankAccount(){
+    const account_name=document.getElementById('wlOpsBankName').value.trim(),institution_name=document.getElementById('wlOpsBankInstitution').value.trim(),account_type=document.getElementById('wlOpsBankType').value,account_last4=document.getElementById('wlOpsBankLast4').value.trim()||null;
+    if(account_name.length<2||institution_name.length<2)return say('Enter an account name and institution/provider.',true);
+    if(account_last4&&!/^[0-9]{4}$/.test(account_last4))return say('Last four digits must contain exactly four numbers.',true);
+    const {error}=await client.from('bank_accounts').insert({business_id:business.id,account_name,institution_name,account_type,account_last4,currency:business.currency_code||'SLE'});
+    if(error)return say(error.message,true);
+    document.getElementById('wlOpsBankName').value='';document.getElementById('wlOpsBankInstitution').value='';document.getElementById('wlOpsBankLast4').value='';
+    say('Bank / mobile-money account added.');await renderBankReconciliation();
+  }
+  async function importBankStatement(){
+    const account=document.getElementById('wlOpsBankImportAccount').value,file=document.getElementById('wlOpsBankCsv').files?.[0];
+    if(!account||!file)return say('Select an account and a CSV statement file.',true);
+    if(file.size>5*1024*1024)return say('CSV file must be 5 MB or smaller.',true);
+    try{
+      const rows=parseStatementCsv(await file.text());if(rows.length<2)throw Error('The CSV has no transaction rows.');
+      const headers=rows.shift().map(x=>x.trim().toLowerCase().replace(/^\\ufeff/,''));
+      const index=key=>headers.indexOf(key);
+      const required=['transaction_date','description','amount','direction'];
+      if(required.some(k=>index(k)<0))throw Error('CSV headers must include transaction_date, description, amount and direction. reference is optional.');
+      const lines=rows.filter(r=>r.some(v=>String(v||'').trim())).map((r,n)=>{
+        const amount=Number(String(r[index('amount')]||'').replace(/[, ]/g,''));
+        const direction=String(r[index('direction')]||'').trim().toLowerCase();
+        const date=String(r[index('transaction_date')]||'').trim();
+        const description=String(r[index('description')]||'').trim();
+        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!description||!Number.isFinite(amount)||amount<=0||!['debit','credit'].includes(direction))throw Error('Invalid CSV row '+(n+2)+'. Use YYYY-MM-DD, positive amount and debit/credit.');
+        return{transaction_date:date,description,reference:index('reference')>=0?String(r[index('reference')]||'').trim():null,amount,direction};
+      });
+      if(!lines.length)throw Error('No valid statement rows found.');
+      const {data,error}=await client.rpc('import_bank_statement_lines',{p_bank_account_id:account,p_lines:lines});
+      if(error)throw error;
+      document.getElementById('wlOpsBankCsv').value='';say('Statement import complete: '+(data?.inserted_rows??0)+' new rows.');await renderBankReconciliation();
+    }catch(e){say('Statement import failed: '+e.message,true);}
+  }
+  async function renderBankReconciliation(){
+    const box=document.getElementById('wlOpsBankRows');if(!box||!client||!business)return;
+    box.textContent='Loading bank accounts and statement lines…';
+    const [accounts,lines,cash]=await Promise.all([
+      client.from('bank_accounts').select('id,account_name,institution_name,account_type,account_last4,currency,is_active').eq('business_id',business.id).eq('is_active',true).order('account_name'),
+      client.from('bank_statement_lines').select('id,bank_account_id,transaction_date,description,reference,amount,direction,status').eq('business_id',business.id).order('transaction_date',{ascending:false}).limit(500),
+      client.from('cashbook_entries').select('id,bank_account_id,entry_type,category,description,amount,entry_date').eq('business_id',business.id).not('bank_account_id','is',null).order('entry_date',{ascending:false}).limit(1000)
+    ]);
+    const error=accounts.error||lines.error||cash.error;
+    if(error){box.textContent='Reconciliation unavailable. Install migration 017 and confirm finance permissions. '+error.message;return;}
+    const a=accounts.data||[],l=lines.data||[],c=cash.data||[];
+    const opts='<option value="">Not linked to a bank / mobile-money account</option>'+a.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.account_name)+' · '+esc(x.institution_name)+'</option>').join('');
+    const importSelect=document.getElementById('wlOpsBankImportAccount');if(importSelect)importSelect.innerHTML='<option value="">Select account for statement import</option>'+a.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.account_name)+' · '+esc(x.institution_name)+'</option>').join('');
+    const cashSelect=document.getElementById('wlOpsCashBankAccount');if(cashSelect)cashSelect.innerHTML=opts;
+    if(!a.length){box.innerHTML='<div class="ops-row">No bank or mobile-money accounts yet. Add one above to begin.</div>';return;}
+    const names=new Map(a.map(x=>[x.id,x.account_name]));
+    const unmatched=l.filter(x=>x.status==='unmatched');
+    const lineHtml=unmatched.map(x=>{
+      const candidates=c.filter(y=>y.bank_account_id===x.bank_account_id&&Math.abs(Number(y.amount)-Number(x.amount))<=0.01&&((x.direction==='credit'&&y.entry_type==='income')||(x.direction==='debit'&&y.entry_type==='expense')));
+      const select='<select id="wlBankMatch_'+esc(x.id)+'"><option value="">Choose matching cashbook entry</option>'+candidates.map(y=>'<option value="'+esc(y.id)+'">'+esc(y.entry_date)+' · '+esc(y.description)+' · '+money(y.amount)+'</option>').join('')+'</select>';
+      return '<div class="ops-row"><b>'+esc(x.transaction_date)+' · '+esc(x.direction.toUpperCase())+' · '+money(x.amount)+'</b><div class="ops-muted">'+esc(names.get(x.bank_account_id)||'Account')+' · '+esc(x.description)+(x.reference?' · Ref '+esc(x.reference):'')+'</div>'+select+'<button type="button" data-wl-bank-match="'+esc(x.id)+'" '+(candidates.length?'':'disabled')+'>Match cashbook entry</button></div>';
+    }).join('');
+    box.innerHTML='<div class="ops-summary"><div class="ops-tile"><span>Accounts</span><strong>'+a.length+'</strong></div><div class="ops-tile"><span>Unmatched statement lines</span><strong>'+unmatched.length+'</strong></div><div class="ops-tile"><span>Matched lines</span><strong>'+l.filter(x=>x.status==='matched').length+'</strong></div></div>'+
+      '<div class="ops-muted">'+a.map(x=>esc(x.account_name)+' · '+esc(x.institution_name)+(x.account_last4?' · •••• '+esc(x.account_last4):'')).join('<br>')+'</div>'+
+      (lineHtml||'<div class="ops-row">No unmatched statement lines. Import a CSV statement to start reconciliation.</div>');
+  }
+  async function handleBankMatch(event){
+    const button=event.target.closest('[data-wl-bank-match]');if(!button)return;
+    const id=button.getAttribute('data-wl-bank-match'),entry=document.getElementById('wlBankMatch_'+id)?.value;
+    if(!entry)return say('Choose the matching cashbook entry first.',true);
+    button.disabled=true;
+    const {error}=await client.rpc('match_bank_statement_line',{p_statement_line_id:id,p_cashbook_entry_id:entry});
+    if(error){button.disabled=false;return say(error.message,true);}
+    say('Statement line reconciled successfully.');await renderBankReconciliation();
+  }
   async function saveCashbook(){
     const amount=Number(document.getElementById('wlOpsCashAmount').value),category=document.getElementById('wlOpsCashCategory').value.trim(),description=document.getElementById('wlOpsCashDescription').value.trim();
     if(!Number.isFinite(amount)||amount<=0||!category||!description)return say('Enter a category, description and positive amount.',true);
-    const {error}=await client.from('cashbook_entries').insert({business_id:business.id,branch_id:api.getSelectedBranch?.()?.id||null,entry_type:document.getElementById('wlOpsCashType').value,category,description,amount,payment_method:document.getElementById('wlOpsCashPayment').value,entry_date:document.getElementById('wlOpsCashDate').value||new Date().toISOString().slice(0,10)});
+    const {error}=await client.from('cashbook_entries').insert({business_id:business.id,branch_id:api.getSelectedBranch?.()?.id||null,bank_account_id:document.getElementById('wlOpsCashBankAccount').value||null,entry_type:document.getElementById('wlOpsCashType').value,category,description,amount,payment_method:document.getElementById('wlOpsCashPayment').value,entry_date:document.getElementById('wlOpsCashDate').value||new Date().toISOString().slice(0,10)});
     if(error)return say(error.message,true);document.getElementById('wlOpsCashAmount').value='';say('Cashbook entry saved.');await Promise.all([renderFinance(),renderCashbookRegister()]);
   }
   async function saveObligation(){
