@@ -1,68 +1,68 @@
-# White Lion SME Business Operating System — Starter Build
+# White Lion SME Business Operating System
 
-## Included
-- Responsive business dashboard and navigation
-- Multi-industry business profile settings
-- Products and inventory records
-- Sales recording with stock deduction
-- Purchase recording with stock increase
-- Customer and supplier directories
-- Expense tracking
-- Basic operational summary
-- JSON backup and restore
-- Sales CSV export
-- IndexedDB local persistence
-- Basic PWA manifest and service worker shell
+A multi-industry SME operations platform by White Lion Tech Solutions. The frontend is deployed as a static Progressive Web App through GitHub Pages; Supabase provides authentication, cloud data and tenant security.
 
-## Run locally
-Open `index.html` in a modern browser. For PWA installation and service worker support, serve the folder over HTTPS or localhost.
+**Developer:** Designed by Alhaji Abu Koroma  
+**Live application:** https://koromaalhajiabu.github.io/white-lion-sme-business-os/  
+**Repository:** https://github.com/koromaalhajiabu/white-lion-sme-business-os
 
-## Deploy to GitHub Pages
-1. Create a repository, for example `white-lion-sme-business-os`.
-2. Upload `index.html`, `manifest.webmanifest`, and `sw.js` to the repository root.
-3. In GitHub, open Settings → Pages.
-4. Select Deploy from a branch, choose `main` and `/root`, then Save.
-5. Open the published HTTPS URL in Chrome on Android and use the browser menu → Add to Home screen / Install app.
+## Platform capabilities
 
-## Important limitations of this starter build
-- Data is stored in the browser on the current device only.
-- It is not yet connected to Supabase or a cloud database.
-- There is no real multi-user authentication, role enforcement, tenant isolation, cloud sync, payroll, double-entry accounting, tax engine, or audited financial reporting yet.
-- Do not use it for live business financial records until cloud security, backup, accounting logic, and data recovery are implemented and tested.
-- The service worker caches the application shell; business records persist in IndexedDB. This is not yet a full offline sync engine.
+- Multi-industry business profiles and workspace membership.
+- Sales/POS, products, purchasing, customers, suppliers and expenses.
+- Supabase authentication, business membership and row-level security.
+- IndexedDB local persistence and offline transaction synchronisation.
+- Multi-branch operations, branch access and stock transfers.
+- Returns/refunds, cashbook, receivables/payables and financial payment records.
+- Barcode, batch/expiry and controlled stock adjustment features.
+- Private business document storage.
+- Sports and local-league competition management.
+- Developer administration and audit logging.
+- Responsive PWA shell, install support, service-worker caching and light/dark appearance.
 
-## Branding
-Designed by Alhaji Abu Koroma
-White Lion Tech Solutions
+## Technology and deployment
 
+- Frontend: HTML, CSS and JavaScript.
+- Hosting: GitHub Pages.
+- Cloud: Supabase.
+- Local persistence: IndexedDB.
+- PWA: Web App Manifest and Service Worker.
 
-## Supabase foundation (new)
-A first-pass multi-tenant schema is included at:
-`supabase/migrations/001_initial_multi_tenant_schema.sql`
+Do not add a Supabase service-role key to browser code or the public repository. Only the intended publishable/anon key may be used in the browser, with Row Level Security correctly configured.
 
-It defines:
-- Profiles, businesses, business memberships and branches
-- Role types: owner, admin, manager, cashier, storekeeper, accountant, viewer
-- Customers, suppliers, products and branch-level inventory
-- Sales, sale items, purchases, purchase items and inventory movements
-- Expenses and audit logs
-- Row Level Security policies scoped by business membership
-- `create_business(...)` RPC to create a business, owner membership and Main Branch
-- `post_sale(...)` RPC to post a sale and deduct stock atomically
-- `post_purchase(...)` RPC to receive a purchase and increase stock atomically
+## Database setup
 
-### Important before using
-This migration is a development foundation, not a production certification. It has not been run against your Supabase project or tested against real user accounts. Review and execute it first in a NEW test Supabase project. Do not put a Supabase service-role key in browser JavaScript. Only the project URL and anon/publishable key belong in a client app, with RLS enabled.
+SQL migrations are in `supabase/migrations/`. The consolidated operations installer is:
 
-The current HTML starter is still local-first and is not yet wired to these tables or RPCs. The migration therefore does not by itself enable cloud login, cloud sync, or tenant-aware screens. The SQL intentionally prevents direct client inserts into posted sales/purchases and expects the app to call the transaction RPCs. The first accounting iteration still needs a proper double-entry ledger, immutable journal entries, tax handling, returns, refunds, reversals and reconciliation before it can be trusted for live bookkeeping.
+`supabase/INSTALL_ALL_OPERATIONS.sql`
 
-### Apply in a test project
-1. Create a Supabase project.
-2. Open SQL Editor.
-3. Paste and run the migration file.
-4. Check the Table Editor and Authentication users.
-5. Test with two separate user accounts and two businesses.
-6. Confirm that each account can only read its own business records.
-7. Test `create_business`, `post_sale` and `post_purchase` only with sample data.
+The installer includes the business operations, inventory/finance controls and the bank/mobile-money statement reconciliation foundation. Review the SQL and execute it in the correct Supabase project. A GitHub commit does not execute database migrations automatically.
 
-Do not enable real customer data until the RLS and transaction tests have passed.
+### Bank and mobile-money reconciliation
+
+Migration 017 adds:
+- Business-scoped bank and mobile-money account records.
+- Statement-line import through a role-checked RPC.
+- Duplicate external-reference protection.
+- Matching to cashbook entries with account, amount and debit/credit validation.
+- Audit log events for imports and matches.
+
+This is a manual statement import and matching foundation. It does not connect directly to a bank or mobile-money provider, and the full reconciliation interface and general ledger are still future work.
+
+## Important accounting and backup limitations
+
+- The reviewed schema does not yet implement a complete double-entry general ledger, chart of accounts, trial balance or audited financial statements.
+- Existing dashboard/report figures are operational summaries. Do not treat net sales less recorded expenses as audited net profit or available cash.
+- The browser JSON export is a local-device backup, not a full Supabase backup.
+- Supabase database exports and private Storage object files require separate off-site backup and restoration testing.
+- Do not use the platform as the sole record of statutory accounts until accounting controls and independent acceptance tests are complete.
+
+## Production readiness
+
+See [PROFESSIONAL_READINESS.md](PROFESSIONAL_READINESS.md) for the feature inventory, known gaps, new migration details and required acceptance tests.
+
+See [BACKUP_GUIDE.md](BACKUP_GUIDE.md) for independent database and private-file backup guidance.
+
+## Local run
+
+Serve the repository over HTTPS or localhost for service-worker and PWA behaviour. Opening the HTML file directly with a `file://` URL does not provide the full PWA experience.
