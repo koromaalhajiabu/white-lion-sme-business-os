@@ -417,7 +417,6 @@ begin
   order by 3,1;
 end;
 $;
-
 create or replace function public.accounting_cash_flow(
   p_business_id uuid,p_from date default date_trunc('month',current_date)::date,p_to date default current_date
 ) returns table(account_name text,cash_in numeric,cash_out numeric,net_cash_flow numeric)
