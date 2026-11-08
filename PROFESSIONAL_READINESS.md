@@ -19,7 +19,7 @@ These are repository-level findings. They do not independently prove every featu
 ## Important gaps and risks
 
 1. **Full double-entry accounting is not present in the reviewed migrations.** There is no general ledger journal, chart of accounts, posting rules, trial balance or audited financial statements. The existing reports correctly label the operating balance as indicative rather than audited profit.
-2. **Bank/mobile-money reconciliation was missing.** Migration 017 now adds a secure foundation for finance users to create bank/mobile-money accounts, import statement rows through an RPC, and match statement lines to cashbook entries. This is a manual statement-import workflow; it is not a direct bank API connection and does not yet provide a complete reconciliation screen.
+2. **Bank/mobile-money reconciliation was missing.** Migration 017 now adds a secure foundation for finance users to create bank/mobile-money accounts, import statement rows through an RPC, and match statement lines to cashbook entries. The operations control centre now includes a CSV import and matching interface. This is manual statement import; it is not a direct bank API connection. The interface still needs live Supabase and device acceptance testing.
 3. **Backup is not a full cloud backup.** The browser JSON backup covers local IndexedDB records. Supabase database exports and private Storage object bytes still need separate off-site backup and tested restoration.
 4. **Offline conflict handling needs real multi-device tests.** Idempotent sync receipts exist, but test simultaneous edits, duplicate retries, partial network loss, device replacement and conflict recovery.
 5. **Financial reports are operational summaries, not audited accounts.** Do not represent the current net sales less recorded expenses figure as net profit or available cash.
@@ -30,6 +30,8 @@ These are repository-level findings. They do not independently prove every featu
 
 - Added `supabase/migrations/017_bank_mobile_money_reconciliation.sql`.
 - Added the same migration to `supabase/INSTALL_ALL_OPERATIONS.sql` so the operations installer includes the new reconciliation schema and RPCs.
+- Added a finance-only reconciliation interface to the Operations Control Centre: account setup, CSV statement import, unmatched-line review and guarded matching to cashbook entries.
+- Linked new cashbook entries to a selected bank/mobile-money account so they can be reconciled later.
 - The new SQL is committed to GitHub but has **not** been executed against Supabase by this repository change. Run the updated installer or the migration file once in the Supabase SQL Editor, then verify the objects and test with sample records before using real statements.
 
 ## Required acceptance tests before calling the platform production-ready
@@ -48,4 +50,4 @@ These are repository-level findings. They do not independently prove every featu
 
 The GitHub Actions deployment workflow for the latest dark-mode correction completed successfully. That confirms the repository workflow completed; it is not a substitute for live browser, Supabase or device acceptance testing.
 
-**Current assessment:** strong feature foundation; not yet independently certified for production accounting or disaster recovery. The next engineering work is to implement the reconciliation interface, build the double-entry ledger and financial statements, then execute the acceptance tests above.
+**Current assessment:** strong feature foundation; not yet independently certified for production accounting or disaster recovery. The next engineering work is to build the double-entry ledger and financial statements, then execute the acceptance tests above.
