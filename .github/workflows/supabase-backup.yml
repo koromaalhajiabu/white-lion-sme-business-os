@@ -62,6 +62,7 @@ jobs:
             -out white-lion-supabase-backup.tar.gz.enc \\
             -pass env:BACKUP_ENCRYPTION_PASSPHRASE
           sha256sum white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.sha256
+          openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.hmac
           rm -rf backup/ /tmp/white-lion-backup.tar.gz
 
       - name: Upload encrypted backup artifact only
@@ -71,5 +72,6 @@ jobs:
           path: |
             white-lion-supabase-backup.tar.gz.enc
             white-lion-supabase-backup.tar.gz.enc.sha256
+            white-lion-supabase-backup.tar.gz.enc.hmac
           retention-days: 30
           if-no-files-found: error
