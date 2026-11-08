@@ -1,4 +1,5 @@
 name: Supabase off-site backup
+# Database URI diagnostics are deliberately separated from credential testing.
 
 on:
   workflow_dispatch:
