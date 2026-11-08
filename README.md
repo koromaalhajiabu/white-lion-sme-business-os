@@ -17,7 +17,8 @@ A multi-industry SME operations platform by White Lion Tech Solutions. The front
 - Barcode, batch/expiry and controlled stock adjustment features.
 - Private business document storage.
 - Sports and local-league competition management.
-- Developer administration and audit logging.
+- Developer administration, account controls and business/platform audit logging.
+- English, French, Arabic (RTL), Spanish, Hindi and Simplified Chinese language options.
 - Responsive PWA shell, install support, service-worker caching and light/dark appearance.
 
 ## Technology and deployment
@@ -47,21 +48,21 @@ Migration 017 adds:
 - Matching to cashbook entries with account, amount and debit/credit validation.
 - Audit log events for imports and matches.
 
-This is a manual statement import and matching foundation. It does not connect directly to a bank or mobile-money provider, and a complete double-entry general ledger is still future work. The new reconciliation screen requires migration 017 to be installed.
+This is a manual statement import and matching foundation. It does not connect directly to a bank or mobile-money provider. Migration 017 must be installed for the reconciliation screen.
 
-## Important accounting and backup limitations
+## Accounting, security and backup limitations
 
-- The reviewed schema does not yet implement a complete double-entry general ledger, chart of accounts, trial balance or audited financial statements.
-- Existing dashboard/report figures are operational summaries. Do not treat net sales less recorded expenses as audited net profit or available cash.
+- Migrations 018 and 019 provide the double-entry ledger, chart of accounts, balanced journals, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting, moving weighted-average stock valuation and COGS posting foundation. Historical sales are not backfilled; opening balances and controlled period close/reversal workflows still require further work and acceptance testing.
+- Existing operational dashboard totals are not audited net profit or available cash. Do not use the platform as the sole statutory accounting record until independent accounting acceptance tests are complete.
 - The browser JSON export is a local-device backup, not a full Supabase backup.
-- Supabase database exports and private Storage object files require separate off-site backup and restoration testing.
-- Do not use the platform as the sole record of statutory accounts until accounting controls and independent acceptance tests are complete.
+- A scheduled database + private Storage backup workflow is now in `.github/workflows/supabase-backup.yml`. It requires the documented GitHub Actions secrets, and a full recovery test in a separate Supabase project is still required.
+- Subscription billing and payment-provider integration are not yet implemented; do not represent the platform as having automated customer billing.
 
 ## Production readiness
 
 See [PROFESSIONAL_READINESS.md](PROFESSIONAL_READINESS.md) for the feature inventory, known gaps, new migration details and required acceptance tests.
 
-See [BACKUP_GUIDE.md](BACKUP_GUIDE.md) for independent database and private-file backup guidance.
+See [BACKUP_GUIDE.md](BACKUP_GUIDE.md) for GitHub Actions secret setup, encrypted backups, integrity checks and recovery instructions.
 
 ## Local run
 
