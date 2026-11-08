@@ -1,5 +1,4 @@
 name: Supabase off-site backup
-# Database URI is parsed without a generic URL parser to support reserved password characters.
 
 on:
   workflow_dispatch:
@@ -21,32 +20,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client
-
       - name: Verify required secrets
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
-          test -n "$SUPABASE_DB_URL" || (echo "Missing SUPABASE_DB_URL secret" && exit 1)
           test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret" && exit 1)
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret" && exit 1)
+          test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
 
-      - name: Test database connection independently
+      - name: Export Supabase table data and Auth user metadata via service-role API
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: python3 scripts/backup_supabase_database.py --test
-
-      - name: Export database
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          mkdir -p backup/database
-          python3 scripts/backup_supabase_database.py --dump "backup/database/white-lion-${GITHUB_RUN_ID}.dump"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_DATA_DIR: backup/data
+        run: python3 scripts/backup_supabase_api.py
 
       - name: Back up private business documents
         env:
@@ -56,15 +45,17 @@ jobs:
           BACKUP_STORAGE_DIR: backup/storage
         run: python3 scripts/backup_supabase_storage.py
 
-      - name: Create backup manifest
+      - name: Archive database schema migrations and backup manifest
         run: |
-          printf 'Repository: %s\\nCommit: %s\\nRun: %s\\nCreated UTC: %s\\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
+          mkdir -p backup/schema
+          cp -R supabase/migrations backup/schema/
+          cp BACKUP_GUIDE.md backup/schema/
+          printf 'Repository: %s\\nCommit: %s\\nRun: %s\\nCreated UTC: %s\\nBackup type: Supabase REST logical JSON export + Auth user metadata + Storage objects + repository SQL migrations\\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > backup/MANIFEST.txt
 
       - name: Encrypt complete backup before artifact upload
         env:
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
-          test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
           tar -czf /tmp/white-lion-backup.tar.gz backup/
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \\
             -in /tmp/white-lion-backup.tar.gz \\
