@@ -91,9 +91,9 @@ jobs:
         run: |
           test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || (echo "Missing BACKUP_ENCRYPTION_PASSPHRASE secret" && exit 1)
           tar -czf /tmp/white-lion-backup.tar.gz backup/
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \\
-            -in /tmp/white-lion-backup.tar.gz \\
-            -out white-lion-supabase-backup.tar.gz.enc \\
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
+            -in /tmp/white-lion-backup.tar.gz \
+            -out white-lion-supabase-backup.tar.gz.enc \
             -pass env:BACKUP_ENCRYPTION_PASSPHRASE
           sha256sum white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.sha256
           openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc > white-lion-supabase-backup.tar.gz.enc.hmac
