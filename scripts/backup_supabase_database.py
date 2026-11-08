@@ -2,38 +2,39 @@
 """Validate Supabase PostgreSQL credentials, then create a custom-format pg_dump."""
 import argparse
 import os
+import re
 import subprocess
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote
 
 def connection():
     raw = os.environ.get("SUPABASE_DB_URL", "").strip()
     if not raw:
         raise SystemExit("SUPABASE_DB_URL is empty.")
-    try:
-        parsed = urlsplit(raw)
-    except ValueError as exc:
-        raise SystemExit(f"Connection URI parsing failed ({type(exc).__name__}); check that the full URI was copied without surrounding quotes or line breaks.")
-    if parsed.scheme not in ("postgres", "postgresql"):
-        raise SystemExit("Connection URI scheme is invalid; it must start with postgres:// or postgresql://.")
-    try:
-        host = parsed.hostname or ""
-    except ValueError:
-        raise SystemExit("Connection URI hostname is malformed.")
-    try:
-        port = parsed.port or 5432
-    except ValueError:
-        raise SystemExit("Connection URI port is malformed; copy the Session Pooler URI with port 5432.")
-    if not host.endswith(".pooler.supabase.com"):
-        raise SystemExit("Use the Supabase Session Pooler hostname, not the direct database hostname.")
+    # Parse against the known Supabase pooler hostname rather than urlsplit:
+    # urlsplit can reject raw '[' or ']' characters in a password before
+    # credentials can be decoded. The greedy password capture ends at the
+    # pooler host, so '@' inside a password is also handled.
+    pattern = re.compile(
+        r"^(postgres(?:ql)?://)([^:/@]+):(.+)@([^/@]+\.pooler\.supabase\.com):(\d+)/([^?#]+)(?:\?[^#]*)?$",
+        re.IGNORECASE,
+    )
+    match = pattern.fullmatch(raw)
+    if not match:
+        raise SystemExit(
+            "Connection URI format is invalid. Copy the complete Supabase Session Pooler URI "
+            "including its pooler hostname, port 5432, and /postgres database path."
+        )
+    scheme, encoded_user, encoded_password, host, port_text, database = match.groups()
+    username = unquote(encoded_user)
+    password = unquote(encoded_password)
+    port = int(port_text)
+    database = unquote(database)
     if port != 5432:
         raise SystemExit("Use Session Pooler port 5432 for pg_dump.")
-    username = unquote(parsed.username or "")
-    password = unquote(parsed.password or "")
-    database = unquote(parsed.path.lstrip("/")) or "postgres"
     if not username or not password:
         raise SystemExit("The Session Pooler URI must contain a username and an actual database password.")
-    if "[YOUR-PASSWORD]" in raw or "YOUR-PASSWORD" in raw:
+    if "[YOUR-PASSWORD]" in password or "YOUR-PASSWORD" in password:
         raise SystemExit("The database URI still contains the password placeholder.")
     env = os.environ.copy()
     env["PGPASSWORD"] = password
