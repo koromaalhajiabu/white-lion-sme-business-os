@@ -1088,45 +1088,35 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-/* Reliable delegated appearance control: works for all three theme buttons. */
-(()=>{
- const root=document.documentElement,meta=document.querySelector('meta[name="theme-color"]');
- const read=()=>{try{return localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(_){return root.getAttribute('data-theme')==='dark'?'dark':'light'}};
- const apply=next=>{
-  const theme=next==='dark'?'dark':'light';
-  root.setAttribute('data-theme',theme);
-  root.style.colorScheme=theme;
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=52',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+</script>
+<script id="wl-appearance-controller">
+(function(){
+ 'use strict';
+ var root=document.documentElement,ids=['themeToggle','sideThemeToggle','appearanceBarToggle'];
+ function setTheme(value){
+  var theme=value==='dark'?'dark':'light';
+  root.setAttribute('data-theme',theme);root.style.colorScheme=theme;
+  try{localStorage.setItem('wl-sme-theme',theme)}catch(e){}
+  var meta=document.querySelector('meta[name="theme-color"]');
   if(meta)meta.setAttribute('content',theme==='dark'?'#101722':'#14243d');
-  const icon=document.getElementById('themeIcon');
-  const label=document.getElementById('themeLabel');
-  const sideLabel=document.getElementById('sideThemeLabel');
-  const barLabel=document.getElementById('appearanceBarLabel');
-  const barButton=document.getElementById('appearanceBarToggle');
-  const sideButton=document.getElementById('sideThemeToggle');
+  var icon=document.getElementById('themeIcon'),label=document.getElementById('themeLabel');
+  var sideLabel=document.getElementById('sideThemeLabel'),barLabel=document.getElementById('appearanceBarLabel');
+  var sideButton=document.getElementById('sideThemeToggle'),barButton=document.getElementById('appearanceBarToggle');
   if(icon)icon.textContent=theme==='dark'?'☀':'☾';
   if(label)label.textContent=theme==='dark'?'Light mode':'Dark mode';
   if(sideLabel)sideLabel.textContent=theme==='dark'?'Dark mode':'Light mode';
   if(barLabel)barLabel.textContent='Current theme: '+(theme==='dark'?'Dark mode':'Light mode');
   if(barButton)barButton.textContent='Switch to '+(theme==='dark'?'light':'dark')+' mode';
-  if(sideButton){sideButton.textContent=theme==='dark'?'☀':'☾';sideButton.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode')}
-  ['themeToggle','sideThemeToggle','appearanceBarToggle'].forEach(id=>{const el=document.getElementById(id);if(el){el.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');el.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'}});
-  try{localStorage.setItem('wl-sme-theme',theme)}catch(_){}
- };
- window.wlSetAppearance=apply;
- window.wlToggleAppearance=()=>apply(root.getAttribute('data-theme')==='dark'?'light':'dark');
- apply(read());
- ['themeToggle','sideThemeToggle','appearanceBarToggle'].forEach(id=>{
-  const button=document.getElementById(id);
-  if(button){
-   button.type='button';
-   button.onclick=window.wlToggleAppearance;
-   button.addEventListener('keydown',event=>{
-    if(event.key==='Enter'||event.key===' '){event.preventDefault();window.wlToggleAppearance()}
-   });
-  }
- });
+  if(sideButton)sideButton.textContent=theme==='dark'?'☀':'☾';
+  ids.forEach(function(id){var b=document.getElementById(id);if(b){b.setAttribute('aria-label','Switch to '+(theme==='dark'?'light':'dark')+' mode');b.title='Switch to '+(theme==='dark'?'light':'dark')+' mode'}});
+ }
+ window.wlSetAppearance=setTheme;
+ window.wlToggleAppearance=function(){setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark')};
+ ids.forEach(function(id){var b=document.getElementById(id);if(b){b.type='button';b.addEventListener('click',function(e){e.preventDefault();window.wlToggleAppearance()})}});
+ var saved='light';try{saved=localStorage.getItem('wl-sme-theme')==='dark'?'dark':'light'}catch(e){}
+ setTheme(saved);
 })();
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=52',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script src="./cloud.js?v=27" defer></script>
 <script src="./operations.js?v=12" defer></script>
