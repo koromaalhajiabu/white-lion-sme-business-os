@@ -46,7 +46,7 @@ function translateTextNode(node){
  if(!raw||!raw.trim())return;
  let original=originals.get(node);
  if(original===undefined||lastRendered.get(node)!==raw){original=raw;originals.set(node,original)}
- const key=original.trim(),translated=LANGS[current].t[key]||LANGS[current].t[key.replace(/\\s+/g,' ')];
+ const key=original.trim(),translated=LANGS[current].t[key]||LANGS[current].t[key.replace(/\s+/g,' ')];
  if(translated){const leading=original.match(/^\s*/)?.[0]||'',trailing=original.match(/\s*$/)?.[0]||'';node.nodeValue=leading+translated+trailing;lastRendered.set(node,node.nodeValue)}
  else {node.nodeValue=original;lastRendered.set(node,original)}
 }
