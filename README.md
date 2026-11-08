@@ -47,7 +47,7 @@ Migration 017 adds:
 - Matching to cashbook entries with account, amount and debit/credit validation.
 - Audit log events for imports and matches.
 
-This is a manual statement import and matching foundation. It does not connect directly to a bank or mobile-money provider, and the full reconciliation interface and general ledger are still future work.
+This is a manual statement import and matching foundation. It does not connect directly to a bank or mobile-money provider, and a complete double-entry general ledger is still future work. The new reconciliation screen requires migration 017 to be installed.
 
 ## Important accounting and backup limitations
 
