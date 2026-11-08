@@ -76,22 +76,24 @@ begin
         updated_at = now();
   end if;
 
-  insert into public.platform_audit_logs(
-    business_id, actor_user_id, action, entity_table, entity_id, details, occurred_at
-  )
-  values (
-    null, auth.uid(),
-    case when p_max_businesses = 1 then 'business_registration_limit_revoked'
-         else 'business_registration_limit_granted' end,
-    'platform_business_registration_limits',
-    v_user_id::text,
-    jsonb_build_object(
-      'target_email', v_email,
-      'max_businesses', p_max_businesses,
-      'existing_owned_businesses', v_count
-    ),
-    now()
-  );
+  if to_regclass('public.platform_audit_logs') is not null then
+    insert into public.platform_audit_logs(
+      business_id, actor_user_id, action, entity_table, entity_id, details, occurred_at
+    )
+    values (
+      null, auth.uid(),
+      case when p_max_businesses = 1 then 'business_registration_limit_revoked'
+           else 'business_registration_limit_granted' end,
+      'platform_business_registration_limits',
+      v_user_id::text,
+      jsonb_build_object(
+        'target_email', v_email,
+        'max_businesses', p_max_businesses,
+        'existing_owned_businesses', v_count
+      ),
+      now()
+    );
+  end if;
 
   return jsonb_build_object(
     'success', true,
