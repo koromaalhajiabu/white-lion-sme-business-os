@@ -1,4 +1,4 @@
-const CACHE_NAME='white-lion-sme-v63';
+const CACHE_NAME='white-lion-sme-v64';
 const APP_SHELL=[
   './',
   './index.html',
