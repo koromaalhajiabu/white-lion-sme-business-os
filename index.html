@@ -625,7 +625,7 @@ html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-c
 <aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-mark">W</div><div><strong>WHITE LION</strong><small>BUSINESS SYSTEMS</small></div></div>
   <div class="business-switch"><small>Active business</small><b id="sideBusiness">My Business</b><span id="sideIndustry" style="font-size:10px;color:#b8c4d8">Multi-industry</span></div>
-  <div class="wl-appearance"><div class="wl-appearance-copy"><span>Appearance</span><small id="sideThemeLabel">Light mode</small></div><button id="sideThemeToggle" type="button" onclick="window.wlToggleAppearance()" aria-label="Switch to dark mode">☾</button></div>
+  <div class="wl-appearance"><div class="wl-appearance-copy"><span>Appearance</span><small id="sideThemeLabel">Light mode</small></div><button id="sideThemeToggle" type="button" aria-label="Switch to dark mode">☾</button></div>
   <div><div class="nav-label">Workspace</div><nav class="nav" id="nav">
     <button class="active" data-page="dashboard"><span class="ico">▦</span>Overview</button>
     <button data-page="sales"><span class="ico">▣</span>Sales & POS</button>
@@ -653,10 +653,10 @@ html[data-theme="dark"] #appearanceBar{background:#182333;color:#e8edf5;border-c
 <main class="main">
 <header class="topbar">
   <div style="display:flex;align-items:center;gap:12px"><button class="btn small mobile-menu" id="menuBtn">☰</button><div class="crumb" id="crumb">Overview</div></div>
-  <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" onclick="window.wlToggleAppearance()" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
+  <div class="top-actions"><button class="btn small theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
 </header>
 <div class="wl-install-banner" id="wlInstallBanner" hidden><div class="wl-install-copy"><b>Install White Lion SME</b><small id="wlInstallHint">Add the business system to your home screen for quick access.</small></div><button class="wl-install-button" id="wlInstallButton" type="button">Install app</button></div>
-<div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button" onclick="window.wlToggleAppearance()">Switch to dark mode</button></div>
+<div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button">Switch to dark mode</button></div>
 <section class="content" id="view"></section>
 <div class="footer">Designed by Alhaji Abu Koroma · White Lion Tech Solutions</div>
 </main>
@@ -1103,7 +1103,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=53',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=55',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1133,7 +1133,7 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./cloud.js?v=29" defer></script>
+<script src="./cloud.js?v=30" defer></script>
 <script src="./operations.js?v=13" defer></script>
 <script src="./documents.js?v=2" defer></script>
 <script src="./league.js?v=2" defer></script>
