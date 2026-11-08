@@ -2,7 +2,6 @@
 (()=>{'use strict';
 const BUCKET='business-documents',MAX=50*1024*1024,ALLOWED=new Set(['application/pdf','image/jpeg','image/png','image/webp']);
 const $=id=>document.getElementById(id), cloud=()=>window.whiteLionCloud, active=()=>cloud()?.getActiveBusiness?.(), client=()=>cloud()?.getClient?.();
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const size=n=>Number(n||0)<1048576?(Number(n||0)/1024).toFixed(0)+' KB':(Number(n||0)/1048576).toFixed(1)+' MB';
 function msg(t,bad=false){const e=$('wlDocumentsMessage');if(e){e.textContent=t;e.style.color=bad?'#b42332':'#176b3a'}}
 async function context(){const business=active(),c=client(),s=cloud()?.getSession?.();if(!business||!c||!s)throw Error('Sign in and select a business workspace first.');return{business,c}}

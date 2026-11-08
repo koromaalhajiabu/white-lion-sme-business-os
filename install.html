@@ -27,7 +27,7 @@ let deferred=null;
 const btn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;btn.disabled=false});
 btn.addEventListener('click',async()=>{if(!deferred){document.getElementById('help').scrollIntoView({behavior:'smooth'});return}btn.disabled=true;deferred.prompt();await deferred.userChoice;deferred=null;btn.disabled=false});
-if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=37',{scope:'./',updateViaCache:'none'}).catch(()=>{}))}
+if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=38',{scope:'./',updateViaCache:'none'}).catch(()=>{}))}
 </script>
 </body>
 </html>

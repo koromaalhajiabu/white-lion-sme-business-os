@@ -1,6 +1,5 @@
 /* White Lion SME OS — branch transfers, finance registers and advanced inventory controls. */
 (() => {
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let api,client,business,memberRole=null,scannerStream=null,products=[],branchesCache=[];
   const css=document.createElement('style');
   css.textContent=`

@@ -1,6 +1,5 @@
 /* White Lion — Sports & Local League Management module */
 (() => {
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let competitionId = '', seasonId = '', activeTab = 'overview', cache = {};
   const host = () => document.getElementById('view');
   const cloud = () => window.whiteLionCloud;

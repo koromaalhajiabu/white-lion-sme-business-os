@@ -184,13 +184,10 @@
     window.__wlBusinesses = businesses;
     $('wlCloudAuth').hidden = true; $('wlCloudWork').hidden = false;
     $('wlBusinessSelect').innerHTML = businesses.length
-      ? businesses.map(b => `<option value="${b.id}">${escapeHtml(b.name)} — ${escapeHtml(b.role)}</option>`).join('')
+      ? businesses.map(b => `<option value="${b.id}">${esc(b.name)} — ${esc(b.role)}</option>`).join('')
       : '<option value="">No business workspace yet</option>';
     if (businesses.length) await selectBusiness(businesses[0]);
     else say('Signed in. Create your first business workspace.');
-  }
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   async function createBranch() {
     if (!activeBusiness) return say('Select a business workspace first.');
@@ -223,7 +220,7 @@
     window.__wlBranches = data || [];
     const active = window.__wlBranches.filter(b => b.is_active);
     $('wlBranchSelect').innerHTML = active.length
-      ? active.map(b => '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + (b.address ? ' · ' + escapeHtml(b.address) : '') + '</option>').join('')
+      ? active.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + (b.address ? ' · ' + esc(b.address) : '') + '</option>').join('')
       : '<option value="">No active branches — create one</option>';
     selectedBranch = active.find(b => b.id === (preferredId || selectedBranch?.id)) || active[0] || null;
     $('wlBranchSelect').value = selectedBranch?.id || '';
@@ -249,21 +246,21 @@
     if (stockResult.error) $('wlBranchInventory').textContent = 'Stock unavailable: ' + stockResult.error.message;
     else {
       const rows = stockResult.data || [];
-      $('wlBranchInventory').innerHTML = '<div class="branch-note"><strong>Stock at ' + escapeHtml(selectedBranch.name) + '</strong></div>' +
-        (rows.map(row => '<div class="branch-stock"><span>' + escapeHtml(row.products?.name || row.product_id) + '</span><strong>' + Number(row.quantity_on_hand || 0).toLocaleString() + ' ' + escapeHtml(row.products?.unit || '') + '</strong></div>').join('') || '<div class="branch-note">No stock records in this branch yet.</div>');
+      $('wlBranchInventory').innerHTML = '<div class="branch-note"><strong>Stock at ' + esc(selectedBranch.name) + '</strong></div>' +
+        (rows.map(row => '<div class="branch-stock"><span>' + esc(row.products?.name || row.product_id) + '</span><strong>' + Number(row.quantity_on_hand || 0).toLocaleString() + ' ' + esc(row.products?.unit || '') + '</strong></div>').join('') || '<div class="branch-note">No stock records in this branch yet.</div>');
     }
     if (memberResult.error) $('wlBranchMemberSelect').innerHTML = '<option value="">Members unavailable</option>';
     else {
       const members = memberResult.data || [];
       $('wlBranchMemberSelect').innerHTML = '<option value="">Choose a business member…</option>' +
-        members.map(m => '<option value="' + escapeHtml(m.user_id) + '">' + escapeHtml(m.user_id) + ' · ' + escapeHtml(m.role) + '</option>').join('');
+        members.map(m => '<option value="' + esc(m.user_id) + '">' + esc(m.user_id) + ' · ' + esc(m.role) + '</option>').join('');
     }
     if (assignmentResult.error) $('wlBranchMembers').textContent = 'Assignments unavailable: ' + assignmentResult.error.message;
     else {
       const assignments = assignmentResult.data || [];
       const memberMap = new Map((memberResult.data || []).map(m => [m.user_id,m]));
       $('wlBranchMembers').innerHTML = '<div class="branch-note"><strong>Branch assignments</strong></div>' +
-        (assignments.map(a => '<div class="branch-note">' + escapeHtml(a.user_id) + ' · ' + escapeHtml(memberMap.get(a.user_id)?.role || 'member') + ' · ' + (a.is_active ? 'ACTIVE' : 'INACTIVE') + '</div>').join('') || '<div class="branch-note">No staff assigned yet.</div>');
+        (assignments.map(a => '<div class="branch-note">' + esc(a.user_id) + ' · ' + esc(memberMap.get(a.user_id)?.role || 'member') + ' · ' + (a.is_active ? 'ACTIVE' : 'INACTIVE') + '</div>').join('') || '<div class="branch-note">No staff assigned yet.</div>');
     }
   }
   async function setBranchMember(isActive) {
@@ -314,7 +311,7 @@
     $('wlDevFreeze').className = maintenance.enabled ? '' : 'danger';
     $('wlDevBusinesses').innerHTML = (data.businesses || []).map(b => `
       <div class="dev-row">
-        <div><strong>${escapeHtml(b.name)}</strong><div class="dev-meta">${escapeHtml(b.industry)} · Owner: ${escapeHtml(b.owner_email || 'Unknown')} · ${b.member_count} members</div><div class="dev-meta">${b.is_suspended ? 'SUSPENDED' : 'ACTIVE'} · ${escapeHtml(b.id)}</div></div>
+        <div><strong>${esc(b.name)}</strong><div class="dev-meta">${esc(b.industry)} · Owner: ${esc(b.owner_email || 'Unknown')} · ${b.member_count} members</div><div class="dev-meta">${b.is_suspended ? 'SUSPENDED' : 'ACTIVE'} · ${esc(b.id)}</div></div>
         <div class="dev-actions"><button data-dev-business="${b.id}" data-suspended="${b.is_suspended ? 'true':'false'}">${b.is_suspended ? 'Restore':'Suspend'}</button></div>
       </div>`).join('') || '<div class="dev-meta">No business workspaces have been created.</div>';
     $('wlDevBusinesses').querySelectorAll('[data-dev-business]').forEach(button => {
@@ -354,7 +351,7 @@
     host.innerHTML = events.map(event => {
       const when = event.occurred_at ? new Date(event.occurred_at).toLocaleString() : 'Time unavailable';
       const details = event.details && Object.keys(event.details).length ? JSON.stringify(event.details) : '';
-      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(String(event.action || 'Platform event').replaceAll('_',' ')) + '</strong><div class="dev-meta">' + escapeHtml(event.actor_email || 'System / unknown actor') + ' · ' + escapeHtml(when) + '</div><div class="dev-meta">' + escapeHtml(event.business_name || 'Platform-wide') + (event.entity_table ? ' · ' + escapeHtml(event.entity_table) : '') + (event.entity_id ? ' · ' + escapeHtml(event.entity_id) : '') + '</div>' + (details ? '<div class="dev-meta">' + escapeHtml(details) + '</div>' : '') + '</div></div>';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(String(event.action || 'Platform event').replaceAll('_',' ')) + '</strong><div class="dev-meta">' + esc(event.actor_email || 'System / unknown actor') + ' · ' + esc(when) + '</div><div class="dev-meta">' + esc(event.business_name || 'Platform-wide') + (event.entity_table ? ' · ' + esc(event.entity_table) : '') + (event.entity_id ? ' · ' + esc(event.entity_id) : '') + '</div>' + (details ? '<div class="dev-meta">' + esc(details) + '</div>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No matching audit events found in the latest 150 records.</div>';
   }
   function populateDeveloperRoleForm() {
@@ -364,14 +361,14 @@
       const selected = businessSelect.value;
       const businesses = window.__wlPlatformBusinesses || [];
       businessSelect.innerHTML = '<option value="">Choose a business workspace…</option>' +
-        businesses.map(b => '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + ' · ' + escapeHtml(b.owner_email || 'Owner unknown') + '</option>').join('');
+        businesses.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + ' · ' + esc(b.owner_email || 'Owner unknown') + '</option>').join('');
       if (businesses.some(b => b.id === selected)) businessSelect.value = selected;
     }
     if (accountSelect) {
       const selected = accountSelect.value;
       const accounts = window.__wlPlatformAccounts || [];
       accountSelect.innerHTML = '<option value="">Choose a registered account…</option>' +
-        accounts.map(a => '<option value="' + escapeHtml(a.email || '') + '">' + escapeHtml(a.full_name || a.email || 'Unnamed account') + ' · ' + escapeHtml(a.email || '') + (a.is_active === false ? ' · SUSPENDED' : '') + '</option>').join('');
+        accounts.map(a => '<option value="' + esc(a.email || '') + '">' + esc(a.full_name || a.email || 'Unnamed account') + ' · ' + esc(a.email || '') + (a.is_active === false ? ' · SUSPENDED' : '') + '</option>').join('');
       if (accounts.some(a => a.email === selected)) accountSelect.value = selected;
     }
   }
@@ -418,7 +415,7 @@
       const name = a.full_name || 'Name not provided';
       const last = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString() : 'Never signed in';
       const protectedAccount = a.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com';
-      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(name) + '</strong><div class="dev-meta">' + escapeHtml(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + escapeHtml(last) + '</div></div><div class="dev-actions"><button data-account-user="' + escapeHtml(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (protectedAccount ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button>' + (!protectedAccount ? '<button class="danger" data-account-delete="' + escapeHtml(a.user_id) + '" data-account-email="' + escapeHtml(a.email || '') + '">Request deletion</button>' : '') + '</div></div>';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(name) + '</strong><div class="dev-meta">' + esc(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + esc(last) + '</div></div><div class="dev-actions"><button data-account-user="' + esc(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (protectedAccount ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button>' + (!protectedAccount ? '<button class="danger" data-account-delete="' + esc(a.user_id) + '" data-account-email="' + esc(a.email || '') + '">Request deletion</button>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No registered accounts found.</div>';
     host.querySelectorAll('[data-account-delete]').forEach(button => {
       button.onclick = async () => {
@@ -473,7 +470,7 @@
       const remaining = due ? Math.max(0,Math.ceil((due.getTime()-Date.now())/86400000)) : 0;
       const pending = d.status === 'pending';
       const dueLabel = due ? due.toLocaleString() : 'Unknown';
-      return '<div class="dev-row"><div style="min-width:0"><strong>' + escapeHtml(d.target_email) + '</strong><div class="dev-meta">' + escapeHtml(d.status.toUpperCase()) + ' · ' + (pending && remaining > 0 ? remaining + ' days remaining' : pending ? 'Eligible for permanent deletion' : 'Closed') + '</div><div class="dev-meta">Scheduled: ' + escapeHtml(dueLabel) + '</div><div class="dev-meta">Request: ' + escapeHtml(d.id) + '</div>' + (d.failure_note ? '<div class="dev-meta">Note: ' + escapeHtml(d.failure_note) + '</div>' : '') + '</div><div class="dev-actions">' + (pending && remaining > 0 ? '<button data-cancel-deletion="' + escapeHtml(d.id) + '">Cancel &amp; restore</button>' : '') + (pending && remaining <= 0 ? '<button class="danger" data-process-deletion="' + escapeHtml(d.id) + '">Permanently delete</button>' : '') + '</div></div>';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(d.target_email) + '</strong><div class="dev-meta">' + esc(d.status.toUpperCase()) + ' · ' + (pending && remaining > 0 ? remaining + ' days remaining' : pending ? 'Eligible for permanent deletion' : 'Closed') + '</div><div class="dev-meta">Scheduled: ' + esc(dueLabel) + '</div><div class="dev-meta">Request: ' + esc(d.id) + '</div>' + (d.failure_note ? '<div class="dev-meta">Note: ' + esc(d.failure_note) + '</div>' : '') + '</div><div class="dev-actions">' + (pending && remaining > 0 ? '<button data-cancel-deletion="' + esc(d.id) + '">Cancel &amp; restore</button>' : '') + (pending && remaining <= 0 ? '<button class="danger" data-process-deletion="' + esc(d.id) + '">Permanently delete</button>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No account deletion requests.</div>';
     host.querySelectorAll('[data-cancel-deletion]').forEach(button => {
       button.onclick = async () => {
@@ -596,8 +593,8 @@
       modal.id = 'wlIndustrySetupModal';
       modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(7,17,32,.72);display:flex;align-items:center;justify-content:center;padding:14px;font-family:inherit';
       const groups = WL_INDUSTRY_GROUPS.map(group =>
-        '<optgroup label="' + escapeHtml(group.label) + '">' +
-        group.items.map(item => '<option value="' + escapeHtml(item) + '">' + escapeHtml(item) + '</option>').join('') +
+        '<optgroup label="' + esc(group.label) + '">' +
+        group.items.map(item => '<option value="' + esc(item) + '">' + esc(item) + '</option>').join('') +
         '</optgroup>'
       ).join('');
       modal.innerHTML = '<form id="wlIndustrySetupForm" style="width:min(520px,100%);max-height:92vh;overflow:auto;background:#fff;color:#17243a;border-radius:18px;padding:22px;box-shadow:0 25px 80px #0005">' +
@@ -615,7 +612,7 @@
       const updatePreview = () => {
         const group = WL_INDUSTRY_GROUPS.find(g => g.items.includes(type.value));
         const modules = ['core', ...(group?.modules || [])];
-        preview.innerHTML = '<strong>Modules to activate</strong><br>' + modules.map(escapeHtml).join(' · ') +
+        preview.innerHTML = '<strong>Modules to activate</strong><br>' + modules.map(esc).join(' · ') +
           '<br><span style="color:#8a6d36">Specialized workflows may still require configuration and testing.</span>';
       };
       const close = value => { modal.remove(); resolve(value); };

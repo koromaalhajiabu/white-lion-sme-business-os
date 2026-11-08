@@ -7,6 +7,7 @@
 <meta name="description" content="White Lion SME Business Operating System">
 <link rel="manifest" href="manifest.webmanifest?v=43">
 <link rel="icon" type="image/svg+xml" href="icons/white-lion-icon.svg">
+<script src="./shared.js?v=1"></script>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="White Lion SME">
@@ -682,7 +683,6 @@ function applyIndustryWording(){
  else document.getElementById('crumb').textContent=labels[state.page]||({employees:'Employees',settings:'Business settings'}[state.page]||state.page);
 }
 const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:state.business.currency||'SLE',maximumFractionDigits:2}).format(Number(n||0));
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const d=r.result;stores.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id',autoIncrement:true})});if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'key'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 function all(store){return new Promise((resolve,reject)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');const r=tx.objectStore(store).put(obj);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
@@ -1103,7 +1103,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=52',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=53',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1133,8 +1133,8 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./cloud.js?v=27" defer></script>
-<script src="./operations.js?v=12" defer></script>
-<script src="./documents.js?v=1" defer></script>
-<script src="./league.js?v=1" defer></script>
+<script src="./cloud.js?v=28" defer></script>
+<script src="./operations.js?v=13" defer></script>
+<script src="./documents.js?v=2" defer></script>
+<script src="./league.js?v=2" defer></script>
 </body></html>
