@@ -103,6 +103,18 @@
         <button id="wlDevRoleSave" type="button">Assign / update business role</button>
         <div id="wlDevRoleStatus" class="dev-role-help">Choose a business and registered account to continue.</div>
       </section>
+      <section class="dev-role-manager" id="wlDevRegistrationLimitManager">
+        <h3 style="margin:0 0 5px;color:#f0d28b">Multiple business registration permissions</h3>
+        <div class="dev-role-help">Ordinary accounts can register one business by default. Select a registered user and set a higher maximum. Set the limit to 1 to revoke the exception. This does not grant Developer access.</div>
+        <div class="dev-role-grid">
+          <div><label for="wlDevRegistrationUser">Registered user</label><select id="wlDevRegistrationUser"><option value="">Loading registered accounts…</option></select></div>
+          <div><label for="wlDevRegistrationMax">Maximum businesses</label><input id="wlDevRegistrationMax" type="number" min="2" max="1000" step="1" value="2" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #64748b;border-radius:8px;background:#fff;color:#17243a"></div>
+        </div>
+        <button id="wlDevRegistrationLimitSave" type="button">Grant / update permission</button>
+        <button id="wlDevRegistrationLimitRefresh" type="button">Refresh permissions</button>
+        <div id="wlDevRegistrationLimitStatus" class="dev-role-help">No additional-business permissions loaded yet.</div>
+        <div id="wlDevRegistrationLimits" class="dev-meta">Loading permissions…</div>
+      </section>
       <div class="dev-actions">
         <button id="wlDevRefresh">Refresh dashboard</button>
         <button id="wlDevFreeze">Freeze platform</button>
@@ -129,6 +141,8 @@
     $('wlDevFreeze').onclick = toggleMaintenance;
     $('wlDevAssign').onclick = () => $('wlDevRoleManager')?.scrollIntoView({behavior:'smooth',block:'center'});
     $('wlDevRoleSave').onclick = saveDeveloperBusinessRole;
+    $('wlDevRegistrationLimitSave').onclick = saveDeveloperRegistrationLimit;
+    $('wlDevRegistrationLimitRefresh').onclick = loadDeveloperRegistrationLimits;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
@@ -325,6 +339,7 @@
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
     await loadDeveloperAccounts();
+    await loadDeveloperRegistrationLimits();
     await loadDeveloperDeletionRequests();
     await loadDeveloperActivity();
   }
@@ -401,6 +416,82 @@
     $('wlDevStatus').textContent = 'Business membership updated and recorded in the platform audit log.';
     await loadDeveloperDashboard();
   }
+  function populateDeveloperRegistrationAccounts() {
+    const select = $('wlDevRegistrationUser');
+    if (!select) return;
+    const selected = select.value;
+    const accounts = (window.__wlPlatformAccounts || []).filter(a =>
+      a.email && a.email.toLowerCase() !== 'koromaalhajiabu0@gmail.com'
+    );
+    select.innerHTML = '<option value="">Choose a registered account…</option>' +
+      accounts.map(a => '<option value="' + esc(a.email) + '">' +
+        esc(a.full_name || a.email) + ' · ' + esc(a.email) + '</option>').join('');
+    if (accounts.some(a => a.email === selected)) select.value = selected;
+  }
+
+  async function loadDeveloperRegistrationLimits() {
+    const host = $('wlDevRegistrationLimits');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading additional-business permissions…';
+    const {data,error} = await client.rpc('get_platform_business_registration_limits');
+    if (error) {
+      host.textContent = 'Permission list unavailable: ' + error.message + '. Run migration 020 first.';
+      return;
+    }
+    const limits = Array.isArray(data) ? data : [];
+    window.__wlBusinessRegistrationLimits = limits;
+    populateDeveloperRegistrationAccounts();
+    host.innerHTML = limits.map(item =>
+      '<div class="dev-row"><div style="min-width:0"><strong>' + esc(item.full_name || item.email) +
+      '</strong><div class="dev-meta">' + esc(item.email) + '</div><div class="dev-meta">' +
+      Number(item.business_count || 0) + ' owned business(es) · Limit: ' +
+      Number(item.max_businesses) + '</div></div><div class="dev-actions">' +
+      '<button class="danger" data-revoke-business-limit="' + esc(item.email) + '">Revoke exception</button></div></div>'
+    ).join('') || '<div class="dev-meta">No users currently have additional-business permission. All ordinary users are limited to one business.</div>';
+    host.querySelectorAll('[data-revoke-business-limit]').forEach(button => {
+      button.onclick = async () => {
+        const email = button.dataset.revokeBusinessLimit;
+        if (!confirm('Revoke the additional-business permission for ' + email + '? Their limit will return to one business. Existing businesses will remain unchanged.')) return;
+        button.disabled = true;
+        const {data,error} = await client.rpc('set_platform_business_registration_limit', {
+          p_email: email,
+          p_max_businesses: 1
+        });
+        if (error) {
+          $('wlDevRegistrationLimitStatus').textContent = 'Could not revoke permission: ' + error.message;
+          button.disabled = false;
+          return;
+        }
+        $('wlDevRegistrationLimitStatus').textContent = 'Additional-business permission revoked for ' + email + '. Existing businesses were preserved.';
+        await loadDeveloperRegistrationLimits();
+      };
+    });
+  }
+
+  async function saveDeveloperRegistrationLimit() {
+    const email = $('wlDevRegistrationUser')?.value || '';
+    const max = Number($('wlDevRegistrationMax')?.value);
+    const status = $('wlDevRegistrationLimitStatus');
+    const button = $('wlDevRegistrationLimitSave');
+    if (!email) { status.textContent = 'Choose a registered account first.'; return; }
+    if (!Number.isInteger(max) || max < 2 || max > 1000) {
+      status.textContent = 'Enter a whole-number limit between 2 and 1000.';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = 'Saving permission securely…';
+    const {data,error} = await client.rpc('set_platform_business_registration_limit', {
+      p_email: email,
+      p_max_businesses: max
+    });
+    button.disabled = false;
+    if (error) { status.textContent = 'Could not save permission: ' + error.message; return; }
+    status.textContent = 'Permission granted to ' + email + '. Maximum owned businesses: ' + max +
+      '. Existing businesses: ' + Number(data?.existing_owned_businesses || 0) + '.';
+    await loadDeveloperRegistrationLimits();
+    await loadDeveloperAccounts();
+  }
+
   async function loadDeveloperAccounts() {
     const host = $('wlDevAccounts');
     if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
@@ -410,6 +501,7 @@
     const accounts = Array.isArray(data) ? data : [];
     window.__wlPlatformAccounts = accounts;
     populateDeveloperRoleForm();
+    populateDeveloperRegistrationAccounts();
     host.innerHTML = accounts.map(a => {
       const active = a.is_active !== false;
       const name = a.full_name || 'Name not provided';
