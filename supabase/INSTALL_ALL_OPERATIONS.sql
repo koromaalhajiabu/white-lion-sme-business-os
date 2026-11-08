@@ -1541,10 +1541,7 @@ $$;
 revoke all on function public.import_bank_statement_lines(uuid,jsonb) from public;
 revoke all on function public.match_bank_statement_line(uuid,uuid) from public;
 grant execute on function public.import_bank_statement_lines(uuid,jsonb) to authenticated;
-grant execute on function public.match_bank_statement_line(uuid,uuid) to authenticated;
-
-commit;
-
+grant execute on function public.match_bank_statement_line(uuid,uuid) to 
 
 -- ============================================================
 -- MIGRATION 018: DOUBLE-ENTRY GENERAL LEDGER
@@ -1792,7 +1789,7 @@ declare v_cogs numeric(18,2); v_lines jsonb;
 begin
   v_cogs:=0; -- Historical cost layers are not yet tracked; do not invent COGS.
   v_lines=jsonb_build_array(
-    jsonb_build_object('code','1100','debit',new.total,'credit',0,'description','Sale receivable'),
+    jsonb_build_object('code',case when lower(coalesce(new.payment_method,'')) in ('credit','on credit','accounts receivable') then '1100' else '1000' end,'debit',new.total,'credit',0,'description','Sale proceeds'),
     jsonb_build_object('code','4000','debit',0,'credit',new.total,'description','Sales revenue')
   );
   if v_cogs>0 then
