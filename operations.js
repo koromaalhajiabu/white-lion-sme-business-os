@@ -85,12 +85,13 @@
         <button id="wlOpsBankImport">Import CSV statement</button><button id="wlOpsBankRefresh">Refresh reconciliation</button>
         <div id="wlOpsBankRows" class="ops-muted">Bank accounts and statement lines will appear here after migration 017 is installed.</div>
         <h4>General ledger & financial statements</h4>
-        <div class="ops-muted">Double-entry accounting for new synced sales, purchases, expenses, returns and receivable/payable payments. Historical transactions are not backdated automatically. Inventory cost-of-goods-sold is not yet recognised because historical cost layers are not tracked.</div>
+        <div class="ops-muted">Double-entry accounting with moving weighted-average inventory costing. New stock-managed sales post Cost of Goods Sold automatically; purchases, batch receipts, approved stock adjustments and branch transfers update inventory valuation. Existing stock opens at recorded batch costs where available, otherwise product cost price. Historical sales are not rewritten.</div>
         <button id="wlLedgerInit" type="button">Prepare chart of accounts</button>
         <div id="wlLedgerAccounts" class="ops-muted">Chart of accounts will load after migration 018.</div>
         <div class="ops-grid"><input id="wlLedgerFrom" type="date"><input id="wlLedgerTo" type="date"></div>
         <div class="ops-grid"><button id="wlLedgerTrial" type="button">Trial balance</button><button id="wlLedgerIncome" type="button">Profit & loss</button></div>
         <div class="ops-grid"><button id="wlLedgerBalance" type="button">Balance sheet</button><button id="wlLedgerCash" type="button">Cash flow</button></div>
+        <button id="wlLedgerInventory" type="button">Inventory valuation</button>
         <div id="wlLedgerReport" class="ops-muted">Choose a financial report to view posted ledger entries.</div>
         <h4>Manual journal entry</h4>
         <div class="ops-muted">Two-line journal entry. Debits and credits must balance. Posted journals are locked; corrections require a reversing journal.</div>
@@ -127,7 +128,7 @@
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOwnerRefresh',renderOwnerDashboard);
     document.getElementById('wlOwnerPeriod').addEventListener('change',renderOwnerDashboard);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
-    bind('wlLedgerInit',initializeLedger);bind('wlLedgerTrial',()=>loadLedgerReport('trial'));bind('wlLedgerIncome',()=>loadLedgerReport('income'));bind('wlLedgerBalance',()=>loadLedgerReport('balance'));bind('wlLedgerCash',()=>loadLedgerReport('cash'));bind('wlLedgerPost',postLedgerJournal);
+    bind('wlLedgerInit',initializeLedger);bind('wlLedgerTrial',()=>loadLedgerReport('trial'));bind('wlLedgerIncome',()=>loadLedgerReport('income'));bind('wlLedgerBalance',()=>loadLedgerReport('balance'));bind('wlLedgerCash',()=>loadLedgerReport('cash'));bind('wlLedgerInventory',loadInventoryValuation);bind('wlLedgerPost',postLedgerJournal);
     bind('wlOpsObligationSave',saveObligation);bind('wlOpsCashbookExport',exportCashbook);bind('wlOpsBankCreate',createBankAccount);bind('wlOpsBankImport',importBankStatement);bind('wlOpsBankRefresh',renderBankReconciliation);document.getElementById('wlOpsBankRows').addEventListener('click',handleBankMatch);bind('wlOpsBarcodeFind',findBarcode);bind('wlOpsBarcodeSave',saveBarcode);
     bind('wlOpsScanStart',startScanner);bind('wlOpsScanStop',stopScanner);
     bind('wlOpsBatchSave',receiveBatch);bind('wlOpsAdjustRequest',requestAdjustment);
@@ -211,6 +212,15 @@
       const debit=rows.reduce((n,x)=>n+Number(x.total_debit||0),0),credit=rows.reduce((n,x)=>n+Number(x.total_credit||0),0);
       box.innerHTML='<div class="ops-summary"><div class="ops-tile"><span>Total debits</span><strong>'+money(debit)+'</strong></div><div class="ops-tile"><span>Total credits</span><strong>'+money(credit)+'</strong></div><div class="ops-tile"><span>Difference</span><strong>'+money(debit-credit)+'</strong></div></div>'+ledgerTable(rows,columns);
     }else box.innerHTML=ledgerTable(rows,columns);
+  }
+  async function loadInventoryValuation(){
+    const box=document.getElementById('wlLedgerReport');if(!box)return;
+    box.textContent='Loading inventory valuation…';
+    const {data,error}=await client.rpc('inventory_valuation_report',{p_business_id:business.id});
+    if(error){box.textContent='Inventory valuation unavailable: '+error.message;return;}
+    const rows=data||[],total=rows.reduce((n,x)=>n+Number(x.inventory_value||0),0);
+    const columns=[{key:'branch_name',label:'Branch'},{key:'product_name',label:'Product'},{key:'sku',label:'SKU'},{key:'quantity_on_hand',label:'Quantity'},{key:'average_unit_cost',label:'Average cost',format:money},{key:'inventory_value',label:'Stock value',format:money}];
+    box.innerHTML='<div class="ops-summary"><div class="ops-tile"><span>Inventory value</span><strong>'+money(total)+'</strong></div><div class="ops-tile"><span>Product / branch rows</span><strong>'+rows.length.toLocaleString()+'</strong></div></div>'+ledgerTable(rows,columns);
   }
   async function postLedgerJournal(){
     if(!['owner','admin','accountant'].includes(memberRole))return say('Only owners, administrators or accountants can post manual journals.',true);
