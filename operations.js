@@ -323,8 +323,8 @@
       if(quoted){if(ch==='"'&&source[i+1]==='"'){field+='"';i++;}else if(ch==='"')quoted=false;else field+=ch;}
       else if(ch==='"')quoted=true;
       else if(ch===','){row.push(field);field='';}
-      else if(ch==='\\n'){row.push(field);rows.push(row);row=[];field='';}
-      else if(ch!=='\\r')field+=ch;
+      else if(ch==='\n'){row.push(field);rows.push(row);row=[];field='';}
+      else if(ch!=='\r')field+=ch;
     }
     if(field.length||row.length){row.push(field);rows.push(row);}
     return rows;
@@ -344,7 +344,7 @@
     if(file.size>5*1024*1024)return say('CSV file must be 5 MB or smaller.',true);
     try{
       const rows=parseStatementCsv(await file.text());if(rows.length<2)throw Error('The CSV has no transaction rows.');
-      const headers=rows.shift().map(x=>x.trim().toLowerCase().replace(/^\\ufeff/,''));
+      const headers=rows.shift().map(x=>x.trim().toLowerCase().replace(/^\uFEFF/,''));
       const index=key=>headers.indexOf(key);
       const required=['transaction_date','description','amount','direction'];
       if(required.some(k=>index(k)<0))throw Error('CSV headers must include transaction_date, description, amount and direction. reference is optional.');
@@ -353,7 +353,7 @@
         const direction=String(r[index('direction')]||'').trim().toLowerCase();
         const date=String(r[index('transaction_date')]||'').trim();
         const description=String(r[index('description')]||'').trim();
-        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!description||!Number.isFinite(amount)||amount<=0||!['debit','credit'].includes(direction))throw Error('Invalid CSV row '+(n+2)+'. Use YYYY-MM-DD, positive amount and debit/credit.');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!description||!Number.isFinite(amount)||amount<=0||!['debit','credit'].includes(direction))throw Error('Invalid CSV row '+(n+2)+'. Use YYYY-MM-DD, positive amount and debit/credit.');
         return{transaction_date:date,description,reference:index('reference')>=0?String(r[index('reference')]||'').trim():null,amount,direction};
       });
       if(!lines.length)throw Error('No valid statement rows found.');
