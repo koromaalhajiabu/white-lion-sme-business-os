@@ -1,39 +1,46 @@
-# White Lion SME — private documents, automated backup and recovery
+# White Lion SME — automated logical backup and recovery
 
-## Private document storage
-The `business-documents` Supabase Storage bucket is private. Each business uses its UUID as its top-level folder. The app supports PDF, JPEG, PNG and WEBP files up to 50 MB. Active business members can read and upload within their workspace; only owners and administrators can delete. Downloads use short-lived signed links.
+## What the automated backup contains
 
-## Automated backup workflow
-The repository now includes `.github/workflows/supabase-backup.yml`. It can run manually from GitHub Actions or every day at 02:30 UTC. It backs up:
-- The Supabase PostgreSQL database using `pg_dump` custom format.
-- The actual objects in the private `business-documents` Storage bucket.
+The workflow `.github/workflows/supabase-backup.yml` runs manually or daily at 02:30 UTC. It no longer uses a PostgreSQL password or `SUPABASE_DB_URL`.
 
-The workflow encrypts the combined backup before uploading it as a GitHub Actions artifact. Artifacts are retained for 30 days. This is a useful scheduled recovery copy, but it is not a permanent independent archive: download successful backups periodically and retain encrypted copies in a separate secure location.
+It uses the Supabase service-role API to export:
+- Every readable public REST resource exposed by the project's PostgREST OpenAPI document, as paginated JSON files.
+- Supabase Auth user metadata returned by the Auth admin API (not passwords, MFA secrets, active sessions, or provider secrets).
+- Every object in the private `business-documents` Storage bucket.
+- The SQL migration files committed in this repository.
 
-### One-time GitHub configuration
-Open the repository settings:
+The workflow encrypts the collected files before uploading an artifact to GitHub Actions. Artifacts are retained for 30 days. Download successful artifacts periodically and keep encrypted copies in a separate secure location.
+
+**Important limitation:** this is a logical JSON/data-and-migrations backup, not a full PostgreSQL physical or custom-format dump. It does not automatically capture live database objects that are absent from the repository migrations, Supabase project settings, Edge Function secrets, Auth passwords/MFA/session state, or Storage bucket configuration/policies unless those are represented in the archived migrations. A separate recovery-project restore and validation is required before calling disaster recovery complete.
+
+## One-time GitHub configuration
+
+Open:
 https://github.com/koromaalhajiabu/white-lion-sme-business-os/settings/secrets/actions
 
-Add these four **Actions secrets** (never commit them to a file):
-1. `SUPABASE_DB_URL` — the database connection string for the intended Supabase project. Use the direct or session-pooler connection string shown by Supabase, with the correct database password.
-2. `SUPABASE_URL` — `https://nclncqlgnxnijlumznnt.supabase.co`.
-3. `SUPABASE_SERVICE_ROLE_KEY` — the project's service-role key. This key is used only inside the GitHub-hosted backup runner; never place it in frontend code or public repository files.
-4. `BACKUP_ENCRYPTION_PASSPHRASE` — a long, unique passphrase. Store it in a password manager. Without it, encrypted backups cannot be decrypted.
+Required Actions secrets:
+1. `SUPABASE_URL` — `https://nclncqlgnxnijlumznnt.supabase.co`.
+2. `SUPABASE_SERVICE_ROLE_KEY` — service-role key for this project. It is used only inside the GitHub-hosted runner; never put it in frontend code or repository files.
+3. `BACKUP_ENCRYPTION_PASSPHRASE` — a long, unique passphrase. Store it securely; without it, artifacts cannot be decrypted.
 
-Then open Actions → **Supabase off-site backup** → **Run workflow**. Confirm the run succeeds and that the artifact contains the encrypted archive, checksum and HMAC signature. A successful workflow run is the first proof that backup configuration works; it does not prove restoration until the restore test below succeeds.
+`SUPABASE_DB_URL` is no longer used by this workflow. It may remain in GitHub Secrets, but it is not required for this backup method.
 
-## Restore procedure
+Open Actions → **Supabase off-site backup** → **Run workflow**. A successful run and artifact are required before considering the scheduled backup operational.
+
+## Restore and recovery
+
 Always restore into a separate recovery Supabase project first. Never test restoration over the live production database.
 
 1. Download the encrypted artifact from a successful workflow run.
 2. Verify its checksum with `sha256sum -c white-lion-supabase-backup.tar.gz.enc.sha256`.
-3. Set `BACKUP_ENCRYPTION_PASSPHRASE` to the same passphrase, then verify the HMAC before decrypting:
+3. Verify its HMAC before decrypting:
    ```bash
    expected=$(awk '{print $2}' white-lion-supabase-backup.tar.gz.enc.hmac)
    actual=$(openssl dgst -sha256 -hmac "$BACKUP_ENCRYPTION_PASSPHRASE" white-lion-supabase-backup.tar.gz.enc | awk '{print $2}')
    test "$actual" = "$expected" || { echo "Backup authentication failed"; exit 1; }
    ```
-4. Decrypt it using the same passphrase:
+4. Decrypt and extract:
    ```bash
    openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
      -in white-lion-supabase-backup.tar.gz.enc \
@@ -41,30 +48,22 @@ Always restore into a separate recovery Supabase project first. Never test resto
      -pass env:BACKUP_ENCRYPTION_PASSPHRASE
    tar -xzf white-lion-supabase-backup.tar.gz
    ```
-5. Restore the database dump to the recovery project's database:
-   ```bash
-   pg_restore --no-owner --no-privileges \
-     --dbname="$RECOVERY_SUPABASE_DB_URL" \
-     backup/database/white-lion-*.dump
-   ```
-6. Create the private `business-documents` bucket in the recovery project, then run `scripts/restore_supabase_storage.py` with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_BACKUP_BUCKET=business-documents` set to the recovery project. The restore utility never overwrites existing object names; resolve conflicts deliberately before retrying.
-7. Verify users/authentication configuration, business records, row-level security, Storage policies and document downloads in the recovery project. Record the date and result of the test.
+5. Apply the archived SQL migrations to a fresh recovery project in their numbered order, reviewing any project-specific prerequisites before running them.
+6. Restore each JSON table file from `backup/data/tables/` using the recovery project's service-role REST API. Use dependency-aware ordering and upsert by each table's primary key; do not blindly insert duplicate rows. Review tables without primary keys manually.
+7. Recreate Auth users using the Auth Admin API from `backup/data/AUTH_USERS.json`. Users may need password resets and provider/MFA reconfiguration because credentials and MFA/session secrets are not exported.
+8. Create the private `business-documents` bucket and its policies in the recovery project, then run `scripts/restore_supabase_storage.py` with the recovery project's URL and service-role key. The utility does not overwrite existing object names.
+9. Verify business records, membership, RLS, roles, accounting reports, inventory, branch records, Auth login, and document downloads in the recovery project. Record the date and outcome.
 
-Database restore may require project-specific extension, role, or Supabase-managed schema adjustments. Review restore output rather than assuming a zero-error restore. Auth secrets and external provider configuration may need to be reconfigured in the recovery project.
+The JSON export and repository migrations are recovery inputs, not proof of a successful restore. Do not claim disaster recovery is complete until a separate-project restore is tested.
+
+## Security and retention
+
+- Never put a service-role key or database password in browser code, GitHub source files, screenshots or chat.
+- Keep the encryption passphrase separate from downloaded artifacts.
+- Limit access to repository Actions artifacts and secrets.
+- Retain encrypted copies outside GitHub; Actions artifacts expire after 30 days.
+- Rotate any secret that has ever been exposed.
 
 ## Existing browser backup limitation
-The app's JSON export covers only IndexedDB records on the current device. The document-list export is metadata only. Neither replaces the cloud database and Storage backup above.
 
-## Security rules
-- Never place a service-role key or database password in browser code, GitHub source files, screenshots or chat.
-- Keep the encryption passphrase separate from downloaded backup artifacts.
-- Limit who can read repository Actions artifacts and repository secrets.
-- Rotate any secret that has ever been exposed.
-- Retain additional encrypted copies outside GitHub; the workflow artifact expires after 30 days.
-
-## Staged acceptance checks
-- Test cross-business data isolation with two separate accounts.
-- Test role-denied actions as well as permitted actions.
-- Test upload, refresh, signed download and owner/admin deletion of documents.
-- Run the scheduled/manual backup and perform a complete restore in a separate Supabase project.
-- Verify Android Chrome and iPhone Safari/PWA installation, offline launch, sync and printing.
+The app's JSON export covers only IndexedDB records on the current device. Document-list export is metadata only. Neither replaces this cloud logical export.
