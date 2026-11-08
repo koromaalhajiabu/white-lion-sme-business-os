@@ -3,48 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>
-/* TEMPORARY DIAGNOSTIC v2 — reports any script error visibly on the page. Safe to remove later. */
-window.__wlErrors = [];
-window.addEventListener('error', function (e) {
-  window.__wlErrors.push((e.message || 'Unknown error') + ' @ ' + (e.filename || '?') + ':' + e.lineno + ':' + e.colno);
-});
-function wlShowDebugBanner() {
-  var box = document.getElementById('wlDebugBanner');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'wlDebugBanner';
-    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:13px monospace;padding:12px;max-height:60vh;overflow:auto;white-space:pre-wrap;border-bottom:4px solid #fff';
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Close';
-    closeBtn.style.cssText = 'display:block;margin-top:8px;padding:6px 10px;background:#fff;color:#b00020;border:0;border-radius:4px;font-weight:700';
-    closeBtn.onclick = function () { box.remove(); };
-    box.appendChild(document.createElement('div')).id = 'wlDebugText';
-    box.appendChild(closeBtn);
-    (document.body || document.documentElement).prepend(box);
-  }
-  var text = document.getElementById('wlDebugText');
-  var lines = [];
-  lines.push('WL DEBUG v2 — ' + new Date().toLocaleTimeString());
-  lines.push('cloud.js loaded: ' + (typeof window.whiteLionCloud !== 'undefined'));
-  lines.push('wlCloudBox in DOM: ' + !!document.getElementById('wlCloudBox'));
-  lines.push('errors: ' + window.__wlErrors.length);
-  if (window.__wlErrors.length) lines = lines.concat(window.__wlErrors);
-  text.textContent = lines.join('\n');
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', wlShowDebugBanner);
-} else {
-  wlShowDebugBanner();
-}
-window.addEventListener('load', function () { setTimeout(wlShowDebugBanner, 2000); });
-</script>
+
 <meta name="theme-color" content="#075b35">
 <meta name="description" content="White Lion SME Business Operating System">
 <link rel="manifest" href="manifest.webmanifest?v=43">
 <link rel="icon" type="image/svg+xml" href="icons/white-lion-icon.svg">
-<script src="./shared.js?v=1"></script>
-<script src="./i18n.js?v=5" defer></script>
+<script src="./shared.js?v=2"></script>
+<script src="./i18n.js?v=6" defer></script>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="White Lion SME">
@@ -1158,9 +1123,9 @@ async function backup(){const data={business:state.business,exportedAt:new Date(
 async function restore(e){const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data.records)throw Error('Invalid backup');for(const s of stores){const tx=db.transaction(s,'readwrite');tx.objectStore(s).clear();for(const r of (data.records[s]||[]))tx.objectStore(s).put(r)}if(data.business){state.business=data.business;await setting('business',state.business)}toast('Backup restored');render()}catch(err){alert('Could not restore this backup: '+err.message)}e.target.value=''}
 function csv(rows){const keys=['receipt','date','customer','payment','total'];const lines=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))];const a=document.createElement('a'),blob=new Blob([lines.join('\n')],{type:'text/csv'});a.href=URL.createObjectURL(blob);a.download='white-lion-sales.csv';a.click();URL.revokeObjectURL(a.href)}
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
-(async()=>{try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);render()}catch(e){document.getElementById('view').innerHTML='<div class="notice">Your browser could not open local storage. Please use an updated Chrome browser.</div>'}})();
+(async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render()}catch(e){console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=67',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=68',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1190,8 +1155,8 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./cloud.js?v=32" defer></script>
-<script src="./operations.js?v=16" defer></script>
-<script src="./documents.js?v=2" defer></script>
-<script src="./league.js?v=5" defer></script>
+<script src="./cloud.js?v=33" defer></script>
+<script src="./operations.js?v=17" defer></script>
+<script src="./documents.js?v=3" defer></script>
+<script src="./league.js?v=6" defer></script>
 </body></html>
