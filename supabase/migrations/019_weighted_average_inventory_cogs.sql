@@ -61,8 +61,12 @@ grant select on public.inventory_cost_balances,public.inventory_cost_movements t
 insert into public.inventory_cost_balances(business_id,branch_id,product_id,quantity_on_hand,inventory_value)
 select bi.business_id,bi.branch_id,bi.product_id,bi.quantity_on_hand,
   round(
-    coalesce(batch_cost.value,0)
-    + greatest(bi.quantity_on_hand-coalesce(batch_cost.quantity,0),0)*p.cost_price
+    case
+      when coalesce(batch_cost.quantity,0)>bi.quantity_on_hand and batch_cost.quantity>0
+        then (batch_cost.value/batch_cost.quantity)*bi.quantity_on_hand
+      else coalesce(batch_cost.value,0)
+        + greatest(bi.quantity_on_hand-coalesce(batch_cost.quantity,0),0)*p.cost_price
+    end
   ,2)
 from public.branch_inventory bi
 join public.products p on p.id=bi.product_id and p.business_id=bi.business_id
