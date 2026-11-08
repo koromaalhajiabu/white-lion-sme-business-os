@@ -62,6 +62,18 @@ jobs:
               )
 
           scheme, username, password, host, suffix = match.groups()
+          # Supabase shared Session Pooler requires postgres.[PROJECT_REF].
+          # Accept a pasted URI with plain "postgres" and correct it safely.
+          project_ref = "nclncqlgnxnijlumznnt"
+          if username.lower() == "postgres":
+              username = f"postgres.{project_ref}"
+          elif username.lower() != f"postgres.{project_ref}":
+              raise SystemExit(
+                  "SUPABASE_DB_URL username must be postgres."
+                  + project_ref
+                  + " for this project's shared Session Pooler."
+              )
+
           # Decode once then encode exactly once; this handles both raw and
           # already-percent-encoded passwords without double-encoding.
           encoded_password = quote(unquote(password), safe="")
