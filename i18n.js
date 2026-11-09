@@ -47,8 +47,15 @@ function translateTextNode(node){
  let original=originals.get(node);
  if(original===undefined||lastRendered.get(node)!==raw){original=raw;originals.set(node,original)}
  const key=original.trim(),translated=LANGS[current].t[key]||LANGS[current].t[key.replace(/\s+/g,' ')];
- if(translated){const leading=original.match(/^\s*/)?.[0]||'',trailing=original.match(/\s*$/)?.[0]||'';node.nodeValue=leading+translated+trailing;lastRendered.set(node,node.nodeValue)}
- else {node.nodeValue=original;lastRendered.set(node,original)}
+ if(translated){
+  const leading=original.match(/^\s*/)?.[0]||'',trailing=original.match(/\s*$/)?.[0]||'';
+  const next=leading+translated+trailing;
+  if(raw!==next)node.nodeValue=next;
+  lastRendered.set(node,next);
+ } else {
+  if(raw!==original)node.nodeValue=original;
+  lastRendered.set(node,original);
+ }
 }
 function scan(root){
  if(!root)return;
@@ -85,11 +92,13 @@ function init(){
  let saved='en';try{saved=localStorage.getItem('wl-sme-language')||'en'}catch(e){}
  if(select){select.addEventListener('change',()=>setLanguage(select.value));select.value=LANGS[saved]?saved:'en'}
  setLanguage(saved);
- const observer=new MutationObserver(records=>records.forEach(record=>{
-  if(record.type==='characterData')translateTextNode(record.target);
-  else record.addedNodes.forEach(node=>scan(node));
-  if(record.type==='attributes')translateAttributes(record.target);
- }));
+ const observer=new MutationObserver(records=>{
+  records.forEach(record=>{
+   if(record.type==='characterData'){translateTextNode(record.target);return}
+   if(record.type==='attributes'){translateAttributes(record.target);return}
+   if(record.type==='childList')record.addedNodes.forEach(node=>scan(node));
+  });
+ });
  observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
 }
 window.wlSetLanguage=setLanguage;
