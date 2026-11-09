@@ -6,7 +6,7 @@ const report = { testedAt: new Date().toISOString(), base, browsers: [], summary
 
 async function runViewport(name, viewport) {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+  const context = await browser.newContext({ viewport, serviceWorkers: 'allow' });
   const page = await context.newPage();
   const result = { name, viewport, pageErrors: [], consoleErrors: [], failedRequests: [], checks: [] };
   page.on('pageerror', e => result.pageErrors.push(String(e.stack || e)));
@@ -14,7 +14,10 @@ async function runViewport(name, viewport) {
   page.on('requestfailed', r => result.failedRequests.push({url:r.url(), error:r.failure()?.errorText}));
   try {
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(4000);
+    await page.evaluate(async () => { if ('serviceWorker' in navigator) await navigator.serviceWorker.ready; });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(5000);
     result.startup = await page.evaluate(() => ({
       title: document.title,
       ready: document.readyState,
@@ -22,6 +25,8 @@ async function runViewport(name, viewport) {
       startupComplete: !!window.__wlStartupComplete,
       startupError: window.__wlStartupError || null,
       scriptFailures: window.__wlScriptFail || [],
+      serviceWorkerControlled: !!navigator.serviceWorker?.controller,
+      serviceWorkerScript: navigator.serviceWorker?.controller?.scriptURL || null,
       currentCrumb: document.querySelector('#crumb')?.textContent || null,
       viewText: (document.querySelector('#view')?.innerText || '').slice(0,500),
       visibleOverlays: [...document.querySelectorAll('body *')].filter(el => {
@@ -30,6 +35,7 @@ async function runViewport(name, viewport) {
       }).map(el=>({tag:el.tagName,id:el.id,cls:String(el.className).slice(0,100),z:getComputedStyle(el).zIndex,pointer:getComputedStyle(el).pointerEvents}))
     }));
     result.checks.push({name:'app loaded', pass:!!result.startup.startupComplete});
+    result.checks.push({name:'service worker controls app after reload', pass:!!result.startup.serviceWorkerControlled, state:result.startup.serviceWorkerScript});
     result.checks.push({name:'main navigation listeners registered', pass:result.startup.mainNavBound});
     if (viewport.width < 720) {
       await page.locator('#menuBtn').click({timeout:5000}).catch(e=>result.checks.push({name:'mobile menu tap',pass:false,error:e.message}));
