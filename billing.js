@@ -112,8 +112,6 @@
       const accessUntil=trialEndsAt||graceEndsAt||periodEndsAt;
       const daysRemaining=accessUntil?Math.max(0,Math.ceil((accessUntil.getTime()-Date.now())/86400000)):null;
       const accessState=access.allowed===false?'Online access blocked':sub?.status==='grace_period'?'Online access allowed during grace':sub?.status==='trial'?'Free trial access active':sub?.status==='active'?'Paid subscription active':sub?.status==='pending_payment'?'Awaiting payment verification':access.status==='grandfathered'?'Existing workspace access preserved':'Check subscription status';
-      const accessUntil=sub?.status==='trial'?trialEndsAt:sub?.status==='grace_period'&&sub.grace_until?new Date(sub.grace_until):sub?.current_period_end?new Date(sub.current_period_end):null;
-      const accessLabel=sub?.status==='trial'?'Free trial ends':sub?.status==='grace_period'?'Grace period ends':'Access until';
       view.innerHTML=`
         <div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Manage the White Lion SME subscription for <b>${esc(active.name)}</b>. Select SLE or USD pricing and choose monthly or annual billing. Annual subscriptions are priced at ten monthly payments.</p></div>
         <div class="panel">
