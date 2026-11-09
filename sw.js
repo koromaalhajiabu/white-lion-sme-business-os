@@ -1,5 +1,5 @@
 /* White Lion SME OS — network-first application updates with offline fallback. */
-const CACHE_NAME='white-lion-sme-v90';
+const CACHE_NAME='white-lion-sme-v91';
 const APP_SHELL=[
   './',
   './index.html',
@@ -9,7 +9,10 @@ const APP_SHELL=[
   './cloud.js?v=37',
   './operations.js?v=17',
   './documents.js?v=3',
-  './icons/white-lion-icon.svg'
+  './icons/white-lion-icon.svg',
+  './icons/white-lion-192.png',
+  './icons/white-lion-512.png',
+  './league.js?v=2'
 ];
 
 self.addEventListener('install', event => {
