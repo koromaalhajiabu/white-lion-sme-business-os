@@ -740,6 +740,10 @@
       p_name: setup.name, p_industry: setup.industry, p_currency_code: setup.currency
     });
     if (error) return say('Could not create workspace: ' + error.message);
+    const { data: subscription, error: subscriptionError } = await client.from('business_subscriptions')
+      .select('status,trial_ends_at')
+      .eq('business_id', data)
+      .maybeSingle();
     const { error: moduleError } = await client.from('business_industry_modules')
       .update({ is_enabled: true })
       .eq('business_id', data)
@@ -751,7 +755,12 @@
       say('Workspace created, but industry modules could not be activated: ' + moduleError.message + '. Ask the developer to verify the module permissions.');
       return;
     }
-    say('Business workspace created. ' + setup.modules.length + ' industry modules activated.');
+    const subscriptionNotice = subscriptionError
+      ? 'Check Plans & Billing to confirm the subscription status.'
+      : subscription?.status === 'trial'
+        ? 'Your one-time 7-day Professional trial has started.'
+        : 'This account has already used its free trial. Open Plans & Billing and request an invoice to activate this additional workspace.';
+    say('Business workspace created. ' + setup.modules.length + ' industry modules activated. ' + subscriptionNotice);
   }
 
   function syncStatus(message) {
