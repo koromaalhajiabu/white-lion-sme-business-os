@@ -103,5 +103,14 @@ function init(){
 }
 window.wlSetLanguage=setLanguage;
 window.wlGetLanguage=()=>current;
+// Delegate the language change from document so it survives header re-renders.
+document.addEventListener('change',function(event){
+ const target=event.target;
+ if(target&&target.id==='wlLanguage')setLanguage(target.value);
+},true);
+document.addEventListener('input',function(event){
+ const target=event.target;
+ if(target&&target.id==='wlLanguage')setLanguage(target.value);
+},true);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
