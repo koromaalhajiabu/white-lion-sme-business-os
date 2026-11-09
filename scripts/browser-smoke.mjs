@@ -36,6 +36,13 @@ async function runViewport(name, viewport) {
       await page.waitForTimeout(300);
     }
     for (const [key, expected] of [['products','Products'],['sales','Sales'],['purchases','Purchases'],['expenses','Expenses'],['settings','Business settings']]) {
+      if (viewport.width < 720) {
+        const sidebarOpen = await page.locator('#sidebar').evaluate(el => el.classList.contains('open'));
+        if (!sidebarOpen) {
+          await page.locator('#menuBtn').click({timeout:5000});
+          await page.waitForTimeout(200);
+        }
+      }
       const button = page.locator('[data-page="'+key+'"]').first();
       const exists = await button.count();
       if (!exists) { result.checks.push({name:'navigate '+key,pass:false,error:'nav button missing'}); continue; }
