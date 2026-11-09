@@ -5,7 +5,7 @@ const APP_SHELL=[
   './index.html',
   './manifest.webmanifest?v=46',
   './shared.js?v=2',
-  './i18n.js?v=9',
+  './i18n.js?v=10',
   './cloud.js?v=37',
   './operations.js?v=17',
   './documents.js?v=3',
