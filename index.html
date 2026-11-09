@@ -953,7 +953,33 @@ async function render(){
   const printReceipt=sale=>{
     const rows=(sale.items||[]).map(i=>'<tr><td>'+esc(i.name)+'</td><td>'+Number(i.quantity)+'</td><td>'+money(i.unitPrice)+'</td><td>'+money(Number(i.quantity)*Number(i.unitPrice))+'</td></tr>').join('');
     const w=window.open('','_blank','width=420,height=720');if(!w){toast('Allow pop-ups to print receipts');return}
-    w.document.write('<!doctype html><html><head><title>'+esc(sale.receipt)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:13px Arial;padding:18px;color:#111}h2,p{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{padding:7px 3px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}.right{text-align:right}.total{font-size:17px;font-weight:bold;text-align:right;margin-top:12px} .muted{text-align:center;color:#666;font-size:10px;margin-top:20px}</style></head><body><h2>'+esc(state.business.name||'White Lion SME')+'</h2><p>'+esc(state.business.phone||'')+'</p><p>SALES RECEIPT</p><hr><p>Receipt: '+esc(sale.receipt)+'</p><p>Date: '+esc(sale.date)+'</p><p>Customer: '+esc(sale.customer||'Walk-in')+'</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table><p class="right">Subtotal: '+money(sale.subtotal??sale.total)+'</p><p class="right">Discount: '+money(sale.discount||0)+'</p><p class="right">Tax: '+money(sale.tax||0)+'</p><div class="total">TOTAL: '+money(sale.total)+'</div><p>Payment: '+esc(sale.payment||'Cash')+'</p><div class="muted">Thank you for shopping with us.<br>Designed by Alhaji Abu Koroma</div><script>window.onload=()=>window.print()<\/script></body></html>');
+    w.document.write('<!doctype html><html><head><title>'+esc(sale.receipt)+'</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:13px Arial;padding:18px;color:#111}h2,p{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{padding:7px 3px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}.right{text-align:right}.total{font-size:17px;font-weight:bold;text-align:right;margin-top:12px} .muted{text-align:center;color:#666;font-size:10px;margin-top:20px}</style></head><body><h2>'+esc(state.business.name||'White Lion SME')+'</h2><p>'+esc(state.business.phone||'')+'</p><p>SALES RECEIPT</p><hr><p>Receipt: '+esc(sale.receipt)+'</p><p>Date: '+esc(sale.date)+'</p><p>Customer: '+esc(sale.customer||'Walk-in')+'</p><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table><p class="right">Subtotal: '+money(sale.subtotal??sale.total)+'</p><p class="right">Discount: '+money(sale.discount||0)+'</p><p class="right">Tax: '+money(sale.tax||0)+'</p><div class="total">TOTAL: '+money(sale.total)+'</div><p>Payment: '+esc(sale.payment||'Cash')+'</p><div class="muted">Thank you for shopping with us.<br>Designed by Alhaji Abu Koroma</div><script>window.onload=()=>window.print()<\/script>
+<script id="wl-simple-pwa-install">
+(function(){
+  if(window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true) return;
+  var host=document.querySelector('.top-actions');
+  if(!host || document.getElementById('wlInstallLink')) return;
+  var link=document.createElement('a');
+  link.id='wlInstallLink'; link.className='btn primary small';
+  link.href='./install.html'; link.textContent='Install App';
+  link.setAttribute('aria-label','Install White Lion SME app');
+  link.style.cssText='text-decoration:none;white-space:nowrap';
+  host.insertBefore(link,host.firstChild);
+  var promptEvent=null;
+  window.addEventListener('beforeinstallprompt',function(event){
+    event.preventDefault(); promptEvent=event; link.textContent='Install App';
+  });
+  link.addEventListener('click',async function(event){
+    if(!promptEvent) return;
+    event.preventDefault();
+    try{await promptEvent.prompt(); await promptEvent.userChoice;}catch(e){}
+    promptEvent=null;
+  });
+  window.addEventListener('appinstalled',function(){link.remove()});
+})();
+</script>
+
+</body></html>');
     w.document.close();
   };
   v.innerHTML=pageHeader(industryWording().sales,'A faster counter experience with barcode search, live stock checks and clear payment totals')+
