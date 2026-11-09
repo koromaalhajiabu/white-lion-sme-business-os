@@ -30,6 +30,7 @@
     .wl-billing-note{padding:12px 14px;background:#fff8e8;border:1px solid #f0dfb8;border-radius:11px;color:#74571e;font-size:11px;line-height:1.6;margin:12px 0}
     .wl-billing-status{display:inline-block;padding:5px 9px;border-radius:20px;background:#edf3fa;color:#52637a;font-size:10px;font-weight:800;text-transform:uppercase}
     .wl-billing-status.active,.wl-billing-status.paid,.wl-billing-status.verified,.wl-billing-status.trial{background:#e7f6ed;color:#167247}
+.wl-billing-status.grace_period{background:#fff3dd;color:#956710}
     .wl-billing-status.pending,.wl-billing-status.pending_payment,.wl-billing-status.awaiting_verification{background:#fff3dd;color:#956710}
     .wl-billing-status.expired,.wl-billing-status.rejected,.wl-billing-status.suspended{background:#fdebed;color:#a53b46}
     .wl-pay-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:7px;align-items:end;min-width:520px}
@@ -90,6 +91,9 @@
     }
     view.innerHTML='<div class="panel"><p class="panel-sub">Loading subscription information…</p></div>';
     try {
+      const accessResult=await sb.rpc('get_business_subscription_access',{p_business_id:active.id});
+      if(accessResult.error)throw accessResult.error;
+      const access=accessResult.data||{};
       const [planResult,subResult,invoiceResult]=await Promise.all([
         sb.from('subscription_plans').select('*').eq('is_active',true).order('display_order'),
         sb.from('business_subscriptions').select('*').eq('business_id',active.id).maybeSingle(),
@@ -103,6 +107,11 @@
       const currency=selectedCurrency,cycle=selectedCycle;
       const trialEndsAt=sub?.status==='trial'&&sub.trial_ends_at?new Date(sub.trial_ends_at):null;
       const trialDaysLeft=trialEndsAt?Math.max(0,Math.ceil((trialEndsAt.getTime()-Date.now())/86400000)):0;
+      const graceEndsAt=sub?.status==='grace_period'&&sub.grace_until?new Date(sub.grace_until):null;
+      const periodEndsAt=sub?.current_period_end?new Date(sub.current_period_end):null;
+      const accessUntil=trialEndsAt||graceEndsAt||periodEndsAt;
+      const daysRemaining=accessUntil?Math.max(0,Math.ceil((accessUntil.getTime()-Date.now())/86400000)):null;
+      const accessState=access.allowed===false?'Online access blocked':sub?.status==='grace_period'?'Online access allowed during grace':sub?.status==='trial'?'Free trial access active':sub?.status==='active'?'Paid subscription active':sub?.status==='pending_payment'?'Awaiting payment verification':access.status==='grandfathered'?'Existing workspace access preserved':'Check subscription status';
       const accessUntil=sub?.status==='trial'?trialEndsAt:sub?.status==='grace_period'&&sub.grace_until?new Date(sub.grace_until):sub?.current_period_end?new Date(sub.current_period_end):null;
       const accessLabel=sub?.status==='trial'?'Free trial ends':sub?.status==='grace_period'?'Grace period ends':'Access until';
       view.innerHTML=`
@@ -112,13 +121,24 @@
           ${sub?`<div class="report-cards"><div class="report-box"><small>Current plan</small><b>${esc(plans.find(p=>p.code===sub.plan_code)?.name||sub.plan_code)}</b></div><div class="report-box"><small>Billing currency / cycle</small><b>${esc(sub.currency_code)} · ${esc(sub.billing_cycle)}</b></div><div class="report-box"><small>${esc(accessLabel)}</small><b>${accessUntil?accessUntil.toLocaleDateString():'Awaiting activation'}</b></div></div>`:'<p class="panel-sub">No subscription is recorded for this workspace. Newly registered businesses receive a 7-day Professional trial.</p>'}
         </div>
         <div class="panel">
+          <div class="panel-head"><div><h3>Access and renewal status</h3><div class="panel-sub">Live status returned by the subscription access check</div></div>${statusPill(access.status||sub?.status||'unknown')}</div>
+          <div class="report-cards">
+            <div class="report-box"><small>Workspace access</small><b>${esc(accessState)}</b></div>
+            <div class="report-box"><small>${sub?.status==='trial'?'Free trial ends':sub?.status==='grace_period'?'Grace period ends':'Next renewal / expiry'}</small><b>${accessUntil?accessUntil.toLocaleString():'Not scheduled'}</b></div>
+            <div class="report-box"><small>Days remaining</small><b>${daysRemaining===null?'—':daysRemaining+' day(s)'}</b></div>
+          </div>
+          ${sub?.status==='grace_period'?'<div class="wl-billing-note">Your seven-day renewal grace period is active. Online access remains available until the deadline shown above. Renew before it ends to avoid interruption.</div>':''}
+          ${sub?.status==='expired'||access.allowed===false?'<div class="wl-billing-note" style="background:#fdebed;border-color:#f3c9ce;color:#8c303b">Online access is blocked. Your business records are retained. Request a renewal invoice below; access is restored after payment verification.</div>':''}
+          ${sub?.status==='trial'?'<div class="wl-billing-note">Your seven-day Professional trial is active. No payment is required during the trial. A seven-day renewal grace period starts automatically after the trial ends.</div>':''}
+        </div>
+        <div class="panel">
           <div class="panel-head"><div><h3>Choose your plan</h3><div class="panel-sub">Illustrative launch prices — review before public commercial launch.</div></div></div>
           <div class="wl-billing-controls"><label>Currency <select id="wlBillCurrency"><option value="SLE" ${currency==='SLE'?'selected':''}>SLE · Sierra Leone Leone</option><option value="USD" ${currency==='USD'?'selected':''}>USD · US Dollar</option></select></label><label>Billing period <select id="wlBillCycle"><option value="monthly" ${cycle==='monthly'?'selected':''}>Monthly</option><option value="annual" ${cycle==='annual'?'selected':''}>Annual · 2 months free</option></select></label></div>
           <div class="wl-plan-grid">${plans.map(p=>{
             const amount=currency==='SLE'?(cycle==='annual'?p.sle_annual:p.sle_monthly):(cycle==='annual'?p.usd_annual:p.usd_monthly);
             return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${Number(p.max_users)} employees · ${Number(p.max_branches)} branch(es)</div><ul>${(Array.isArray(p.features)?p.features:[]).map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn ${p.code==='professional'?'gold':'primary'}" data-request-plan="${esc(p.code)}">Request invoice</button></article>`;
           }).join('')}</div>
-          <div class="wl-billing-note">${sub?.status==='trial'?'You are using the free Professional trial'+(trialEndsAt?' until '+trialEndsAt.toLocaleString():'')+'. '+trialDaysLeft+' day(s) remain. No payment is required during the trial. After it ends, a seven-day renewal grace period is available.':'A plan request creates an invoice only. Paid access is activated after White Lion verifies the payment. Payment screenshots or references do not automatically activate subscriptions.'}</div>
+          <div class="wl-billing-note">${sub?.status==='trial'?'You are using the free Professional trial. '+trialDaysLeft+' day(s) remain. No payment is required during the trial.':sub?.status==='grace_period'?'You are in the seven-day renewal grace period. '+(daysRemaining??0)+' day(s) remain.':'A plan request creates an invoice only. Paid access is activated after White Lion verifies the payment. Payment screenshots or references do not automatically activate subscriptions.'}</div>
         </div>
         <div class="panel"><div class="panel-head"><div><h3>Invoices and payment records</h3><div class="panel-sub">Your workspace's subscription invoices and submitted payment references</div></div></div>
           ${invoices.length?invoices.map(inv=>`<div class="panel" style="box-shadow:none;border:1px solid #e9edf3;margin:10px 0;padding:14px"><div class="panel-head"><div><b>${esc(inv.invoice_number)}</b><div class="panel-sub">${esc(inv.plan_code)} · ${esc(inv.billing_cycle)} · due ${new Date(inv.due_at).toLocaleDateString()}</div></div><div style="text-align:right"><b>${money(inv.amount_due,inv.currency_code)}</b><div>${statusPill(inv.status)}</div></div></div>${['pending','awaiting_verification'].includes(inv.status)?`<form class="wl-pay-form" data-pay-invoice="${esc(inv.id)}"><label>Payment method<select name="provider" required><option>Orange Money</option><option>Afrimoney</option><option>Bank transfer</option><option>Cash / manual</option></select></label><label>Transaction reference<input name="reference" required minlength="3" placeholder="Enter transaction ID / bank reference"></label><label>Exact amount<input name="amount" required type="number" min="0.01" step="0.01" value="${esc(inv.amount_due)}"></label><button class="btn primary" type="submit">Submit reference</button></form>`:'<div class="panel-sub">No payment action is required for this invoice.</div>'}</div>`).join(''):'<div class="empty">No subscription invoices have been created for this business.</div>'}
