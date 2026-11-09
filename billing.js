@@ -29,7 +29,7 @@
     .wl-plan .btn{width:100%;margin-top:auto}
     .wl-billing-note{padding:12px 14px;background:#fff8e8;border:1px solid #f0dfb8;border-radius:11px;color:#74571e;font-size:11px;line-height:1.6;margin:12px 0}
     .wl-billing-status{display:inline-block;padding:5px 9px;border-radius:20px;background:#edf3fa;color:#52637a;font-size:10px;font-weight:800;text-transform:uppercase}
-    .wl-billing-status.active,.wl-billing-status.paid,.wl-billing-status.verified{background:#e7f6ed;color:#167247}
+    .wl-billing-status.active,.wl-billing-status.paid,.wl-billing-status.verified,.wl-billing-status.trial{background:#e7f6ed;color:#167247}
     .wl-billing-status.pending,.wl-billing-status.pending_payment,.wl-billing-status.awaiting_verification{background:#fff3dd;color:#956710}
     .wl-billing-status.expired,.wl-billing-status.rejected,.wl-billing-status.suspended{background:#fdebed;color:#a53b46}
     .wl-pay-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:7px;align-items:end;min-width:520px}
@@ -71,7 +71,7 @@
           const amount=currency==='SLE'?(cycle==='annual'?p.sle_annual:p.sle_monthly):(cycle==='annual'?p.usd_annual:p.usd_monthly);
           return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${p.max_users} employees · ${p.max_branches} branch(es)</div><ul>${p.features.map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn primary" type="button" disabled>Set up business to subscribe</button></article>`;
         }).join('')}</div>
-        <div class="wl-billing-note">These are indicative launch prices. You can compare plans now; create or select a business workspace and sign in before requesting an invoice.</div>
+        <div class="wl-billing-note">Every newly registered business receives a free 7-day Professional trial. No payment details are required to start. Choose a paid plan only when you are ready to continue after the trial.</div>
       </div>`;
     document.getElementById('wlBillCurrency').onchange=e=>{selectedCurrency=e.target.value;renderCataloguePreview(view,message)};
     document.getElementById('wlBillCycle').onchange=e=>{selectedCycle=e.target.value;renderCataloguePreview(view,message)};
@@ -101,11 +101,15 @@
       const plans=planResult.data?.length?planResult.data:plansFallback;
       const sub=subResult.data, invoices=invoiceResult.data||[];
       const currency=selectedCurrency,cycle=selectedCycle;
+      const trialEndsAt=sub?.status==='trial'&&sub.trial_ends_at?new Date(sub.trial_ends_at):null;
+      const trialDaysLeft=trialEndsAt?Math.max(0,Math.ceil((trialEndsAt.getTime()-Date.now())/86400000)):0;
+      const accessUntil=sub?.status==='trial'?trialEndsAt:sub?.status==='grace_period'&&sub.grace_until?new Date(sub.grace_until):sub?.current_period_end?new Date(sub.current_period_end):null;
+      const accessLabel=sub?.status==='trial'?'Free trial ends':sub?.status==='grace_period'?'Grace period ends':'Access until';
       view.innerHTML=`
         <div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Manage the White Lion SME subscription for <b>${esc(active.name)}</b>. Select SLE or USD pricing and choose monthly or annual billing. Annual subscriptions are priced at ten monthly payments.</p></div>
         <div class="panel">
           <div class="panel-head"><div><h3>Current subscription</h3><div class="panel-sub">Subscription status and access period for this workspace</div></div>${sub?statusPill(sub.status):statusPill('not subscribed')}</div>
-          ${sub?`<div class="report-cards"><div class="report-box"><small>Current plan</small><b>${esc(plans.find(p=>p.code===sub.plan_code)?.name||sub.plan_code)}</b></div><div class="report-box"><small>Billing currency / cycle</small><b>${esc(sub.currency_code)} · ${esc(sub.billing_cycle)}</b></div><div class="report-box"><small>Access until</small><b>${sub.current_period_end?new Date(sub.current_period_end).toLocaleDateString():'Awaiting activation'}</b></div></div>`:'<p class="panel-sub">No paid subscription is active for this workspace yet. Request a plan invoice below.</p>'}
+          ${sub?`<div class="report-cards"><div class="report-box"><small>Current plan</small><b>${esc(plans.find(p=>p.code===sub.plan_code)?.name||sub.plan_code)}</b></div><div class="report-box"><small>Billing currency / cycle</small><b>${esc(sub.currency_code)} · ${esc(sub.billing_cycle)}</b></div><div class="report-box"><small>${esc(accessLabel)}</small><b>${accessUntil?accessUntil.toLocaleDateString():'Awaiting activation'}</b></div></div>`:'<p class="panel-sub">No subscription is recorded for this workspace. Newly registered businesses receive a 7-day Professional trial.</p>'}
         </div>
         <div class="panel">
           <div class="panel-head"><div><h3>Choose your plan</h3><div class="panel-sub">Illustrative launch prices — review before public commercial launch.</div></div></div>
@@ -114,7 +118,7 @@
             const amount=currency==='SLE'?(cycle==='annual'?p.sle_annual:p.sle_monthly):(cycle==='annual'?p.usd_annual:p.usd_monthly);
             return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${Number(p.max_users)} employees · ${Number(p.max_branches)} branch(es)</div><ul>${(Array.isArray(p.features)?p.features:[]).map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn ${p.code==='professional'?'gold':'primary'}" data-request-plan="${esc(p.code)}">Request invoice</button></article>`;
           }).join('')}</div>
-          <div class="wl-billing-note">A plan request creates an invoice only. Access is activated after White Lion verifies the payment. Payment screenshots or references do not automatically activate subscriptions.</div>
+          <div class="wl-billing-note">${sub?.status==='trial'?'You are using the free Professional trial'+(trialEndsAt?' until '+trialEndsAt.toLocaleString():'')+'. '+trialDaysLeft+' day(s) remain. No payment is required during the trial. After it ends, a seven-day renewal grace period is available.':'A plan request creates an invoice only. Paid access is activated after White Lion verifies the payment. Payment screenshots or references do not automatically activate subscriptions.'}</div>
         </div>
         <div class="panel"><div class="panel-head"><div><h3>Invoices and payment records</h3><div class="panel-sub">Your workspace's subscription invoices and submitted payment references</div></div></div>
           ${invoices.length?invoices.map(inv=>`<div class="panel" style="box-shadow:none;border:1px solid #e9edf3;margin:10px 0;padding:14px"><div class="panel-head"><div><b>${esc(inv.invoice_number)}</b><div class="panel-sub">${esc(inv.plan_code)} · ${esc(inv.billing_cycle)} · due ${new Date(inv.due_at).toLocaleDateString()}</div></div><div style="text-align:right"><b>${money(inv.amount_due,inv.currency_code)}</b><div>${statusPill(inv.status)}</div></div></div>${['pending','awaiting_verification'].includes(inv.status)?`<form class="wl-pay-form" data-pay-invoice="${esc(inv.id)}"><label>Payment method<select name="provider" required><option>Orange Money</option><option>Afrimoney</option><option>Bank transfer</option><option>Cash / manual</option></select></label><label>Transaction reference<input name="reference" required minlength="3" placeholder="Enter transaction ID / bank reference"></label><label>Exact amount<input name="amount" required type="number" min="0.01" step="0.01" value="${esc(inv.amount_due)}"></label><button class="btn primary" type="submit">Submit reference</button></form>`:'<div class="panel-sub">No payment action is required for this invoice.</div>'}</div>`).join(''):'<div class="empty">No subscription invoices have been created for this business.</div>'}
