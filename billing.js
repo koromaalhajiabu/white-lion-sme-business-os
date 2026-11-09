@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const money = (amount, currency) => { try { return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-SL', { style:'currency', currency, maximumFractionDigits: currency === 'SLE' ? 0 : 2 }).format(Number(amount || 0)); } catch (_) { return (currency === 'USD' ? 'US
+  const money = (amount, currency) => { try { return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-SL', { style:'currency', currency, maximumFractionDigits: currency === 'SLE' ? 0 : 2 }).format(Number(amount || 0)); } catch (_) { return (currency === 'USD' ? 'US$' : 'SLE ') + Number(amount || 0).toLocaleString(); } };
   const plansFallback = [
     {code:'starter',name:'Starter',description:'Essential tools for a small business',sle_monthly:250,sle_annual:2500,usd_monthly:10,usd_annual:100,max_users:2,max_branches:1,features:['Sales and POS','Products and basic inventory','Purchases and suppliers','Basic business reports','Offline working']},
     {code:'professional',name:'Professional',description:'More control for a growing business',sle_monthly:600,sle_annual:6000,usd_monthly:25,usd_annual:250,max_users:5,max_branches:1,features:['Everything in Starter','Advanced inventory and purchasing','Finance and performance reports','Customer and supplier management','Offline working and cloud sync']},
