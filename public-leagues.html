@@ -42,7 +42,7 @@ async function load(){
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase client unavailable');
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
-  const {data,error}=await client.rpc('list_public_leagues');
+  const {data,error}=await client.rpc('get_public_league_directory');
   if(error)throw error;
   leagues=Array.isArray(data)?data:[];
   const types=[...new Set(leagues.map(x=>x.competition_type).filter(Boolean))].sort();
