@@ -182,10 +182,11 @@ begin
  select id into v_subscription_id from public.business_subscriptions where business_id=p_business_id;
  insert into public.business_subscriptions(business_id,plan_code,status,currency_code,billing_cycle,updated_at)
  values(p_business_id,p_plan_code,'pending_payment',p_currency_code,p_billing_cycle,now())
- on conflict(business_id) do update set plan_code=excluded.plan_code,status='pending_payment',
- currency_code=excluded.currency_code,billing_cycle=excluded.billing_cycle,
- cancel_at_period_end=false,updated_at=now()
+ on conflict(business_id) do nothing
  returning id into v_subscription_id;
+ if v_subscription_id is null then
+  select id into v_subscription_id from public.business_subscriptions where business_id=p_business_id;
+ end if;
  select id,invoice_number into v_invoice_id,v_invoice_number
  from public.subscription_invoices
  where business_id=p_business_id and status in ('pending','awaiting_verification')
