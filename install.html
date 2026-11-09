@@ -19,10 +19,10 @@
 <img class="logo" src="./icons/white-lion-192.png" alt="White Lion logo">
 <div class="eyebrow">WHITE LION TECH SOLUTIONS</div>
 <h1>Install White Lion SME</h1>
-<p>Install the business system on your Android phone. Your business records remain in the app's local storage.</p>
+<p>Add White Lion SME to your phone's home screen. It opens in its own app window. Your business records remain in the app's local storage and sync when connected.</p>
 <button class="install" id="installBtn" type="button">Preparing installation…</button>
-<a class="open" href="./?app=white-lion-sme-v3">Open the business system</a>
-<div class="steps" id="help"><b>Android installation:</b><br>1. Open this page in Chrome.<br>2. Tap the three-dot menu.<br>3. Choose <b>Install app</b> or <b>Add to Home screen</b>.<br>4. Confirm and launch White Lion SME from your apps list.<br><br>If Chrome says it is already installed, open the existing White Lion SME icon instead of creating another shortcut.</div>
+<a class="open" href="./?app=white-lion-sme-v4">Open the business system</a>
+<div class="steps" id="help"><b>Android (Chrome):</b><br>1. Tap <b>Install White Lion SME</b> if the button is available.<br>2. If not, open Chrome menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.<br>3. Confirm, then open White Lion SME from your home screen or app list.<br><br><b>iPhone (Safari):</b><br>1. Open this page in Safari.<br>2. Tap the <b>Share</b> icon.<br>3. Choose <b>Add to Home Screen</b>, then tap <b>Add</b>.<br><br><b>If it says already installed:</b> open the existing White Lion SME icon. Do not create another shortcut.</div>
 <div class="foot">Designed by Alhaji Abu Koroma</div>
 </main>
 <script>
@@ -47,7 +47,7 @@ window.addEventListener('appinstalled',()=>{
  btn.textContent='White Lion SME installed';
 });
 btn.addEventListener('click',async()=>{
- if(!deferredPrompt){showManual('Chrome has not offered the automatic install prompt on this visit. Use the Chrome menu steps below.');return;}
+ if(!deferredPrompt){showManual(/iPad|iPhone|iPod/.test(navigator.userAgent)?'On iPhone or iPad, use Safari Share → Add to Home Screen.':'Use the browser menu and choose Install app or Add to Home screen.');return;}
  btn.disabled=true;
  try{
   await deferredPrompt.prompt();
@@ -59,15 +59,7 @@ btn.addEventListener('click',async()=>{
 });
 if('serviceWorker' in navigator && location.protocol!=='file:'){
  window.addEventListener('load',async()=>{
-  try{
-   await navigator.serviceWorker.register('./sw.js?v=94',{scope:'./',updateViaCache:'none'});
-   await navigator.serviceWorker.ready;
-   if(!navigator.serviceWorker.controller && !sessionStorage.getItem('wl-install-control-reload')){
-    sessionStorage.setItem('wl-install-control-reload','1');
-    location.reload();
-    return;
-   }
-  }catch(e){}
+  try{await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});}catch(e){}
   if(!deferredPrompt){btn.disabled=false;btn.textContent='Show installation instructions';}
  });
 }else{btn.disabled=false;btn.textContent='Show installation instructions';}
