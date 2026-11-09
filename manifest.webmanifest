@@ -1,8 +1,8 @@
 {
   "name": "White Lion SME Business Operating System",
   "short_name": "White Lion SME",
-  "id": "./?app=white-lion-sme-v3",
-  "start_url": "./?app=white-lion-sme-v3",
+  "id": "./?app=white-lion-sme-v4",
+  "start_url": "./?app=white-lion-sme-v4",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -14,6 +14,18 @@
   "theme_color": "#087a43",
   "description": "Multi-industry business operations platform by White Lion Tech Solutions.",
   "icons": [
+    {
+      "src": "./icons/white-lion-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/white-lion-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "./icons/white-lion-icon.svg",
       "sizes": "any",
