@@ -158,13 +158,8 @@
 
   document.addEventListener('click',event=>{
     const target=event.target.closest('[data-page]');
-    if(!target)return;
-    if(target.dataset.page==='billing'){
-      event.preventDefault();event.stopImmediatePropagation();render();
-    } else if(billingOpen) {
-      billingOpen=false;
-    }
-  },true);
+    if(target&&target.dataset.page!=='billing'&&billingOpen)billingOpen=false;
+  });
   window.addEventListener('whiteLionWorkspaceChanged',event=>{
     const id=event.detail?.business?.id;
     if(id!==lastWorkspaceId){lastWorkspaceId=id;if(billingOpen)render();}
