@@ -43,7 +43,7 @@ setTimeout(function () {
 <link rel="manifest" href="manifest.webmanifest?v=43">
 <link rel="icon" type="image/svg+xml" href="icons/white-lion-icon.svg">
 <script src="./shared.js?v=2"></script>
-<script src="./i18n.js?v=6" defer></script>
+<script src="./i18n.js?v=7" defer></script>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="White Lion SME">
@@ -1166,7 +1166,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render();window.__wlStartupComplete=true}catch(e){window.__wlStartupComplete=true;console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=89',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=90',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-navigation-safety-net">
 /* Fallback only: use delegated navigation if the main script stopped before binding nav controls. */
