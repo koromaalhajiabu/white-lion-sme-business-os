@@ -103,6 +103,7 @@ function init(){
 }
 window.wlSetLanguage=setLanguage;
 window.wlGetLanguage=()=>current;
+window.wlRefreshTranslations=()=>scan(document.body);
 // Delegate the language change from document so it survives header re-renders.
 document.addEventListener('change',function(event){
  const target=event.target;
