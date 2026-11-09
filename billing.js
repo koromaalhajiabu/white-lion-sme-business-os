@@ -72,7 +72,7 @@
           const amount=currency==='SLE'?(cycle==='annual'?p.sle_annual:p.sle_monthly):(cycle==='annual'?p.usd_annual:p.usd_monthly);
           return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${p.max_users} employees · ${p.max_branches} branch(es)</div><ul>${p.features.map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn primary" type="button" disabled>Set up business to subscribe</button></article>`;
         }).join('')}</div>
-        <div class="wl-billing-note">Every newly registered business receives a free 7-day Professional trial. No payment details are required to start. Choose a paid plan only when you are ready to continue after the trial.</div>
+        <div class="wl-billing-note">Eligible accounts receive one free 7-day Professional trial for their first business workspace. Each account can claim the trial only once; additional workspaces require a paid subscription. No payment details are required to start the trial.</div>
       </div>`;
     document.getElementById('wlBillCurrency').onchange=e=>{selectedCurrency=e.target.value;renderCataloguePreview(view,message)};
     document.getElementById('wlBillCycle').onchange=e=>{selectedCycle=e.target.value;renderCataloguePreview(view,message)};
@@ -117,7 +117,7 @@
         <div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Manage the White Lion SME subscription for <b>${esc(active.name)}</b>. Select SLE or USD pricing and choose monthly or annual billing. Annual subscriptions are priced at ten monthly payments.</p></div>
         <div class="panel">
           <div class="panel-head"><div><h3>Current subscription</h3><div class="panel-sub">Subscription status and access period for this workspace</div></div>${sub?statusPill(sub.status):statusPill('not subscribed')}</div>
-          ${sub?`<div class="report-cards"><div class="report-box"><small>Current plan</small><b>${esc(plans.find(p=>p.code===sub.plan_code)?.name||sub.plan_code)}</b></div><div class="report-box"><small>Billing currency / cycle</small><b>${esc(sub.currency_code)} · ${esc(sub.billing_cycle)}</b></div><div class="report-box"><small>${esc(accessLabel)}</small><b>${accessUntil?accessUntil.toLocaleDateString():'Awaiting activation'}</b></div></div>`:'<p class="panel-sub">No subscription is recorded for this workspace. Newly registered businesses receive a 7-day Professional trial.</p>'}
+          ${sub?`<div class="report-cards"><div class="report-box"><small>Current plan</small><b>${esc(plans.find(p=>p.code===sub.plan_code)?.name||sub.plan_code)}</b></div><div class="report-box"><small>Billing currency / cycle</small><b>${esc(sub.currency_code)} · ${esc(sub.billing_cycle)}</b></div><div class="report-box"><small>${esc(accessLabel)}</small><b>${accessUntil?accessUntil.toLocaleDateString():'Awaiting activation'}</b></div></div>`:'<p class="panel-sub">No subscription is recorded for this workspace. Eligible accounts receive one 7-day Professional trial for their first business workspace; additional workspaces require a paid subscription.</p>'}
         </div>
         <div class="panel">
           <div class="panel-head"><div><h3>Access and renewal status</h3><div class="panel-sub">Live status returned by the subscription access check</div></div>${statusPill(access.status||sub?.status||'unknown')}</div>
