@@ -2,12 +2,12 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.whitelion.sme'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.whitelion.sme'
         minSdk 23
-        targetSdk 35
+        targetSdk 34
         versionCode 1
         versionName '1.0.0'
     }
