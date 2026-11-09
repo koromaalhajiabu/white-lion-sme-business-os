@@ -20,9 +20,10 @@ setTimeout(function () {
   var view = document.getElementById('view');
   if (window.__wlStartupComplete || (view && view.childElementCount > 0)) return;
   var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#f4f6fa;color:#17243a;display:grid;place-items:center;padding:22px;font:14px system-ui,-apple-system,sans-serif';
+  /* Never place a full-screen layer over the application: it can intercept every tap. */
+  box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;background:transparent;color:#17243a;display:block;padding:0;font:14px system-ui,-apple-system,sans-serif;pointer-events:none';
   var panel = document.createElement('div');
-  panel.style.cssText = 'width:min(520px,100%);background:#fff;border:1px solid #e2e7ef;border-radius:16px;padding:22px;box-shadow:0 15px 45px #17243a20';
+  panel.style.cssText = 'max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e7ef;border-radius:16px;padding:16px;box-shadow:0 15px 45px #17243a20;pointer-events:none';
   var title = document.createElement('h2');
   title.textContent = 'White Lion could not finish loading';
   var message = document.createElement('p');
@@ -31,7 +32,7 @@ setTimeout(function () {
   note.textContent = 'Your saved business records have not been cleared. Retry to load the latest application files.';
   var retry = document.createElement('button');
   retry.type = 'button'; retry.textContent = 'Retry application';
-  retry.style.cssText = 'background:#14243d;color:#fff;border:0;border-radius:9px;padding:11px 16px;font-weight:700';
+  retry.style.cssText = 'background:#14243d;color:#fff;border:0;border-radius:9px;padding:11px 16px;font-weight:700;pointer-events:auto';
   retry.onclick = function () { location.reload(); };
   panel.append(title, message, note, retry); box.appendChild(panel);
   (document.body || document.documentElement).appendChild(box);
@@ -836,6 +837,7 @@ async function setting(key,value){if(value!==undefined){await put('settings',{ke
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
 function setPage(p){if(!p||p===state.page){document.getElementById('sidebar').classList.remove('open');return}state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>{const active=b.dataset.page===p;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',finance:'Financial Planning',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings',documents:'Business documents',league:'Sports & Local League'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');const view=document.getElementById('view');view.classList.remove('page-transition');void view.offsetWidth;view.classList.add('page-transition');render()}
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+window.__wlMainNavBound = true;
 document.getElementById('menuBtn').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
 document.getElementById('closeModal').onclick=document.getElementById('cancelModal').onclick=closeModal;
 function closeModal(){document.getElementById('modalBack').classList.remove('show')}
@@ -1166,7 +1168,25 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render();window.__wlStartupComplete=true}catch(e){window.__wlStartupComplete=true;console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=87',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=88',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+</script>
+<script id="wl-navigation-safety-net">
+/* Fallback only: use delegated navigation if the main script stopped before binding nav controls. */
+(function(){
+  if(window.__wlNavSafetyInstalled)return;
+  window.__wlNavSafetyInstalled=true;
+  document.addEventListener('click',function(event){
+    if(window.__wlMainNavBound)return;
+    var target=event.target;
+    var button=target&&target.closest?target.closest('[data-page],[data-go]'):null;
+    if(!button)return;
+    var page=button.getAttribute('data-page')||button.getAttribute('data-go');
+    if(!page||typeof window.setPage!=='function')return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.setPage(page);
+  },true);
+})();
 </script>
 <script id="wl-appearance-controller">
 (function(){
