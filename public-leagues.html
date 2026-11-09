@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087a43">
+<meta name="description" content="Browse public football leagues and competitions published on White Lion.">
+<title>Public Leagues Directory · White Lion</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f8f4;color:#203b2b;font:15px/1.55 system-ui,Arial,sans-serif}
+.wrap{max-width:1000px;margin:auto;padding:20px 16px 45px}.hero{padding:25px 22px;border-radius:19px;background:linear-gradient(120deg,#075b35,#0c8f52);color:#fff;margin-bottom:18px}
+.kicker{font-size:10px;font-weight:850;letter-spacing:1.6px;text-transform:uppercase;opacity:.85}.hero h1{font-size:clamp(25px,5vw,36px);margin:7px 0}.hero p{font-size:13px;opacity:.9;margin:0;max-width:650px}
+.tools{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 15px}.tools input,.tools select{flex:1;min-width:180px;min-height:44px;padding:10px 12px;border:1px solid #d9e8df;border-radius:10px;background:white;color:#203b2b;font:inherit}
+.count{font-size:12px;color:#718078;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.league{background:#fff;border:1px solid #e0eae3;border-radius:15px;padding:17px;box-shadow:0 6px 20px #075b350a;min-width:0}
+.league h2{font-size:17px;color:#075b35;margin:0 0 7px}.meta{font-size:12px;color:#718078;margin-bottom:13px}.tag{display:inline-block;background:#eaf6ed;color:#087a43;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:800;margin-bottom:10px}
+.open{display:inline-block;padding:10px 14px;border-radius:9px;background:#087a43;color:white;text-decoration:none;font-size:12px;font-weight:800}
+.state{background:white;border:1px solid #e0eae3;border-radius:14px;padding:25px;text-align:center;color:#718078;font-size:13px}.foot{text-align:center;color:#8b9a92;font-size:11px;margin-top:22px}.foot a{color:#087a43;font-weight:700}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.hero{padding:20px 17px}.tools input,.tools select{min-width:100%}}
+</style>
+</head>
+<body><main class="wrap">
+<header class="hero"><div class="kicker">White Lion · Football & Community</div><h1>Public Leagues Directory</h1><p>Find published football leagues and competitions. Open any league to view its fixtures, results, table and player statistics — no account required.</p></header>
+<div class="tools"><input id="search" type="search" placeholder="Search league, region or organiser…" aria-label="Search leagues"><select id="type" aria-label="Filter by competition type"><option value="">All competition types</option></select></div>
+<p class="count" id="count">Loading published leagues…</p><section class="grid" id="grid"><div class="state">Loading public leagues…</div></section>
+<p class="foot"><a href="./index.html">White Lion SME</a> · Public information only</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://nclncqlgnxnijlumznnt.supabase.co';
+const SUPABASE_KEY='sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let leagues=[];
+function render(){
+ const q=document.getElementById('search').value.trim().toLowerCase(),type=document.getElementById('type').value;
+ const shown=leagues.filter(x=>(!type||x.competition_type===type)&&[x.name,x.region,x.organiser,x.competition_type].join(' ').toLowerCase().includes(q));
+ document.getElementById('count').textContent=shown.length+' published '+(shown.length===1?'league':'leagues');
+ document.getElementById('grid').innerHTML=shown.length?shown.map(x=>'<article class="league"><span class="tag">PUBLIC LEAGUE</span><h2>'+esc(x.name)+'</h2><div class="meta">'+esc(x.competition_type||'Football competition')+'<br>'+esc(x.region||'Region not specified')+(x.organiser?' · '+esc(x.organiser):'')+'</div><a class="open" href="./public-league.html?t='+encodeURIComponent(x.public_share_token)+'">View league</a></article>').join(''):'<div class="state">No published leagues match your search.</div>';
+}
+async function load(){
+ const grid=document.getElementById('grid');
+ try{
+  if(!window.supabase?.createClient)throw new Error('Supabase client unavailable');
+  const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
+  const {data,error}=await client.rpc('list_public_leagues');
+  if(error)throw error;
+  leagues=Array.isArray(data)?data:[];
+  const types=[...new Set(leagues.map(x=>x.competition_type).filter(Boolean))].sort();
+  document.getElementById('type').innerHTML='<option value="">All competition types</option>'+types.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  render();
+ }catch(e){grid.innerHTML='<div class="state">Could not load the directory. Please check your internet connection and try again.</div>';document.getElementById('count').textContent='Directory temporarily unavailable';}
+}
+document.getElementById('search').addEventListener('input',render);
+document.getElementById('type').addEventListener('change',render);
+load();
+</script></body></html>
