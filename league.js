@@ -82,7 +82,7 @@
   }
   function sharePanel(c){
     const link=c.public_share_token?publicLink(c.public_share_token):'';
-    return '<div class="wl-league-panel"><h3>Public league page</h3><div class="wl-league-sub">Share a read-only link so fans, parents and club officials can see this league\'s fixtures, results, table and player statistics — no account needed. Nothing else in your business is visible from this link.</div>'+
+    return '<div class="wl-league-panel"><h3>Public league page</h3><div class="wl-league-sub">Fans can open this read-only page without an account. It shows only this league\'s clubs, fixtures, results, table and player statistics — never your business dashboard, sales, inventory, finances or admin tools. New leagues are published automatically; you can disable or regenerate the link below.</div>'+
       (c.is_publicly_shared&&link
         ?'<div class="wl-league-inline"><input id="wlLeagueShareLink" readonly value="'+esc(link)+'" style="flex:1;min-width:220px"><button class="wl-league-btn primary" type="button" id="wlLeagueShareCopy">Copy link</button></div>'+
          '<div class="wl-league-actions"><a class="wl-league-btn blue" href="'+esc(link)+'" target="_blank" rel="noopener">Open public page</a>'+button('Regenerate link','','type="button" id="wlLeagueShareRegenerate"')+button('Disable public sharing','','type="button" id="wlLeagueShareDisable"')+'</div>'
@@ -232,7 +232,7 @@
       e.preventDefault();const kind=f.dataset.leagueForm,d=Object.fromEntries(new FormData(f).entries()),b=business(),c=client();
       await save(async()=>{
         let payload={...d,business_id:b.id};
-        if(kind==='competition'){payload.points_win=Number(d.points_win);payload.points_draw=Number(d.points_draw);payload.points_loss=Number(d.points_loss);payload.created_by=cloud().getSession()?.user?.id}
+        if(kind==='competition'){payload.points_win=Number(d.points_win);payload.points_draw=Number(d.points_draw);payload.points_loss=Number(d.points_loss);payload.created_by=cloud().getSession()?.user?.id;payload.is_publicly_shared=true;payload.public_share_token=crypto.randomUUID()}
         if(kind==='season'){payload.competition_id=competitionId;payload.starts_on=d.starts_on||null;payload.ends_on=d.ends_on||null}
         if(kind==='club'){payload.competition_id=competitionId}
         if(kind==='player'){payload.competition_id=competitionId;payload.shirt_number=d.shirt_number?Number(d.shirt_number):null;payload.date_of_birth=d.date_of_birth||null}
@@ -241,8 +241,8 @@
         if(kind==='discipline'){payload.competition_id=competitionId;payload.matches_suspended=Number(d.matches_suspended||0);payload.starts_on=d.starts_on||null;payload.ends_on=d.ends_on||null}
         if(kind==='access'){payload.competition_id=competitionId;payload.user_id=d.user_id.trim();payload.club_id=d.club_id||null}
         const tableName=({competition:'league_competitions',season:'league_seasons',club:'league_clubs',player:'league_players',fixture:'league_fixtures',event:'league_match_events',discipline:'league_disciplinary_actions',access:'league_competition_members'})[kind];
-        const {error}=await c.from(tableName).insert(payload);if(error)throw error;
-        if(kind==='competition'){competitionId='';seasonId='';activeTab='overview'}
+        const {data:created,error}=await c.from(tableName).insert(payload).select('id').single();if(error)throw error;
+        if(kind==='competition'){competitionId=created.id;seasonId='';activeTab='overview'}
         if(kind==='season')seasonId='';
       },({competition:'League created.',season:'Season created.',club:'Club registered.',player:'Player registered.',fixture:'Fixture scheduled.',event:'Match event saved.',discipline:'Disciplinary record saved.',access:'League role assigned.'})[kind]);
     });});
