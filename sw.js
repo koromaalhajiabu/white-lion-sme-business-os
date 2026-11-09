@@ -1,11 +1,11 @@
-const CACHE_NAME='white-lion-sme-v80';
+const CACHE_NAME='white-lion-sme-v82';
 const APP_SHELL=[
   './',
   './index.html',
   './manifest.webmanifest?v=43',
   './shared.js?v=2',
   './i18n.js?v=6',
-  './cloud.js?v=33',
+  './cloud.js?v=34',
   './operations.js?v=17',
   './documents.js?v=3',
   './league.js?v=6',
@@ -40,7 +40,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  const isAppCode = /\\.(?:html|js|css|webmanifest)$/.test(url.pathname);
+  const isAppCode = /\.(?:html|js|css|webmanifest)$/.test(url.pathname);
   if (request.mode === 'navigate' || isAppCode) {
     event.respondWith((async () => {
       try {

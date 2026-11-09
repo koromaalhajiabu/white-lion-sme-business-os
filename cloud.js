@@ -1,4 +1,5 @@
 /* White Lion SME OS — Supabase workspace, master-data and atomic transaction sync. */
+try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
 (() => {
   const SUPABASE_URL = 'https://nclncqlgnxnijlumznnt.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
