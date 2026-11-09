@@ -63,16 +63,31 @@
     const crumb=document.getElementById('crumb'); if(crumb)crumb.textContent='Plans & Billing';
     document.getElementById('sidebar')?.classList.remove('open');
   }
+  function renderCataloguePreview(view, message) {
+    const currency=selectedCurrency,cycle=selectedCycle;
+    view.innerHTML=`
+      <div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Compare White Lion SME plans before setting up your business. Choose SLE or USD and monthly or annual pricing.</p></div>
+      <div class="panel"><h3>Subscription plans</h3><p class="panel-sub">${esc(message)}</p>
+        <div class="wl-billing-controls"><label>Currency <select id="wlBillCurrency"><option value="SLE" ${currency==='SLE'?'selected':''}>SLE · Sierra Leone Leone</option><option value="USD" ${currency==='USD'?'selected':''}>USD · US Dollar</option></select></label><label>Billing period <select id="wlBillCycle"><option value="monthly" ${cycle==='monthly'?'selected':''}>Monthly</option><option value="annual" ${cycle==='annual'?'selected':''}>Annual · 2 months free</option></select></label></div>
+        <div class="wl-plan-grid">${plansFallback.map(p=>{
+          const amount=currency==='SLE'?(cycle==='annual'?p.sle_annual:p.sle_monthly):(cycle==='annual'?p.usd_annual:p.usd_monthly);
+          return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${p.max_users} employees · ${p.max_branches} branch(es)</div><ul>${p.features.map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn primary" type="button" disabled>Set up business to subscribe</button></article>`;
+        }).join('')}</div>
+        <div class="wl-billing-note">These are indicative launch prices. You can compare plans now; create or select a business workspace and sign in before requesting an invoice.</div>
+      </div>`;
+    document.getElementById('wlBillCurrency').onchange=e=>{selectedCurrency=e.target.value;renderCataloguePreview(view,message)};
+    document.getElementById('wlBillCycle').onchange=e=>{selectedCycle=e.target.value;renderCataloguePreview(view,message)};
+  }
   async function render() {
     const view=document.getElementById('view'); if(!view)return;
     billingOpen=true;setActiveNav();
     const sb=client(), active=business();
     if(!sb) {
-      view.innerHTML='<div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Choose a White Lion SME plan and manage your subscription.</p></div><div class="panel"><h3>Sign in required</h3><p class="panel-sub">Sign in to your cloud account to view invoices and request a subscription. The plan catalogue is available after the billing database migration is installed.</p></div>';
+      renderCataloguePreview(view,'You are not signed in. Plans are visible for comparison, but you must sign in and create a business workspace before requesting an invoice.');
       return;
     }
     if(!active) {
-      view.innerHTML='<div class="wl-billing-hero"><h1>Plans & Billing</h1><p>Subscription billing is attached to a business workspace.</p></div><div class="panel"><h3>Select or create a business workspace</h3><p class="panel-sub">Use the Cloud Account panel above to select a workspace before requesting a subscription.</p></div>';
+      renderCataloguePreview(view,'No business workspace is selected yet. You can compare prices now; create or select a business workspace to request an invoice.');
       return;
     }
     view.innerHTML='<div class="panel"><p class="panel-sub">Loading subscription information…</p></div>';
