@@ -1,0 +1,40 @@
+name: Browser interaction smoke test
+
+on:
+  push:
+    paths:
+      - 'scripts/browser-smoke.mjs'
+      - '.github/workflows/browser-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test live Android-sized and desktop app
+        run: node scripts/browser-smoke.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: white-lion-browser-smoke-evidence
+          path: |
+            browser-smoke-report.json
+            browser-android-mobile.png
+            browser-desktop.png
+          if-no-files-found: warn
+          retention-days: 7
