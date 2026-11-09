@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="White Lion SME">
 <meta name="apple-touch-icon" href="./icons/white-lion-180.png">
 <title>Install White Lion SME</title>
-<link rel="manifest" href="./manifest.webmanifest?v=45">
+<link rel="manifest" href="./manifest.webmanifest?v=46">
 <link rel="icon" href="./icons/white-lion-icon.svg">
 <style>
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(145deg,#075b35,#0c8f52);font:16px/1.5 system-ui,Arial;color:#203b2b}.card{width:min(440px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 24px 70px #0005;text-align:center}.logo{width:82px;height:82px;object-fit:contain;border-radius:20px;margin:0 auto 14px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:2px;color:#075b35}.card h1{font-size:25px;margin:7px 0}.card p{color:#718078;font-size:14px}.install{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:linear-gradient(135deg,#087a43,#075b35);color:#fff;font-size:16px;font-weight:800;margin:22px 0 12px}.open{display:block;padding:12px;color:#075b35;font-weight:700;text-decoration:none}.steps{margin-top:18px;padding:14px;background:#f5faf6;border-radius:12px;text-align:left;font-size:13px;color:#718078}.steps b{color:#203b2b}.foot{font-size:11px;color:#718078;margin-top:20px}
@@ -60,7 +60,7 @@ btn.addEventListener('click',async()=>{
 if('serviceWorker' in navigator && location.protocol!=='file:'){
  window.addEventListener('load',async()=>{
   try{
-   await navigator.serviceWorker.register('./sw.js?v=93',{scope:'./',updateViaCache:'none'});
+   await navigator.serviceWorker.register('./sw.js?v=94',{scope:'./',updateViaCache:'none'});
    await navigator.serviceWorker.ready;
    if(!navigator.serviceWorker.controller && !sessionStorage.getItem('wl-install-control-reload')){
     sessionStorage.setItem('wl-install-control-reload','1');
