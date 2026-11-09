@@ -4,21 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>
-/* Resilience watchdog: on a slow/unreliable connection one app file can fail
-   or simply never resolve, leaving the page silently blank or unresponsive.
-   This timer is independent of any single request and always fires, so the
-   person always gets a visible, actionable message instead of nothing. */
+/* Startup watchdog: detect a genuinely blank app, not merely a missing cloud panel. */
 window.__wlScriptFail = [];
+window.__wlStartupComplete = false;
+window.addEventListener('error', function (event) {
+  if (!window.__wlStartupComplete) window.__wlStartupError = event.message || 'A startup script failed.';
+});
+window.addEventListener('unhandledrejection', function (event) {
+  if (!window.__wlStartupComplete) {
+    var reason = event.reason;
+    window.__wlStartupError = reason && reason.message ? reason.message : String(reason || 'An asynchronous startup task failed.');
+  }
+});
 setTimeout(function () {
-  var ok = document.getElementById('wlCloudBox') || document.querySelector('.content');
-  if (ok && !window.__wlScriptFail.length) return;
+  var view = document.getElementById('view');
+  if (window.__wlStartupComplete || (view && view.childElementCount > 0)) return;
   var box = document.createElement('div');
-  box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:14px system-ui,-apple-system,sans-serif;padding:16px;text-align:center;cursor:pointer';
-  var detail = window.__wlScriptFail.length ? ' (' + window.__wlScriptFail.join(', ') + ' did not load)' : '';
-  box.textContent = 'This page did not finish loading' + detail + '. Tap here to retry.';
-  box.onclick = function () { location.reload(); };
+  box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#f4f6fa;color:#17243a;display:grid;place-items:center;padding:22px;font:14px system-ui,-apple-system,sans-serif';
+  var panel = document.createElement('div');
+  panel.style.cssText = 'width:min(520px,100%);background:#fff;border:1px solid #e2e7ef;border-radius:16px;padding:22px;box-shadow:0 15px 45px #17243a20';
+  var title = document.createElement('h2');
+  title.textContent = 'White Lion could not finish loading';
+  var message = document.createElement('p');
+  message.textContent = window.__wlStartupError || (window.__wlScriptFail.length ? window.__wlScriptFail.join(', ') + ' failed to load.' : 'The application did not complete its startup sequence.');
+  var note = document.createElement('p');
+  note.textContent = 'Your saved business records have not been cleared. Retry to load the latest application files.';
+  var retry = document.createElement('button');
+  retry.type = 'button'; retry.textContent = 'Retry application';
+  retry.style.cssText = 'background:#14243d;color:#fff;border:0;border-radius:9px;padding:11px 16px;font-weight:700';
+  retry.onclick = function () { location.reload(); };
+  panel.append(title, message, note, retry); box.appendChild(panel);
   (document.body || document.documentElement).appendChild(box);
-}, 8000);
+}, 12000);
 </script>
 <meta name="theme-color" content="#075b35">
 <meta name="description" content="White Lion SME Business Operating System">
@@ -1139,9 +1156,9 @@ async function backup(){const data={business:state.business,exportedAt:new Date(
 async function restore(e){const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data.records)throw Error('Invalid backup');for(const s of stores){const tx=db.transaction(s,'readwrite');tx.objectStore(s).clear();for(const r of (data.records[s]||[]))tx.objectStore(s).put(r)}if(data.business){state.business=data.business;await setting('business',state.business)}toast('Backup restored');render()}catch(err){alert('Could not restore this backup: '+err.message)}e.target.value=''}
 function csv(rows){const keys=['receipt','date','customer','payment','total'];const lines=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))];const a=document.createElement('a'),blob=new Blob([lines.join('\n')],{type:'text/csv'});a.href=URL.createObjectURL(blob);a.download='white-lion-sales.csv';a.click();URL.revokeObjectURL(a.href)}
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
-(async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render()}catch(e){console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
+(async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render();window.__wlStartupComplete=true}catch(e){window.__wlStartupComplete=true;console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=71',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=85',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1171,7 +1188,7 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./cloud.js?v=34" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
+<script src="./cloud.js?v=35" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
 <script src="./operations.js?v=17" defer onerror="window.__wlScriptFail.push('operations.js')"></script>
 <script src="./documents.js?v=3" defer onerror="window.__wlScriptFail.push('documents.js')"></script>
 <script src="./league.js?v=6" defer onerror="window.__wlScriptFail.push('league.js')"></script>
