@@ -1,4 +1,4 @@
-name: Build White Lion SME Android APK
+name: Build and publish White Lion SME Android APK
 
 on:
   push:
@@ -15,11 +15,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: white-lion-android-apk
+  cancel-in-progress: false
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout application
         uses: actions/checkout@v4
@@ -56,15 +61,33 @@ jobs:
             --exclude='*.apk' \
             --exclude='*.aab'
 
-      - name: Build installable APK
+      - name: Build installable Android APK
         working-directory: android
-        run: |
-          gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleDebug
 
-      - name: Publish APK download
+      - name: Verify APK output
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Keep workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: White-Lion-SME-Android-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish public APK download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-apk-build-${{ github.run_number }}
+          name: White Lion SME Android APK ${{ github.run_number }}
+          body: |
+            Installable Android APK built from the White Lion SME Business Operating System repository.
+            Package: com.whitelion.sme
+            Build type: Debug-signed APK for direct installation.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: true
+          make_latest: false
