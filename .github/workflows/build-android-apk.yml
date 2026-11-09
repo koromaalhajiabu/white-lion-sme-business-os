@@ -1,0 +1,59 @@
+name: Build White Lion SME Android APK
+
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-android-apk.yml'
+      - 'index.html'
+      - '*.js'
+      - '*.css'
+      - 'manifest.webmanifest'
+      - 'icons/**'
+      - 'modules/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Copy the complete web application into the Android app
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/assets/site
+          rsync -a ./ android/app/src/main/assets/site/ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='android/' \
+            --exclude='node_modules/' \
+            --exclude='.DS_Store' \
+            --exclude='*.apk' \
+            --exclude='*.aab'
+
+      - name: Build installable APK
+        working-directory: android
+        run: |
+          gradle --no-daemon :app:assembleDebug
+
+      - name: Publish APK download
+        uses: actions/upload-artifact@v4
+        with:
+          name: White-Lion-SME-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
