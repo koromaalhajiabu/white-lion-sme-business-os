@@ -35,7 +35,7 @@
     .wl-pay-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:7px;align-items:end;min-width:520px}
     .wl-pay-form label{display:grid;gap:4px;font-size:10px;color:#657187;font-weight:700}
     .wl-pay-form input,.wl-pay-form select{width:100%;min-width:0;padding:9px;border:1px solid #dfe5ee;border-radius:8px;background:#fff;color:#24334a}
-    .wl-billing-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0}
+    .wl-billing-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:13px 0}
     .wl-billing-metric{background:#f7f9fc;border:1px solid #e8edf4;border-radius:12px;padding:13px}
     .wl-billing-metric small{display:block;color:#718096;font-size:10px}.wl-billing-metric strong{display:block;margin-top:6px;font-size:19px;color:#17243a}
     .wl-review-row{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #e9edf3}
@@ -156,7 +156,7 @@
     if(error)return;
     const d=data||{};
     host.innerHTML=`<div class="panel"><div class="panel-head"><div><h3>White Lion developer billing console</h3><div class="panel-sub">Platform-wide subscription and payment monitoring</div></div><span class="wl-billing-status active">Developer</span></div>
-      <div class="wl-billing-metrics"><div class="wl-billing-metric"><small>Active subscriptions</small><strong>${Number(d.active_subscriptions||0)}</strong></div><div class="wl-billing-metric"><small>Pending payments</small><strong>${Number(d.pending_payments||0)}</strong></div><div class="wl-billing-metric"><small>Verified SLE revenue</small><strong>${money(d.paid_sle,'SLE')}</strong></div><div class="wl-billing-metric"><small>Verified USD revenue</small><strong>${money(d.paid_usd,'USD')}</strong></div></div>
+      <div class="wl-billing-metrics"><div class="wl-billing-metric"><small>Active subscriptions</small><strong>${Number(d.active_subscriptions||0)}</strong></div><div class="wl-billing-metric"><small>Pending payments</small><strong>${Number(d.pending_payments||0)}</strong></div><div class="wl-billing-metric"><small>Pending invoices</small><strong>${Number(d.pending_invoices||0)}</strong></div><div class="wl-billing-metric"><small>Verified SLE revenue</small><strong>${money(d.paid_sle,'SLE')}</strong></div><div class="wl-billing-metric"><small>Verified USD revenue</small><strong>${money(d.paid_usd,'USD')}</strong></div></div>
       <h3 style="margin:15px 0 5px">Pending payment verification</h3>
       ${(d.pending||[]).length?(d.pending||[]).map(p=>`<div class="wl-review-row"><div><b>${esc(p.business_name)}</b><small>${esc(p.invoice_number)} · ${esc(p.plan_code)} · ${esc(p.provider)} · Ref: ${esc(p.reference)}</small><small>${money(p.amount,p.currency_code)} · submitted ${new Date(p.submitted_at).toLocaleString()}</small></div><div><button class="btn primary small" data-review-payment="${esc(p.payment_id)}" data-approve="true">Verify & activate</button> <button class="btn danger small" data-review-payment="${esc(p.payment_id)}" data-approve="false">Reject</button></div></div>`).join(''):'<div class="empty">No payment references are awaiting verification.</div>'}
       <p class="panel-sub">Revenue totals include only payments marked verified. Payment-provider APIs are not connected in this release; verification is manual.</p>
