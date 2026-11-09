@@ -1174,6 +1174,31 @@ window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||s
 
 if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=94',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
+<script id="wl-simple-pwa-install">
+(function(){
+  if(window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true) return;
+  var host=document.querySelector('.top-actions');
+  if(!host || document.getElementById('wlInstallLink')) return;
+  var link=document.createElement('a');
+  link.id='wlInstallLink'; link.className='btn primary small';
+  link.href='./install.html'; link.textContent='Install App';
+  link.setAttribute('aria-label','Install White Lion SME app');
+  link.style.cssText='text-decoration:none;white-space:nowrap';
+  host.insertBefore(link,host.firstChild);
+  var promptEvent=null;
+  window.addEventListener('beforeinstallprompt',function(event){
+    event.preventDefault(); promptEvent=event; link.textContent='Install App';
+  });
+  link.addEventListener('click',async function(event){
+    if(!promptEvent) return;
+    event.preventDefault();
+    try{await promptEvent.prompt(); await promptEvent.userChoice;}catch(e){}
+    promptEvent=null;
+  });
+  window.addEventListener('appinstalled',function(){link.remove()});
+})();
+</script>
+
 <script id="wl-navigation-safety-net">
 /* Fallback only: use delegated navigation if the main script stopped before binding nav controls. */
 (function(){
