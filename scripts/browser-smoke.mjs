@@ -62,11 +62,51 @@ async function runViewport(name, viewport) {
       const state = await page.evaluate(() => ({crumb:document.querySelector('#crumb')?.textContent||'', title:document.querySelector('#view h1')?.textContent||'', view:(document.querySelector('#view')?.innerText||'').slice(0,180)}));
       result.checks.push({name:'navigate '+key,pass:state.crumb.toLowerCase().includes(expected.toLowerCase().split(' ')[0]) || state.title.toLowerCase().includes(expected.toLowerCase().split(' ')[0]),state,box,hit});
     }
+    // Exercise a real in-section action, not just sidebar navigation.
+    if (viewport.width < 720) {
+      await page.locator('#menuBtn').click().catch(()=>{});
+      await page.waitForTimeout(150);
+    }
+    await page.locator('[data-page="products"]').click({timeout:5000});
+    await page.waitForTimeout(500);
     const add = page.locator('#view #addBtn');
     if (await add.count()) {
-      await add.click({timeout:5000}).catch(e=>result.checks.push({name:'open add-record form',pass:false,error:e.message}));
+      await add.scrollIntoViewIfNeeded();
+      await add.click({timeout:5000}).catch(e=>result.checks.push({name:'open product form',pass:false,error:e.message}));
       await page.waitForTimeout(250);
-      result.checks.push({name:'open add-record form',pass:await page.locator('#modalBack.show').count()>0});
+      result.checks.push({name:'open product form',pass:await page.locator('#modalBack.show').count()>0});
+      if (await page.locator('#modalBack.show').count()) {
+        await page.locator('#cancelModal').click();
+        result.checks.push({name:'close product form',pass:await page.locator('#modalBack.show').count()===0});
+      }
+    } else {
+      result.checks.push({name:'open product form',pass:false,error:'Add product button missing'});
+    }
+
+    // Verify dashboard quick actions route to the expected module.
+    if (viewport.width < 720) {
+      await page.locator('#menuBtn').click().catch(()=>{});
+      await page.waitForTimeout(150);
+    }
+    await page.locator('[data-page="dashboard"]').click({timeout:5000});
+    await page.waitForTimeout(400);
+    const quick = page.locator('#view [data-go="products"]').first();
+    if (await quick.count()) {
+      await quick.click({timeout:5000});
+      await page.waitForTimeout(400);
+      const quickState = await page.locator('#crumb').textContent();
+      result.checks.push({name:'dashboard quick action opens products',pass:(quickState||'').toLowerCase().includes('products'),state:quickState});
+    } else {
+      result.checks.push({name:'dashboard quick action opens products',pass:false,error:'Quick action missing'});
+    }
+
+    // Appearance controls must respond to taps without disrupting navigation.
+    const beforeTheme = await page.locator('html').getAttribute('data-theme');
+    const themeButton = page.locator('#themeToggle');
+    if (await themeButton.count()) {
+      await themeButton.click({timeout:5000});
+      const afterTheme = await page.locator('html').getAttribute('data-theme');
+      result.checks.push({name:'appearance toggle responds',pass:beforeTheme!==afterTheme,state:{before:beforeTheme,after:afterTheme}});
     }
     result.final = await page.evaluate(() => ({
       crumb:document.querySelector('#crumb')?.textContent||'',
