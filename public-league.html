@@ -78,7 +78,7 @@ function render(){
     '<div class="card"><h2>League table</h2>'+standingsTable()+'</div>'+
     '<div class="card"><h2>Fixtures &amp; results</h2>'+fixturesTable()+'</div>'+
     '<div class="card"><h2>Player statistics</h2>'+statsTable()+'</div>'+
-    '<p class="foot">Read-only public page · Powered by White Lion SME</p>';
+    '<p class="foot"><a href="./public-leagues.html" style="color:#087a43;font-weight:700">Browse all public leagues</a><br>Read-only public page · Powered by White Lion SME</p>';
   document.getElementById('seasonSelect')?.addEventListener('change',e=>{seasonId=e.target.value;render();});
 }
 
