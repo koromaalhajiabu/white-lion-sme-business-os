@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>White Lion App Diagnostics</title>
+<style>body{font:15px system-ui;background:#f4f7f5;color:#173323;margin:0;padding:18px}main{max-width:760px;margin:auto;background:white;padding:20px;border-radius:14px}h1{font-size:21px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3ef;padding:14px;border-radius:9px;font-size:13px}.ok{color:#087a43}.bad{color:#b42318}button{padding:12px 16px;border:0;border-radius:8px;background:#087a43;color:white;font-weight:700}</style></head>
+<body><main><h1>White Lion · Safe App Diagnostics</h1><p>This check only reads deployed files and browser capabilities. It does not sign in, modify, upload or delete business records.</p><button id="run">Run diagnostics</button><pre id="out">Ready. Tap Run diagnostics.</pre></main>
+<script>
+const out=document.getElementById('out'), log=[];
+function add(s,ok){log.push((ok?'PASS  ':'CHECK ') + s)}
+async function run(){
+ document.getElementById('run').disabled=true;log.length=0;out.textContent='Checking…';
+ try{
+  const response=await fetch('./index.html?diagnostic='+Date.now(),{cache:'no-store'});
+  add('index.html HTTP '+response.status,response.ok);
+  const html=await response.text();
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const inline=[...doc.querySelectorAll('script:not([src])')];
+  inline.forEach((s,i)=>{try{new Function(s.textContent);add('Inline script '+(i+1)+' parses successfully',true)}catch(e){add('Inline script '+(i+1)+' SYNTAX ERROR: '+e.message,false)}});
+  const scripts=[...doc.querySelectorAll('script[src]')];
+  for(const s of scripts){
+   const url=new URL(s.getAttribute('src'),location.href).href;
+   try{const r=await fetch(url+'?diagnostic='+Date.now(),{cache:'no-store'});if(!r.ok){add(url.split('/').pop()+' HTTP '+r.status,false);continue}
+    const src=await r.text();try{new Function(src);add(url.split('/').pop()+' downloads and parses ('+src.length+' chars)',true)}catch(e){add(url.split('/').pop()+' SYNTAX ERROR: '+e.message,false)}
+   }catch(e){add(url.split('/').pop()+' fetch failed: '+e.message,false)}
+  }
+  add('Document contains '+doc.querySelectorAll('button').length+' buttons',true);
+  add('Browser supports IndexedDB: '+!!window.indexedDB,!!window.indexedDB);
+  add('Browser supports service workers: '+('serviceWorker' in navigator),('serviceWorker' in navigator));
+  if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();add('Active service-worker registrations: '+regs.length,true)}
+  const cachesNow=window.caches?await caches.keys():[];add('App cache entries: '+cachesNow.filter(x=>x.startsWith('white-lion-sme-')).join(', '),true);
+ }catch(e){add('Diagnostic failed: '+e.message,false)}
+ out.textContent=log.join('\n');document.getElementById('run').disabled=false;
+}
+document.getElementById('run').addEventListener('click',run);
+</script></body></html>
