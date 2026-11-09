@@ -47,8 +47,8 @@
   function addPanel() {
     const host = document.querySelector('.main');
     const anchor = document.querySelector('.topbar');
-    if (!host || !anchor || $('wlCloudBox')) return;
-    const box = document.createElement('section');
+    if (!host || !anchor) return;
+    const box = $('wlCloudBox') || document.createElement('section');
     box.id = 'wlCloudBox';
     box.innerHTML = `
       <div style="font-weight:800">CLOUD ACCOUNT</div>
