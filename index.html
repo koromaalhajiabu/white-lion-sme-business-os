@@ -3,7 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-
+<script>
+/* Resilience watchdog: on a slow/unreliable connection one app file can fail
+   or simply never resolve, leaving the page silently blank or unresponsive.
+   This timer is independent of any single request and always fires, so the
+   person always gets a visible, actionable message instead of nothing. */
+window.__wlScriptFail = [];
+setTimeout(function () {
+  var ok = document.getElementById('wlCloudBox') || document.querySelector('.content');
+  if (ok && !window.__wlScriptFail.length) return;
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:14px system-ui,-apple-system,sans-serif;padding:16px;text-align:center;cursor:pointer';
+  var detail = window.__wlScriptFail.length ? ' (' + window.__wlScriptFail.join(', ') + ' did not load)' : '';
+  box.textContent = 'This page did not finish loading' + detail + '. Tap here to retry.';
+  box.onclick = function () { location.reload(); };
+  (document.body || document.documentElement).appendChild(box);
+}, 8000);
+</script>
 <meta name="theme-color" content="#075b35">
 <meta name="description" content="White Lion SME Business Operating System">
 <link rel="manifest" href="manifest.webmanifest?v=43">
@@ -1125,7 +1141,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render()}catch(e){console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=70',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=71',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-appearance-controller">
 (function(){
@@ -1155,8 +1171,8 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./cloud.js?v=34" defer></script>
-<script src="./operations.js?v=17" defer></script>
-<script src="./documents.js?v=3" defer></script>
-<script src="./league.js?v=6" defer></script>
+<script src="./cloud.js?v=34" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
+<script src="./operations.js?v=17" defer onerror="window.__wlScriptFail.push('operations.js')"></script>
+<script src="./documents.js?v=3" defer onerror="window.__wlScriptFail.push('documents.js')"></script>
+<script src="./league.js?v=6" defer onerror="window.__wlScriptFail.push('league.js')"></script>
 </body></html>
