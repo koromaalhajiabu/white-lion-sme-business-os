@@ -1,4 +1,4 @@
-const CACHE_NAME='white-lion-sme-v82';
+const CACHE_NAME='white-lion-sme-v83';
 const APP_SHELL=[
   './',
   './index.html',
@@ -40,36 +40,28 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  const isAppCode = /\.(?:html|js|css|webmanifest)$/.test(url.pathname);
-  if (request.mode === 'navigate' || isAppCode) {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request, {cache:'no-cache'});
-        if (response && response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(request, response.clone()).catch(() => {});
-        }
-        return response;
-      } catch (_) {
-        const cached = await caches.match(request) || await caches.match('./index.html');
-        return cached || Response.error();
-      }
-    })());
-    return;
-  }
-
+  // Stale-while-revalidate for everything: serve an already-cached copy
+  // instantly (so the app never hangs waiting on a slow/unreliable mobile
+  // connection), and refresh the cache quietly in the background for next
+  // time. Only reaches the network synchronously when nothing is cached yet.
   event.respondWith((async () => {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    try {
-      const response = await fetch(request);
-      if (response && response.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, response.clone()).catch(() => {});
-      }
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    const network = fetch(request).then(response => {
+      if (response && response.ok) cache.put(request, response.clone()).catch(() => {});
       return response;
-    } catch (_) {
-      return Response.error();
+    }).catch(() => null);
+
+    if (cached) {
+      network.catch(() => {});
+      return cached;
     }
+    const response = await network;
+    if (response) return response;
+    if (request.mode === 'navigate') {
+      const fallback = await cache.match('./index.html');
+      if (fallback) return fallback;
+    }
+    return Response.error();
   })());
 });
