@@ -1,0 +1,48 @@
+name: JavaScript syntax validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.js'
+      - 'scripts/*.mjs'
+      - 'index.html'
+      - '.github/workflows/javascript-syntax-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate standalone JavaScript files
+        run: |
+          set -e
+          for file in cloud.js operations.js documents.js league.js i18n.js shared.js sw.js scripts/*.mjs; do
+            if [ -f "$file" ]; then
+              echo "Checking $file"
+              node --check "$file"
+            fi
+          done
+      - name: Validate inline scripts in index.html
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const blocks = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)]
+            .map(match => match[1])
+            .filter(code => code.trim());
+          const vm = require('vm');
+          blocks.forEach((code, index) => {
+            new vm.Script(code, { filename: `index.html:inline-script-${index + 1}` });
+            console.log(`Checked inline script ${index + 1}`);
+          });
+          NODE
