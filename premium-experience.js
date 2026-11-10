@@ -65,7 +65,7 @@ function noWorkspaceGuide(){
 }
 async function onboarding(){
  const view=$('view');if(!view?.querySelector('.welcome')||!biz()||view.querySelector('#wlPeOnboarding'))return;
- const [p,s,e]=await Promise.all(['products','sales','employees'].map(read)),branches=cloud()?.getBranches?.()||[];
+ const [p0,s0,e0]=await Promise.all(['products','sales','employees'].map(read)),activeId=biz()?.id,scope=rows=>rows.filter(x=>!activeId||!x.localBusinessId||String(x.localBusinessId)===String(activeId)),[p,s,e]=[p0,s0,e0].map(scope),branches=cloud()?.getBranches?.()||[];
  const steps=[{t:'Business workspace created',ok:!!biz()?.id},{t:'Add your first product',ok:p.length>0,page:'products'},{t:'Record your first sale',ok:s.length>0,page:'sales'},{t:'Create or confirm a branch',ok:branches.length>0},{t:'Add your team members',ok:e.length>0,page:'employees'},{t:'Check cloud connection',ok:navigator.onLine!==false&&!!sess()}];
  const done=steps.filter(x=>x.ok).length,percent=Math.round(done/steps.length*100),key='wl-pe-onboard-hide:'+sess()?.user?.id+':'+biz().id;if(localStorage.getItem(key)==='yes')return;
  const card=document.createElement('section');card.id='wlPeOnboarding';card.className='wl-pe-steps';
