@@ -41,7 +41,7 @@ async function runViewport(name, viewport) {
       await page.locator('#menuBtn').click({timeout:5000}).catch(e=>result.checks.push({name:'mobile menu tap',pass:false,error:e.message}));
       await page.waitForTimeout(300);
     }
-    for (const [key, expected] of [['products','Products'],['sales','Sales'],['purchases','Purchases'],['expenses','Expenses'],['settings','Business settings']]) {
+    for (const [key, expected] of [['products','Products'],['sales','Sales'],['purchases','Purchases'],['expenses','Expenses'],['actions','Executive Action Centre'],['finance','Financial Planning'],['billing','Plans & Billing'],['settings','Business settings']]) {
       if (viewport.width < 720) {
         const sidebarOpen = await page.locator('#sidebar').evaluate(el => el.classList.contains('open'));
         if (!sidebarOpen) {
@@ -61,6 +61,12 @@ async function runViewport(name, viewport) {
       await page.waitForTimeout(700);
       const state = await page.evaluate(() => ({crumb:document.querySelector('#crumb')?.textContent||'', title:document.querySelector('#view h1')?.textContent||'', view:(document.querySelector('#view')?.innerText||'').slice(0,180)}));
       result.checks.push({name:'navigate '+key,pass:state.crumb.toLowerCase().includes(expected.toLowerCase().split(' ')[0]) || state.title.toLowerCase().includes(expected.toLowerCase().split(' ')[0]),state,box,hit});
+      if (key === 'actions') {
+        const actionText = await page.locator('#view').innerText();
+        for (const section of ['Management alerts','Management tasks','Branch performance','Stock replenishment recommendations','Investigate recent sales','Executive activity']) {
+          result.checks.push({name:'action centre section: '+section,pass:actionText.includes(section)});
+        }
+      }
     }
     // Exercise a real in-section action, not just sidebar navigation.
     if (viewport.width < 720) {
@@ -108,6 +114,18 @@ async function runViewport(name, viewport) {
       const afterTheme = await page.locator('html').getAttribute('data-theme');
       result.checks.push({name:'appearance toggle responds',pass:beforeTheme!==afterTheme,state:{before:beforeTheme,after:afterTheme}});
     }
+    // Verify the cached application shell can still launch after the network is removed.
+    await page.context().setOffline(true);
+    await page.reload({waitUntil:'domcontentloaded',timeout:30000}).catch(e=>{result.offlineReloadError=e.message});
+    await page.waitForTimeout(1200);
+    const offlineState = await page.evaluate(() => ({
+      title:document.title,
+      startupComplete:!!window.__wlStartupComplete,
+      crumb:document.querySelector('#crumb')?.textContent||''
+    }));
+    result.checks.push({name:'offline app-shell launch',pass:!!offlineState.startupComplete,state:offlineState,error:result.offlineReloadError||null});
+    await page.context().setOffline(false);
+
     result.final = await page.evaluate(() => ({
       crumb:document.querySelector('#crumb')?.textContent||'',
       mainNavBound:!!window.__wlMainNavBound,
