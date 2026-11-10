@@ -1180,25 +1180,31 @@ async function render(){
    const ledgerFrom=period===0?'1900-01-01':dateOnly(start),ledgerTo=dateOnly(now),ledgerAsOf=dateOnly(now);
    const versionResult=await ledgerClient.rpc('accounting_reporting_version');
    if(versionResult.error||Number(versionResult.data)!==2)throw new Error('The accounting report accuracy update has not been installed yet.');
-   const [incomeResult,balanceResult,trialResult]=await Promise.all([
+   const [incomeResult,balanceResult,trialResult,cashFlowResult]=await Promise.all([
     ledgerClient.rpc('accounting_income_statement',{p_business_id:businessId,p_from:ledgerFrom,p_to:ledgerTo}),
     ledgerClient.rpc('accounting_balance_sheet',{p_business_id:businessId,p_as_of:ledgerAsOf}),
-    ledgerClient.rpc('accounting_trial_balance',{p_business_id:businessId,p_from:ledgerFrom,p_to:ledgerTo})
+    ledgerClient.rpc('accounting_trial_balance',{p_business_id:businessId,p_from:ledgerFrom,p_to:ledgerTo}),
+    ledgerClient.rpc('accounting_cash_flow',{p_business_id:businessId,p_from:ledgerFrom,p_to:ledgerTo})
    ]);
-   const ledgerError=incomeResult.error||balanceResult.error||trialResult.error;
+   const ledgerError=incomeResult.error||balanceResult.error||trialResult.error||cashFlowResult.error;
    if(ledgerError)throw ledgerError;
-   const incomeRows=incomeResult.data||[],balanceRows=balanceResult.data||[],trialRows=trialResult.data||[];
+   const incomeRows=incomeResult.data||[],balanceRows=balanceResult.data||[],trialRows=trialResult.data||[],cashFlowRows=cashFlowResult.data||[];
    const ledgerIncome=incomeRows.filter(x=>x.account_type==='income').reduce((n,x)=>n+Number(x.amount||0),0);
    const ledgerExpenses=incomeRows.filter(x=>x.account_type==='expense').reduce((n,x)=>n+Number(x.amount||0),0);
    const ledgerNetIncome=ledgerIncome-ledgerExpenses;
    const ledgerAssets=balanceRows.filter(x=>x.account_type==='asset').reduce((n,x)=>n+Number(x.amount||0),0);
    const ledgerLiabilities=balanceRows.filter(x=>x.account_type==='liability').reduce((n,x)=>n+Number(x.amount||0),0);
+   const ledgerCashIn=cashFlowRows.reduce((n,x)=>n+Number(x.cash_in||0),0);
+   const ledgerCashOut=cashFlowRows.reduce((n,x)=>n+Number(x.cash_out||0),0);
+   const ledgerNetCash=cashFlowRows.reduce((n,x)=>n+Number(x.net_cash_flow||0),0);
+   const ledgerNetMargin=ledgerIncome?ledgerNetIncome/ledgerIncome*100:null;
+   const ledgerLiabilityShare=ledgerAssets?ledgerLiabilities/ledgerAssets*100:null;
    const ledgerDebits=trialRows.reduce((n,x)=>n+Number(x.total_debit||0),0);
    const ledgerCredits=trialRows.reduce((n,x)=>n+Number(x.total_credit||0),0);
    const hasLedgerActivity=ledgerDebits>0||ledgerCredits>0;
    const ledgerBalanced=Math.abs(ledgerDebits-ledgerCredits)<0.01;
    const ledgerKpi=(label,value,note)=>'<div class="report-kpi"><span>'+label+'</span><b>'+money(value)+'</b><small>'+note+'</small></div>';
-   ledgerPanel='<div class="panel"><div class="panel-head"><div><h3>Cloud accounting snapshot</h3><div class="panel-sub">General-ledger reports · '+esc(periodLabel)+' income statement · balance sheet as of '+esc(ledgerAsOf)+'</div></div><span class="pill '+(hasLedgerActivity&&ledgerBalanced?'':'warn')+'">'+(hasLedgerActivity?(ledgerBalanced?'Trial balance balanced':'Review trial balance'):'No posted activity')+'</span></div><div class="report-kpis">'+ledgerKpi('Posted-ledger net income',ledgerNetIncome,'Ledger income less ledger expenses')+ledgerKpi('Assets',ledgerAssets,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Liabilities',ledgerLiabilities,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Trial balance difference',ledgerDebits-ledgerCredits,'Total debits less total credits')+'</div><p class="panel-sub" style="margin-top:12px">These figures include posted journal entries only and are business-wide, not branch-filtered. Historical transactions were not automatically backfilled into the ledger; verify opening balances and journal coverage before relying on these figures for statutory reporting.</p></div>';
+   ledgerPanel='<div class="panel"><div class="panel-head"><div><h3>Cloud accounting snapshot</h3><div class="panel-sub">General-ledger reports · '+esc(periodLabel)+' income statement · balance sheet as of '+esc(ledgerAsOf)+'</div></div><span class="pill '+(hasLedgerActivity&&ledgerBalanced?'':'warn')+'">'+(hasLedgerActivity?(ledgerBalanced?'Trial balance balanced':'Review trial balance'):'No posted activity')+'</span></div><div class="report-kpis">'+ledgerKpi('Posted-ledger net income',ledgerNetIncome,'Ledger income less ledger expenses')+ledgerKpi('Assets',ledgerAssets,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Liabilities',ledgerLiabilities,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Trial balance difference',ledgerDebits-ledgerCredits,'Total debits less total credits')+'</div><div class="report-kpis" style="margin-top:12px">'+ledgerKpi('Cash received',ledgerCashIn,cashFlowRows.length?'Posted cash-account debits · '+periodLabel:'No posted cash movements')+ledgerKpi('Cash paid',ledgerCashOut,cashFlowRows.length?'Posted cash-account credits · '+periodLabel:'No posted cash movements')+ledgerKpi('Net cash movement',ledgerNetCash,'Posted cash received less paid')+ledgerKpi('Net income margin',ledgerNetMargin===null?'—':ledgerNetMargin.toFixed(1)+'%','Posted net income ÷ posted income')+ledgerKpi('Liabilities / assets',ledgerLiabilityShare===null?'—':ledgerLiabilityShare.toFixed(1)+'%','Posted liabilities as a share of assets')+'</div><p class="panel-sub" style="margin-top:12px">These figures include posted journal entries only and are business-wide, not branch-filtered. Cash movement uses the ledger cash account only. Ratios are management indicators, not audit or lending opinions. Historical transactions were not automatically backfilled into the ledger; verify opening balances and journal coverage before relying on these figures for statutory reporting.</p></div>';
   }catch(ledgerLoadError){
    console.warn('Cloud accounting snapshot unavailable:',ledgerLoadError);
    ledgerPanel='<div class="panel"><div class="panel-head"><div><h3>Cloud accounting snapshot</h3><div class="panel-sub">Posted general-ledger figures for this business</div></div><span class="pill warn">Not available</span></div><p class="panel-sub">The accounting reports could not be loaded for this session. Check the connection and finance permissions. Local operational indicators below remain separate and have not been substituted for ledger figures.</p></div>';
