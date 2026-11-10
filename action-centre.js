@@ -115,7 +115,7 @@ function render(d){
    if(activeChannel){try{await d.cloudClient.removeChannel(activeChannel)}catch(_){}activeChannel=null}
    activeScope=scope;
    activeChannel=d.cloudClient.channel('wl-executive-actions-'+scope.replace(/[^a-zA-Z0-9]/g,'-'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'executive_actions',filter:'business_id=eq.'+d.businessId},()=>{if(!syncBusy)cloudSync()})
+    .on('postgres_changes',{event:'*',schema:'public',table:'executive_actions',filter:'business_id=eq.'+d.businessId},()=>{if(!syncBusy&&lastData)window.WhiteLionActionCentre.render({...lastData,_skipCloudLoad:false})})
     .on('postgres_changes',{event:'*',schema:'public',table:'executive_action_events',filter:'business_id=eq.'+d.businessId},()=>{if(!syncBusy)cloudSync()})
     .subscribe();
   }
