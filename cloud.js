@@ -281,6 +281,11 @@
     // A developer account may not belong to a business workspace, and membership RLS errors
     // must not prevent the developer dashboard from appearing.
     void checkDeveloperAccess();
+    // Once we know there is a session, the sign-in form must not stay visible —
+    // even if the workspace query below fails or returns nothing — otherwise a
+    // genuinely signed-in person (e.g. a developer account with no business
+    // membership) is stuck looking "not signed in".
+    $('wlCloudAuth').hidden = true; $('wlCloudWork').hidden = false;
     const { data: memberships, error } = await client.from('business_members')
       .select('business_id,role,is_active,businesses(id,name,industry,currency_code)')
       .eq('user_id', session.user.id).eq('is_active', true);
@@ -288,7 +293,6 @@
     document.querySelector('.app')?.classList.remove('wl-public-mode');
     const businesses = (memberships || []).map(m => ({...m.businesses, role:m.role})).filter(b => b.id);
     window.__wlBusinesses = businesses;
-    $('wlCloudAuth').hidden = true; $('wlCloudWork').hidden = false;
     $('wlBusinessSelect').innerHTML = businesses.length
       ? businesses.map(b => `<option value="${b.id}">${esc(b.name)} — ${esc(b.role)}</option>`).join('')
       : '<option value="">No business workspace yet</option>';
@@ -1294,7 +1298,13 @@
       const { data } = await client.auth.getSession();
       session = data.session;
       if (session) await loadBusinesses(); else showSignedOut();
-      client.auth.onAuthStateChange((_event, nextSession) => {
+      client.auth.onAuthStateChange((event, nextSession) => {
+        // Supabase fires an INITIAL_SESSION event the instant this listener is
+        // registered, re-delivering the same state getSession() just handled
+        // above. Reacting to it here can race with that already-in-flight
+        // loadBusinesses() call and briefly (or wrongly) flip the UI back to
+        // "signed out" even though the person is genuinely signed in.
+        if (event === 'INITIAL_SESSION') return;
         session = nextSession;
         if (session) setTimeout(() => loadBusinesses(), 0);
         else showSignedOut();
