@@ -89,7 +89,7 @@ async function runViewport(name, viewport) {
             const active = window.whiteLionCloud?.getActiveBusiness?.();
             return !app?.classList.contains('wl-public-mode') &&
               Boolean(active?.id || (window.__wlBusinesses || []).length);
-          }, { timeout: 30000 });
+          }, null, { timeout: 30000 });
           authenticatedWorkspace = true;
           record(result, 'dedicated CI account signed in and loaded a business workspace', true);
         } catch (_) {
@@ -131,7 +131,7 @@ async function runViewport(name, viewport) {
 
       if (viewport.width < 720) {
         await page.locator('#menuBtn').click({ timeout: 10000 });
-        await page.waitForFunction(() => document.querySelector('#sidebar')?.classList.contains('open'), { timeout: 5000 });
+        await page.waitForFunction(() => document.querySelector('#sidebar')?.classList.contains('open'), null, { timeout: 5000 });
         record(result, 'mobile workspace menu opens', true);
       }
 
