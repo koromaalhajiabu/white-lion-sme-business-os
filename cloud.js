@@ -177,6 +177,17 @@
       <div id="wlDevIdentity" class="dev-meta">Verifying developer permissions…</div>
       <div id="wlDevStatus" class="cloud-status">Loading secure platform controls…</div>
       <div id="wlDevStats" class="dev-meta"></div>
+      <div id="wlDevAlertSettingsPanel" style="display:block;visibility:visible;margin:14px 0;padding:14px;border:2px solid #4f8a5b;border-radius:12px;background:#152a1e;color:#fff;position:relative;z-index:2">
+        <h3 style="margin:0 0 8px;color:#9fe3ae;font-size:16px">EMAIL ALERTS</h3>
+        <div style="color:#bac6d8;font-size:11px;margin-bottom:8px">Get an email the moment someone registers a new account or submits a payment. Requires a one-time Resend API key setup (see below).</div>
+        <div class="dev-role-grid">
+          <div><label for="wlDevAlertEmail">Alert email address</label><input id="wlDevAlertEmail" type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #64748b;border-radius:8px;background:#fff;color:#17243a"></div>
+          <div><label for="wlDevAlertEnabled">Alerts</label><select id="wlDevAlertEnabled"><option value="true" selected>Enabled</option><option value="false">Paused</option></select></div>
+        </div>
+        <button id="wlDevAlertSave" type="button">Save alert settings</button>
+        <button id="wlDevAlertRefresh" type="button">Refresh</button>
+        <div id="wlDevAlertStatus" class="dev-meta" style="margin-top:6px">Loading alert settings…</div>
+      </div>
       <div id="wlDevCustomerRegistrationPanel" style="display:block;visibility:visible;margin:14px 0;padding:14px;border:2px solid #d6ad57;border-radius:12px;background:#192a43;color:#fff;position:relative;z-index:2"><h3 style="margin:0 0 8px;color:#f0d28b;font-size:16px">NEW CUSTOMER REGISTRATIONS</h3><div style="color:#bac6d8;font-size:11px;margin-bottom:8px">New platform accounts and their email addresses appear here.</div><button id="wlDevRegistrationsRefresh" type="button">Refresh customer registrations</button><div id="wlDevRegistrations" class="dev-meta" style="display:block;visibility:visible;min-height:28px">Customer registration notifications load after developer verification.</div></div>
       <section class="dev-role-manager" id="wlDevRoleManager">
         <h3 style="margin:0 0 5px;color:#f0d28b">Assign or change a user's business role</h3>
@@ -234,6 +245,8 @@
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevRegistrationsRefresh').onclick = loadDeveloperRegistrations;
     $('wlDevBusinessRegistrationsRefresh').onclick = loadDeveloperBusinessRegistrations;
+    $('wlDevAlertSave').onclick = saveDeveloperAlertSettings;
+    $('wlDevAlertRefresh').onclick = loadDeveloperAlertSettings;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
     $('wlDevAuditSearch').oninput = renderDeveloperActivity;
@@ -442,6 +455,7 @@
       };
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
+    await loadDeveloperAlertSettings();
     await loadDeveloperRegistrations();
     await loadDeveloperBusinessRegistrations();
     await loadDeveloperAccounts();
@@ -596,6 +610,32 @@
       '. Existing businesses: ' + Number(data?.existing_owned_businesses || 0) + '.';
     await loadDeveloperRegistrationLimits();
     await loadDeveloperAccounts();
+  }
+
+  async function loadDeveloperAlertSettings() {
+    const host = $('wlDevAlertStatus');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading alert settings…';
+    const {data,error} = await client.rpc('get_platform_alert_settings');
+    if (error) { host.textContent = 'Alert settings unavailable: ' + error.message + '. Run migration 032 first.'; return; }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row) {
+      $('wlDevAlertEmail').value = row.alert_email || '';
+      $('wlDevAlertEnabled').value = row.alerts_enabled === false ? 'false' : 'true';
+    }
+    host.textContent = 'Alerts are sent by email whenever someone creates a new account or submits a payment. Make sure a Resend API key has been added (ask your assistant for the one-time setup steps if you have not done this yet).';
+  }
+
+  async function saveDeveloperAlertSettings() {
+    const host = $('wlDevAlertStatus');
+    if (!session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    const email = ($('wlDevAlertEmail').value || '').trim();
+    const enabled = $('wlDevAlertEnabled').value === 'true';
+    if (!email || !email.includes('@')) { host.textContent = 'Enter a valid email address first.'; return; }
+    host.textContent = 'Saving…';
+    const {error} = await client.rpc('set_platform_alert_settings', {p_alert_email:email, p_alerts_enabled:enabled});
+    if (error) { host.textContent = 'Could not save: ' + error.message; return; }
+    host.textContent = 'Saved. Alerts will be sent to ' + email + (enabled ? '.' : ', but are currently paused.');
   }
 
   async function loadDeveloperRegistrations() {
