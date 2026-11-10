@@ -1,0 +1,4 @@
+# Supabase CLI configuration
+# Database Webhooks call this endpoint without a user JWT.
+[functions.send-registration-alert]
+verify_jwt = false
