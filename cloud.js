@@ -65,6 +65,20 @@
     @media(max-width:760px){.wl-public-mode .main{padding:12px;justify-content:flex-start}.wl-public-mode #wlCloudBox{padding:21px!important;border-radius:19px;margin:8px 0!important}.wl-public-mode #wlCloudBox .wl-public-grid{grid-template-columns:1fr;gap:22px}.wl-public-mode #wlCloudBox .wl-public-copy h1{font-size:34px;letter-spacing:-1.2px}.wl-public-mode #wlCloudBox .wl-public-brand{margin-bottom:24px}.wl-public-mode #wlCloudBox .wl-public-features{gap:8px}.wl-public-mode #wlCloudBox .wl-public-feature{padding:11px}.wl-public-mode #wlCloudBox .wl-public-auth{padding:17px}}
     @media(prefers-reduced-motion:no-preference){.wl-public-mode #wlCloudBox{animation:wlWelcomeIn .45s ease-out both}@keyframes wlWelcomeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}}
   `;
+  style.textContent = style.textContent.replace(/#wlCloudBox/g, '#wlCloudBox:not(.wl-auth-shell)');
+  style.textContent += `
+    .wl-auth-shell #wlCloudWork{margin-top:18px;padding-top:16px;border-top:1px solid #e7edf2;color:#344258;max-height:62vh;overflow:auto}
+    .wl-auth-shell #wlCloudWork select,.wl-auth-shell #wlCloudWork input{width:100%;min-width:0;box-sizing:border-box;padding:10px 11px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;color:#24334a;margin:5px 0}
+    .wl-auth-shell #wlCloudWork .cloud-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+    .wl-auth-shell #wlCloudWork button{border:1px solid #173d34;border-radius:9px;padding:9px 12px;background:linear-gradient(135deg,#1b7658,#124b3d);color:#fff;font-weight:750;margin:0}
+    .wl-auth-shell #wlCloudWork button:hover{filter:brightness(1.06)}
+    .wl-auth-shell #wlCloudWork .cloud-status{margin:8px 0;color:#526477;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+    .wl-auth-shell #wlCloudWork details{margin-top:10px;padding:10px 12px;border:1px solid #e2e8ef;border-radius:11px;background:#f8fafc}
+    .wl-auth-shell #wlCloudWork summary{cursor:pointer;color:#244b40;font-weight:800}
+    .wl-auth-shell #wlCloudWork .muted{color:#718096;font-size:10px;line-height:1.55}
+    .wl-auth-shell #wlCloudWork .branch-create-grid{display:grid;grid-template-columns:1fr 1.4fr auto;gap:7px;align-items:center;margin:10px 0}
+    @media(max-width:620px){.wl-auth-shell #wlCloudWork .branch-create-grid{grid-template-columns:1fr}.wl-auth-shell #wlCloudWork .branch-create-grid button{width:100%;min-height:42px}}
+  `;
   document.head.appendChild(style);
 
   function say(message) {
@@ -78,7 +92,35 @@
     if (!host || !anchor) return;
     const box = $('wlCloudBox') || document.createElement('section');
     box.id = 'wlCloudBox';
-    box.innerHTML = `
+    if (box.classList.contains('wl-auth-shell') && $('wlCloudAuth') && $('wlCloudWork')) {
+      // Keep the premium login markup from index.html; only hydrate the authenticated workspace.
+      $('wlCloudWork').innerHTML = `
+        <select id="wlBusinessSelect" aria-label="Choose business"></select>
+        <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Upload local records</button><button id="wlDiagnoseData" type="button">Check local/cloud data</button><div id="wlDataDiagnostic" class="cloud-status" role="status" aria-live="polite">Diagnostic has not been run. This check will not upload, delete or modify records.</div><button id="wlDownloadNow">Download cloud records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
+        <details id="wlBranchManager" open><summary>Branch management</summary>
+          <div class="muted" style="margin:7px 0">Manage outlets, choose the active working location, assign staff and review stock by branch.</div>
+          <label class="muted" for="wlBranchSelect">Active working branch</label>
+          <select id="wlBranchSelect" aria-label="Select active branch"><option value="">Loading branches…</option></select>
+          <div class="branch-create-grid">
+            <input id="wlNewBranchName" type="text" maxlength="100" placeholder="New branch name" aria-label="New branch name">
+            <input id="wlNewBranchAddress" type="text" maxlength="240" placeholder="Branch address (optional)" aria-label="Branch address">
+            <button id="wlCreateBranch" type="button">＋ Add branch</button>
+          </div>
+          <div class="cloud-actions"><button id="wlRefreshBranches" type="button">Refresh branch list</button></div>
+          <div id="wlBranchStatus" class="cloud-status">Select a business to load its branches.</div>
+          <div id="wlBranchInventory" class="muted"></div>
+          <details><summary>Assign staff to this branch</summary>
+            <select id="wlBranchMemberSelect" aria-label="Select business member"><option value="">Load business members…</option></select>
+            <div class="cloud-actions"><button id="wlAssignBranchMember">Assign staff</button><button id="wlRemoveBranchMember">Deactivate assignment</button></div>
+            <div id="wlBranchMembers" class="muted"></div>
+          </details>
+        </details>
+        <details><summary>Business modules</summary><div id="wlModules" class="muted">Select a business to view modules.</div></details>
+`;
+    } else {
+      // Backward-compatible fallback for pages that do not contain the premium login shell.
+      box.innerHTML = `
+
       <div class="wl-public-brand"><span class="wl-public-mark" aria-hidden="true">W</span><span><strong>WHITE LION</strong><small>BUSINESS SYSTEMS · SME BUSINESS OS</small></span></div>
       <div id="wlCloudAuth" class="wl-public-grid">
         <div class="wl-public-copy">
@@ -125,6 +167,7 @@
         </details>
         <details><summary>Business modules</summary><div id="wlModules" class="muted">Select a business to view modules.</div></details>
       </div>`;
+    }
     anchor.insertAdjacentElement('afterend', box);
     const dev = document.createElement('section');
     dev.id = 'wlDeveloperBox';
