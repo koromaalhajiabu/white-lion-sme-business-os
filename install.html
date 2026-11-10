@@ -4,8 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#087a43">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="White Lion SME">
+<meta name="apple-touch-icon" href="./icons/white-lion-180.png">
 <title>Install White Lion SME</title>
-<link rel="manifest" href="./manifest.webmanifest?v=43">
+<link rel="manifest" href="./manifest.webmanifest?v=46">
 <link rel="icon" href="./icons/white-lion-icon.svg">
 <style>
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(145deg,#075b35,#0c8f52);font:16px/1.5 system-ui,Arial;color:#203b2b}.card{width:min(440px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 24px 70px #0005;text-align:center}.logo{width:82px;height:82px;object-fit:contain;border-radius:20px;margin:0 auto 14px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:2px;color:#075b35}.card h1{font-size:25px;margin:7px 0}.card p{color:#718078;font-size:14px}.install{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:linear-gradient(135deg,#087a43,#075b35);color:#fff;font-size:16px;font-weight:800;margin:22px 0 12px}.open{display:block;padding:12px;color:#075b35;font-weight:700;text-decoration:none}.steps{margin-top:18px;padding:14px;background:#f5faf6;border-radius:12px;text-align:left;font-size:13px;color:#718078}.steps b{color:#203b2b}.foot{font-size:11px;color:#718078;margin-top:20px}
@@ -16,18 +19,50 @@
 <img class="logo" src="./icons/white-lion-192.png" alt="White Lion logo">
 <div class="eyebrow">WHITE LION TECH SOLUTIONS</div>
 <h1>Install White Lion SME</h1>
-<p>Install the business system on your Android phone. Your business records remain in the app's local storage.</p>
-<button class="install" id="installBtn">Install White Lion SME</button>
-<a class="open" href="./?app=white-lion-sme-v3">Open the business system</a>
-<div class="steps" id="help"><b>If the install button does not open:</b><br>1. Open this page in Google Chrome.<br>2. Tap the three-dot menu.<br>3. Choose <b>Install app</b> or <b>Add to Home screen</b>.<br>4. Launch the new White Lion SME icon.</div>
+<p>Add White Lion SME to your phone's home screen. It opens in its own app window. Your business records remain in the app's local storage and sync when connected.</p>
+<button class="install" id="installBtn" type="button">Preparing installation…</button>
+<a class="open" href="./?app=white-lion-sme-v4">Open the business system</a>
+<div class="steps" id="help"><b>Android (Chrome):</b><br>1. Tap <b>Install White Lion SME</b> if the button is available.<br>2. If not, open Chrome menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.<br>3. Confirm, then open White Lion SME from your home screen or app list.<br><br><b>iPhone (Safari):</b><br>1. Open this page in Safari.<br>2. Tap the <b>Share</b> icon.<br>3. Choose <b>Add to Home Screen</b>, then tap <b>Add</b>.<br><br><b>If it says already installed:</b> open the existing White Lion SME icon. Do not create another shortcut.</div>
 <div class="foot">Designed by Alhaji Abu Koroma</div>
 </main>
 <script>
-let deferred=null;
+let deferredPrompt=null;
 const btn=document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;btn.disabled=false});
-btn.addEventListener('click',async()=>{if(!deferred){document.getElementById('help').scrollIntoView({behavior:'smooth'});return}btn.disabled=true;deferred.prompt();await deferred.userChoice;deferred=null;btn.disabled=false});
-if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=39',{scope:'./',updateViaCache:'none'}).catch(()=>{}))}
+const help=document.getElementById('help');
+function showManual(message){
+ btn.disabled=false;
+ btn.textContent='Installation instructions';
+ help.scrollIntoView({behavior:'smooth',block:'nearest'});
+ if(message) help.insertAdjacentHTML('afterbegin','<p><b>'+message+'</b></p>');
+}
+window.addEventListener('beforeinstallprompt',event=>{
+ event.preventDefault();
+ deferredPrompt=event;
+ btn.disabled=false;
+ btn.textContent='Install White Lion SME';
+});
+window.addEventListener('appinstalled',()=>{
+ deferredPrompt=null;
+ btn.disabled=true;
+ btn.textContent='White Lion SME installed';
+});
+btn.addEventListener('click',async()=>{
+ if(!deferredPrompt){showManual(/iPad|iPhone|iPod/.test(navigator.userAgent)?'On iPhone or iPad, use Safari Share → Add to Home Screen.':'Use the browser menu and choose Install app or Add to Home screen.');return;}
+ btn.disabled=true;
+ try{
+  await deferredPrompt.prompt();
+  const choice=await deferredPrompt.userChoice;
+  if(choice?.outcome==='accepted'){btn.textContent='Installation accepted';}
+  else{btn.disabled=false;btn.textContent='Install White Lion SME';}
+ }catch(e){showManual('Automatic installation is unavailable. Use the Chrome menu steps below.');}
+ deferredPrompt=null;
+});
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+ window.addEventListener('load',async()=>{
+  try{await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});}catch(e){}
+  if(!deferredPrompt){btn.disabled=false;btn.textContent='Show installation instructions';}
+ });
+}else{btn.disabled=false;btn.textContent='Show installation instructions';}
 </script>
 </body>
 </html>

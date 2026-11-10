@@ -1,0 +1,93 @@
+name: Build and publish White Lion SME Android APK
+
+on:
+  push:
+    paths:
+      - 'android/**'
+      - 'gradle.properties'
+      - '.github/workflows/build-android-apk.yml'
+      - 'index.html'
+      - '*.js'
+      - '*.css'
+      - 'manifest.webmanifest'
+      - 'icons/**'
+      - 'modules/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: white-lion-android-apk
+  cancel-in-progress: false
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android build platform
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Copy the complete web application into the Android app
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/assets/site
+          rsync -a ./ android/app/src/main/assets/site/ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='android/' \
+            --exclude='node_modules/' \
+            --exclude='.DS_Store' \
+            --exclude='*.apk' \
+            --exclude='*.aab'
+
+      - name: Build installable Android APK
+        working-directory: android
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify APK output
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Keep workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: White-Lion-SME-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish public APK download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-apk-build-${{ github.run_number }}
+          name: White Lion SME Android APK ${{ github.run_number }}
+          body: |
+            Installable Android APK built from the White Lion SME Business Operating System repository.
+            Package: com.whitelion.sme
+            Build type: Debug-signed APK for direct installation.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: true
+          make_latest: false

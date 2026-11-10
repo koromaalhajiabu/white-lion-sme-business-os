@@ -1,5 +1,4 @@
 /* White Lion SME OS — Supabase workspace, master-data and atomic transaction sync. */
-try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
 (() => {
   const SUPABASE_URL = 'https://nclncqlgnxnijlumznnt.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_iPIsAysPnlvPCAoqntoNRg_dKcSZxKX';
@@ -48,8 +47,8 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
   function addPanel() {
     const host = document.querySelector('.main');
     const anchor = document.querySelector('.topbar');
-    if (!host || !anchor || $('wlCloudBox')) return;
-    const box = document.createElement('section');
+    if (!host || !anchor) return;
+    const box = $('wlCloudBox') || document.createElement('section');
     box.id = 'wlCloudBox';
     box.innerHTML = `
       <div style="font-weight:800">CLOUD ACCOUNT</div>
@@ -92,6 +91,7 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
       <div id="wlDevIdentity" class="dev-meta">Verifying developer permissions…</div>
       <div id="wlDevStatus" class="cloud-status">Loading secure platform controls…</div>
       <div id="wlDevStats" class="dev-meta"></div>
+      <div id="wlDevCustomerRegistrationPanel" style="display:block;visibility:visible;margin:14px 0;padding:14px;border:2px solid #d6ad57;border-radius:12px;background:#192a43;color:#fff;position:relative;z-index:2"><h3 style="margin:0 0 8px;color:#f0d28b;font-size:16px">NEW CUSTOMER REGISTRATIONS</h3><div style="color:#bac6d8;font-size:11px;margin-bottom:8px">New platform accounts and their email addresses appear here.</div><button id="wlDevRegistrationsRefresh" type="button">Refresh customer registrations</button><div id="wlDevRegistrations" class="dev-meta" style="display:block;visibility:visible;min-height:28px">Customer registration notifications load after developer verification.</div></div>
       <section class="dev-role-manager" id="wlDevRoleManager">
         <h3 style="margin:0 0 5px;color:#f0d28b">Assign or change a user's business role</h3>
         <div class="dev-role-help">Select a business workspace and a registered account. This grants or updates that person's access to the selected business only.</div>
@@ -127,7 +127,7 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
         <button id="wlDevResetData" class="danger">Reset all business data</button>
       </div>
       <div id="wlDevBusinesses"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New business registrations</h3><button id="wlDevBusinessRegistrationsRefresh" type="button">Refresh businesses</button></div><div id="wlDevBusinessRegistrations" class="dev-meta">Business registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
       <div class="dev-meta" style="margin-top:10px">Deletion requests suspend access immediately. Accounts remain recoverable for 30 days. Business owners and developer accounts are protected. Permanent deletion is only available after the recovery period through the secure server-side function.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px"><h3 style="margin:0">30-day deletion &amp; recovery</h3><button id="wlDevDeletionRefresh">Refresh requests</button></div>
@@ -146,6 +146,8 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
     $('wlDevRegistrationLimitRefresh').onclick = loadDeveloperRegistrationLimits;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
+    $('wlDevRegistrationsRefresh').onclick = loadDeveloperRegistrations;
+    $('wlDevBusinessRegistrationsRefresh').onclick = loadDeveloperBusinessRegistrations;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
     $('wlDevAuditSearch').oninput = renderDeveloperActivity;
@@ -312,6 +314,14 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
     if (panel.hidden) return;
     $('wlDevIdentity').textContent = 'Authenticated: ' + session.user.email + ' · Private developer';
     await loadDeveloperDashboard();
+    if (!window.__wlRegistrationRefreshTimer) {
+      window.__wlRegistrationRefreshTimer = setInterval(() => {
+        if (session && session.user.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com' && !document.hidden) {
+          loadDeveloperRegistrations();
+          loadDeveloperBusinessRegistrations();
+        }
+      }, 60000);
+    }
   }
   async function loadDeveloperDashboard() {
     const status = $('wlDevStatus');
@@ -340,6 +350,8 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
       };
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
+    await loadDeveloperRegistrations();
+    await loadDeveloperBusinessRegistrations();
     await loadDeveloperAccounts();
     await loadDeveloperRegistrationLimits();
     await loadDeveloperDeletionRequests();
@@ -492,6 +504,65 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
       '. Existing businesses: ' + Number(data?.existing_owned_businesses || 0) + '.';
     await loadDeveloperRegistrationLimits();
     await loadDeveloperAccounts();
+  }
+
+  async function loadDeveloperRegistrations() {
+    const host = $('wlDevRegistrations');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading new registrations…';
+    const {data,error} = await client.rpc('get_platform_registrations', {p_limit:200});
+    if (error) {
+      host.textContent = 'Registration notifications unavailable: ' + error.message + '. Run migration 028 first.';
+      return;
+    }
+    const rows = Array.isArray(data) ? data : [];
+    const unseen = rows.filter(x => !x.viewed_at).length;
+    host.innerHTML = '<div class="dev-meta" style="margin:7px 0 10px">' +
+      rows.length + ' registered account(s) · ' + unseen + ' not yet reviewed</div>' +
+      rows.map(x => {
+        const when = x.registered_at ? new Date(x.registered_at).toLocaleString() : 'Time unavailable';
+        return '<div class="dev-row"><div style="min-width:0"><strong>' +
+          esc(x.full_name || 'New customer') + '</strong><div class="dev-meta">' +
+          esc(x.email || '') + '</div><div class="dev-meta">Registered: ' + esc(when) +
+          ' · ' + (x.email_confirmed_at ? 'Email verified' : 'Email not verified') +
+          (x.viewed_at ? ' · Reviewed' : ' · NEW REGISTRATION') +
+          '</div></div></div>';
+      }).join('') || '<div class="dev-meta">No registrations have been recorded yet.</div>';
+    if (unseen) {
+      const marked = await client.rpc('mark_platform_registrations_viewed');
+      if (marked.error) host.insertAdjacentHTML('beforeend',
+        '<div class="dev-meta">Could not mark notifications as reviewed: ' + esc(marked.error.message) + '</div>');
+    }
+  }
+
+  async function loadDeveloperBusinessRegistrations() {
+    const host = $('wlDevBusinessRegistrations');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading new business registrations…';
+    const {data,error} = await client.rpc('get_platform_business_registrations', {p_limit:200});
+    if (error) {
+      host.textContent = 'Business registration notifications unavailable: ' + error.message + '. Run migration 029 first.';
+      return;
+    }
+    const rows = Array.isArray(data) ? data : [];
+    const unseen = rows.filter(x => !x.viewed_at).length;
+    host.innerHTML = '<div class="dev-meta" style="margin:7px 0 10px">' +
+      rows.length + ' business workspace(s) recorded · ' + unseen + ' not yet reviewed</div>' +
+      rows.map(x => {
+        const when = x.registered_at ? new Date(x.registered_at).toLocaleString() : 'Time unavailable';
+        return '<div class="dev-row"><div style="min-width:0"><strong>' +
+          esc(x.business_name || 'Unnamed business') + '</strong><div class="dev-meta">' +
+          esc(x.industry || 'Industry not specified') + '</div><div class="dev-meta">Owner: ' +
+          esc(x.owner_email || 'Email unavailable') + '</div><div class="dev-meta">Created: ' +
+          esc(when) + (x.viewed_at ? ' · Reviewed' : ' · NEW BUSINESS') +
+          '</div><div class="dev-meta">Business ID: ' + esc(x.business_id || '') +
+          '</div></div></div>';
+      }).join('') || '<div class="dev-meta">No business workspaces have been registered yet.</div>';
+    if (unseen) {
+      const marked = await client.rpc('mark_platform_business_registrations_viewed');
+      if (marked.error) host.insertAdjacentHTML('beforeend',
+        '<div class="dev-meta">Could not mark business notifications as reviewed: ' + esc(marked.error.message) + '</div>');
+    }
   }
 
   async function loadDeveloperAccounts() {
@@ -741,6 +812,10 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
       p_name: setup.name, p_industry: setup.industry, p_currency_code: setup.currency
     });
     if (error) return say('Could not create workspace: ' + error.message);
+    const { data: subscription, error: subscriptionError } = await client.from('business_subscriptions')
+      .select('status,trial_ends_at')
+      .eq('business_id', data)
+      .maybeSingle();
     const { error: moduleError } = await client.from('business_industry_modules')
       .update({ is_enabled: true })
       .eq('business_id', data)
@@ -752,7 +827,12 @@ try { document.title = '[cloud.js ran] ' + document.title; } catch (_) {}
       say('Workspace created, but industry modules could not be activated: ' + moduleError.message + '. Ask the developer to verify the module permissions.');
       return;
     }
-    say('Business workspace created. ' + setup.modules.length + ' industry modules activated.');
+    const subscriptionNotice = subscriptionError
+      ? 'Check Plans & Billing to confirm the subscription status.'
+      : subscription?.status === 'trial'
+        ? 'Your one-time 7-day Professional trial has started.'
+        : 'This account has already used its free trial. Open Plans & Billing and request an invoice to activate this additional workspace.';
+    say('Business workspace created. ' + setup.modules.length + ' industry modules activated. ' + subscriptionNotice);
   }
 
   function syncStatus(message) {

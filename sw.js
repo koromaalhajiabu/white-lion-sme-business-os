@@ -1,21 +1,25 @@
-const CACHE_NAME='white-lion-sme-v84';
+/* White Lion SME OS — network-first application updates with offline fallback. */
+const CACHE_NAME='white-lion-sme-v113';
 const APP_SHELL=[
   './',
   './index.html',
-  './manifest.webmanifest?v=43',
+  './manifest.webmanifest?v=46',
   './shared.js?v=2',
-  './i18n.js?v=6',
-  './cloud.js?v=34',
-  './operations.js?v=17',
+  './i18n.js?v=11',
+  './cloud.js?v=42',
+  './operations.js?v=22',
   './documents.js?v=3',
-  './league.js?v=6',
-  './icons/white-lion-icon.svg'
+  './icons/white-lion-icon.svg',
+  './icons/white-lion-192.png',
+  './icons/white-lion-512.png',
+  './league.js?v=2',
+  './billing.js?v=9',
+  './public-leagues.html'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    // Cache each resource independently so one optional asset cannot block app startup.
     await Promise.all(APP_SHELL.map(async path => {
       try {
         const response = await fetch(path, {cache:'reload'});
@@ -29,7 +33,9 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key.startsWith('white-lion-sme-') && key !== CACHE_NAME).map(key => caches.delete(key)));
+    await Promise.all(keys
+      .filter(key => key.startsWith('white-lion-sme-') && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
@@ -40,28 +46,36 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Stale-while-revalidate for everything: serve an already-cached copy
-  // instantly (so the app never hangs waiting on a slow/unreliable mobile
-  // connection), and refresh the cache quietly in the background for next
-  // time. Only reaches the network synchronously when nothing is cached yet.
+  const path = url.pathname.toLowerCase();
+  const isAppCode = request.mode === 'navigate' ||
+    /\.(html|js|css|webmanifest)$/.test(path);
+
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(request);
-    const network = fetch(request).then(response => {
-      if (response && response.ok) cache.put(request, response.clone()).catch(() => {});
-      return response;
-    }).catch(() => null);
+    if (isAppCode) {
+      // Always try the deployed version first. Use the cached copy only offline.
+      try {
+        const fresh = await fetch(request, {cache:'no-store'});
+        if (fresh && fresh.ok) {
+          await cache.put(request, fresh.clone());
+          return fresh;
+        }
+        if (fresh) return fresh;
+      } catch (_) {}
+      const cached = await cache.match(request) ||
+        (request.mode === 'navigate' ? await cache.match('./index.html') : null);
+      return cached || Response.error();
+    }
 
-    if (cached) {
-      network.catch(() => {});
-      return cached;
+    // Static media can be served from cache immediately.
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    try {
+      const fresh = await fetch(request);
+      if (fresh && fresh.ok) await cache.put(request, fresh.clone());
+      return fresh;
+    } catch (_) {
+      return Response.error();
     }
-    const response = await network;
-    if (response) return response;
-    if (request.mode === 'navigate') {
-      const fallback = await cache.match('./index.html');
-      if (fallback) return fallback;
-    }
-    return Response.error();
   })());
 });
