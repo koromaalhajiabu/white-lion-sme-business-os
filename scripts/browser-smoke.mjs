@@ -73,6 +73,26 @@ async function runViewport(name, viewport) {
       script: result.startup.serviceWorkerScript
     });
 
+    if (viewport.isMobile) {
+      const mobileLayout = await page.evaluate(() => {
+        const viewportMeta = document.querySelector('meta[name="viewport"]')?.content || '';
+        const width = document.documentElement.clientWidth;
+        const screenWidth = window.innerWidth;
+        return {
+          viewportMeta,
+          viewportConfigured: /width\\s*=\\s*device-width/i.test(viewportMeta),
+          screenWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          horizontalOverflow: document.documentElement.scrollWidth > screenWidth + 1,
+          visualViewportWidth: window.visualViewport?.width || null,
+          layoutViewportMatchesScreen: Math.abs(width - screenWidth) <= 1
+        };
+      });
+      record(result, 'Android viewport is configured for device width', mobileLayout.viewportConfigured, mobileLayout);
+      record(result, 'Android layout has no page-level horizontal overflow', !mobileLayout.horizontalOverflow, mobileLayout);
+      record(result, 'Android layout viewport matches device width', mobileLayout.layoutViewportMatchesScreen, mobileLayout);
+    }
+
     // The signed-out experience intentionally hides private workspace navigation.
     // Only authenticate when dedicated CI credentials have been configured.
     let authenticatedWorkspace = false;
@@ -254,7 +274,9 @@ async function runViewport(name, viewport) {
   report.browsers.push(result);
 }
 
-await runViewport('android-mobile', { width: 390, height: 844, isMobile: true, hasTouch: true });
+await runViewport('android-compact', { width: 360, height: 800, isMobile: true, hasTouch: true });
+await runViewport('android-standard', { width: 390, height: 844, isMobile: true, hasTouch: true });
+await runViewport('android-large', { width: 412, height: 915, isMobile: true, hasTouch: true });
 await runViewport('desktop', { width: 1365, height: 900 });
 
 const all = report.browsers.flatMap(browser => browser.checks);
