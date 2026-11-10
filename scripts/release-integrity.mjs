@@ -8,7 +8,7 @@ const migrations = fs.readdirSync(migrationDir).filter(name => name.endsWith('.s
 const byVersion = new Map();
 
 for (const name of migrations) {
-  const match = name.match(/^(\\d+)_/);
+  const match = name.match(/^(\d+)_/);
   if (!match) {
     fail('Migration filename has no numeric version prefix: ' + name);
     continue;
@@ -46,7 +46,7 @@ try {
     fail('PWA manifest is missing a valid start_url, scope or standalone display mode');
   }
   for (const icon of manifest.icons || []) {
-    const iconPath = path.resolve(root, icon.src.replace(/^\\.\\//, ''));
+    const iconPath = path.resolve(root, icon.src.replace(/^\.\//, ''));
     if (!iconPath.startsWith(root + path.sep) || !fs.existsSync(iconPath)) {
       fail('PWA icon is missing or outside the repository: ' + icon.src);
     }
@@ -56,19 +56,19 @@ try {
 }
 
 const frontendFiles = fs.readdirSync(root)
-  .filter(name => /\\.(js|html)$/i.test(name))
+  .filter(name => /\.(js|html)$/i.test(name))
   .map(name => path.join(root, name));
 for (const file of frontendFiles) {
   const source = fs.readFileSync(file, 'utf8');
-  if (/SUPABASE_SERVICE_ROLE_KEY\\s*[:=]\\s*['"`]/i.test(source)
-      || /service_role\\s*[:=]\\s*['"`]eyJ/i.test(source)) {
+  if (/SUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*['"`]/i.test(source)
+      || /service_role\s*[:=]\s*['"`]eyJ/i.test(source)) {
     fail('Possible Supabase service-role secret embedded in browser source: ' + path.basename(file));
   }
 }
 
 const activity = fs.readFileSync(path.join(root, 'android/app/src/main/java/com/whitelion/sme/MainActivity.java'), 'utf8');
 if (!activity.includes('WebViewAssetLoader') || !activity.includes('APP_ASSET_URL')
-    || /webView\\.loadUrl\\(APP_URL\\)/.test(activity)) {
+    || /webView\.loadUrl\(APP_URL\)/.test(activity)) {
   fail('Android app must load its bundled local application shell through WebViewAssetLoader');
 }
 const actionCentre = fs.readFileSync(path.join(root, 'action-centre.js'), 'utf8');
