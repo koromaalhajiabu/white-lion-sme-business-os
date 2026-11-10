@@ -892,7 +892,7 @@ async function render(){
   const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
   const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
   const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!x.branchId||String(x.branchId)===String(branchId)));
-  const scopedStock=stockRows.filter(x=>(!businessId||!x.businessId||String(x.businessId)===String(businessId))&&String(x.branchId||'local-main')===String(branchId));
+  const scopedStock=stockRows.filter(x=>!businessId||!x.businessId||String(x.businessId)===String(businessId));
   const data={products:scopedProducts,sales:scopedSales,stockRows:scopedStock,branchId,businessName:active?.name||state.business.name||'Selected business',branchName:branch?.name||'Local device stock',currency:state.business.currency||'SLE'};
   if(window.WhiteLionSmartReorder?.render)window.WhiteLionSmartReorder.render(data);
   else v.innerHTML='<div class="panel"><h2>Smart Reorder Planner is loading</h2><p class="panel-sub">Please wait a moment, then reopen this section.</p></div>';
