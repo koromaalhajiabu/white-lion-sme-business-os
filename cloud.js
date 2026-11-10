@@ -126,7 +126,7 @@
         <button id="wlDevResetData" class="danger">Reset all business data</button>
       </div>
       <div id="wlDevBusinesses"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New customer registrations</h3><button id="wlDevRegistrationsRefresh" type="button">Refresh registrations</button></div><div id="wlDevRegistrations" class="dev-meta">Registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New customer registrations</h3><button id="wlDevRegistrationsRefresh" type="button">Refresh customers</button></div><div id="wlDevRegistrations" class="dev-meta">Customer registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New business registrations</h3><button id="wlDevBusinessRegistrationsRefresh" type="button">Refresh businesses</button></div><div id="wlDevBusinessRegistrations" class="dev-meta">Business registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
       <div class="dev-meta" style="margin-top:10px">Deletion requests suspend access immediately. Accounts remain recoverable for 30 days. Business owners and developer accounts are protected. Permanent deletion is only available after the recovery period through the secure server-side function.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px"><h3 style="margin:0">30-day deletion &amp; recovery</h3><button id="wlDevDeletionRefresh">Refresh requests</button></div>
@@ -146,6 +146,7 @@
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevRegistrationsRefresh').onclick = loadDeveloperRegistrations;
+    $('wlDevBusinessRegistrationsRefresh').onclick = loadDeveloperBusinessRegistrations;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
     $('wlDevAuditSearch').oninput = renderDeveloperActivity;
@@ -316,6 +317,7 @@
       window.__wlRegistrationRefreshTimer = setInterval(() => {
         if (session && session.user.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com' && !document.hidden) {
           loadDeveloperRegistrations();
+          loadDeveloperBusinessRegistrations();
         }
       }, 60000);
     }
@@ -348,6 +350,7 @@
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
     await loadDeveloperRegistrations();
+    await loadDeveloperBusinessRegistrations();
     await loadDeveloperAccounts();
     await loadDeveloperRegistrationLimits();
     await loadDeveloperDeletionRequests();
@@ -528,6 +531,36 @@
       const marked = await client.rpc('mark_platform_registrations_viewed');
       if (marked.error) host.insertAdjacentHTML('beforeend',
         '<div class="dev-meta">Could not mark notifications as reviewed: ' + esc(marked.error.message) + '</div>');
+    }
+  }
+
+  async function loadDeveloperBusinessRegistrations() {
+    const host = $('wlDevBusinessRegistrations');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading new business registrations…';
+    const {data,error} = await client.rpc('get_platform_business_registrations', {p_limit:200});
+    if (error) {
+      host.textContent = 'Business registration notifications unavailable: ' + error.message + '. Run migration 029 first.';
+      return;
+    }
+    const rows = Array.isArray(data) ? data : [];
+    const unseen = rows.filter(x => !x.viewed_at).length;
+    host.innerHTML = '<div class="dev-meta" style="margin:7px 0 10px">' +
+      rows.length + ' business workspace(s) recorded · ' + unseen + ' not yet reviewed</div>' +
+      rows.map(x => {
+        const when = x.registered_at ? new Date(x.registered_at).toLocaleString() : 'Time unavailable';
+        return '<div class="dev-row"><div style="min-width:0"><strong>' +
+          esc(x.business_name || 'Unnamed business') + '</strong><div class="dev-meta">' +
+          esc(x.industry || 'Industry not specified') + '</div><div class="dev-meta">Owner: ' +
+          esc(x.owner_email || 'Email unavailable') + '</div><div class="dev-meta">Created: ' +
+          esc(when) + (x.viewed_at ? ' · Reviewed' : ' · NEW BUSINESS') +
+          '</div><div class="dev-meta">Business ID: ' + esc(x.business_id || '') +
+          '</div></div></div>';
+      }).join('') || '<div class="dev-meta">No business workspaces have been registered yet.</div>';
+    if (unseen) {
+      const marked = await client.rpc('mark_platform_business_registrations_viewed');
+      if (marked.error) host.insertAdjacentHTML('beforeend',
+        '<div class="dev-meta">Could not mark business notifications as reviewed: ' + esc(marked.error.message) + '</div>');
     }
   }
 
