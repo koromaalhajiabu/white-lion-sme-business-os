@@ -777,6 +777,7 @@ html[data-theme="dark"] .footer{color:#8795aa}
     <button data-page="customers"><span class="ico">♙</span>Customers</button>
     <button data-page="customerintel"><span class="ico">✦</span>Customer Intelligence</button>
     <button data-page="suppliers"><span class="ico">♧</span>Suppliers</button>
+    <button data-page="supplierintel"><span class="ico">◈</span>Supplier Intelligence</button>
     <button data-page="expenses"><span class="ico">↗</span>Expenses</button>
     <button data-page="reports"><span class="ico">▤</span>Reports</button>
      <button data-page="intelligence"><span class="ico">✦</span>Business Intelligence</button>
@@ -827,10 +828,10 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning'};
+const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',supplierintel:'Supplier Intelligence',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
- const labels={...industryWording(),league:'Sports & Local League'},icons={customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',league:'⚽',employees:'♟',settings:'⚙'};
+ const labels={...industryWording(),league:'Sports & Local League'},icons={supplierintel:'◈',customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',league:'⚽',employees:'♟',settings:'⚙'};
  document.querySelectorAll('[data-page]').forEach(b=>{const p=b.dataset.page;if(labels[p]||p==='dashboard'||p==='employees'||p==='settings')b.innerHTML='<span class="ico">'+icons[p]+'</span>'+(labels[p]||({dashboard:'Overview',employees:'Employees',settings:'Business settings'}[p]))});
  if(state.page==='dashboard')document.getElementById('crumb').textContent='Overview';
  else document.getElementById('crumb').textContent=labels[state.page]||({employees:'Employees',settings:'Business settings'}[state.page]||state.page);
@@ -1070,6 +1071,20 @@ async function render(){
    return
   }
   if(state.page==='purchases'){const [purchases,products,suppliers]=await Promise.all([all('purchases'),all('products'),all('suppliers')]);const activeBranches=window.whiteLionCloud?.getBranches?.()||[];const currentBranch=window.whiteLionCloud?.getSelectedBranch?.();const branchOptions=[...(currentBranch?[{value:currentBranch.id,label:currentBranch.name+' (selected)'}]:[]),...activeBranches.filter(b=>b.id!==currentBranch?.id).map(b=>({value:b.id,label:b.name}))];if(!branchOptions.length)branchOptions.push({value:'',label:'Offline / no cloud branch selected'});v.innerHTML=pageHeader(industryWording().purchases,'Record stock purchases from suppliers',`<button class="btn primary" id="addPurchase">＋ Record purchase</button>`)+`<div class="panel">${table(['Date','Supplier','Product','Quantity','Unit cost','Total'],purchases.slice().reverse().map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.supplier)}</td><td>${esc(x.product)}</td><td>${x.quantity}</td><td>${money(x.cost)}</td><td><b>${money(x.total)}</b></td></tr>`).join(''))}</div>`;document.getElementById('addPurchase').onclick=()=>{if(!products.length){toast('Add products first');return}showModal('Record purchase',[{name:'branchId',label:'Receiving branch',type:'select',options:branchOptions},{name:'productId',label:'Product',type:'select',options:products.map(p=>String(p.id)+'|'+p.name)},{name:'supplier',label:'Supplier',type:'select',options:['Not specified',...suppliers.map(s=>s.name)]},{name:'quantity',label:'Quantity received',type:'number',required:true,step:'0.01',min:0.01},{name:'cost',label:'Unit cost',type:'number',required:true,step:'0.01',min:0},{name:'date',label:'Purchase date',type:'date',required:true}],async d=>{const [id]=d.productId.split('|'),p=products.find(x=>String(x.id)===String(id)),qty=Number(d.quantity),cost=Number(d.cost),branchId=d.branchId||'local-main',localBusinessId=window.whiteLionCloud?.getActiveBusiness?.()?.id||null,stockRows=(await all('branchInventory')).filter(x=>!x.businessId||!localBusinessId||x.businessId===localBusinessId);let branchStock=stockRows.find(x=>x.id===String(branchId)+'|'+String(p.id));if(!branchStock){const existing=stockRows.filter(x=>String(x.productId)===String(p.id));branchStock={id:String(branchId)+'|'+String(p.id),branchId,productId:p.id,quantity:existing.length?0:Number(p.stock||0)};}branchStock.quantity=Number(branchStock.quantity||0)+qty;branchStock.businessId=localBusinessId||branchStock.businessId||null;await put('branchInventory',branchStock);p.stock=stockRows.filter(x=>String(x.productId)===String(p.id)&&x.id!==branchStock.id).reduce((a,x)=>a+Number(x.quantity||0),Number(branchStock.quantity||0));p.cost=cost;await put('products',p);await put('purchases',{date:d.date,supplier:d.supplier,product:p.name,productId:p.id,quantity:qty,cost,total:qty*cost,branchId:d.branchId||null,localBusinessId,createdAt:new Date().toISOString()});toast('Purchase recorded; stock increased')})};return}
+ if(state.page==='supplierintel'){
+  const [purchases,suppliers,products]=await Promise.all([all('purchases'),all('suppliers'),all('products')]);
+  const active=window.whiteLionCloud?.getActiveBusiness?.()||null;
+  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null;
+  const businessId=active?.id||null,branchId=branch?.id||null;
+  const belongs=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||!x.branchId||String(x.branchId)===String(branchId));
+  const scopedPurchases=purchases.filter(belongs);
+  const scopedSuppliers=suppliers.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId));
+  const scopedProducts=products.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId));
+  const data={purchases:scopedPurchases,suppliers:scopedSuppliers,products:scopedProducts,currency:state.business.currency||'SLE',businessName:active?.name||state.business.name||'Selected business',branchName:branch?.name||'All branches'};
+  if(window.WhiteLionSupplierIntelligence?.render)window.WhiteLionSupplierIntelligence.render(data);
+  else v.innerHTML='<div class="panel"><h2>Supplier Intelligence is loading</h2><p class="panel-sub">Please wait a moment, then reopen this section.</p></div>';
+  return;
+ }
  if(state.page==='customerintel'){
   const [contacts,sales,returns]=await Promise.all([all('customers'),all('sales'),all('returns')]);
   const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null,branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||null;
@@ -1386,6 +1401,7 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
 })();
 </script>
 <script src="./executive-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('executive-intelligence.js')"></script>
+<script src="./supplier-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('supplier-intelligence.js')"></script>
 <script src="./cloud.js?v=42" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
 <script src="./operations.js?v=22" defer onerror="window.__wlScriptFail.push('operations.js')"></script>
 <script src="./documents.js?v=3" defer onerror="window.__wlScriptFail.push('documents.js')"></script>
