@@ -79,6 +79,7 @@ jobs:
           retention-days: 30
 
       - name: Publish public APK download release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-apk-build-${{ github.run_number }}
