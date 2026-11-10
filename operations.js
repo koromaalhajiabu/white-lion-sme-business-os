@@ -142,6 +142,8 @@
       </details>
     `;
     work.appendChild(box);
+    const opsNav=document.getElementById('operationsNavLink');
+    if(opsNav){opsNav.hidden=false;opsNav.addEventListener('click',()=>{const panel=document.getElementById('wlOpsPanel');if(panel)panel.scrollIntoView({behavior:'smooth',block:'start'});});}
     const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
     bind('wlOpsTransferCreate',createTransfer);bind('wlOwnerRefresh',renderOwnerDashboard);
     document.getElementById('wlOwnerPeriod').addEventListener('change',renderOwnerDashboard);bind('wlOpsAssignPending',assignPendingTransactions);bind('wlOpsCashSave',saveCashbook);
