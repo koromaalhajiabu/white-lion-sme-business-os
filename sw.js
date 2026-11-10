@@ -15,7 +15,7 @@ const APP_SHELL=[
   './league.js?v=2',
   './billing.js?v=9',
   './executive-intelligence.js?v=1',
-  './action-centre.js?v=3',
+  './action-centre.js?v=4',
   './public-leagues.html'
 ];
 
