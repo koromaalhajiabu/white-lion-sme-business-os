@@ -111,3 +111,70 @@
  .wl-auth-glow,.wl-auth-story:after,.wl-auth-live-dot,.wl-auth-card{animation:none!important}
  .wl-auth-actions button,.wl-password-reveal{transition:none!important}
 }
+
+
+/* Richer, restrained motion across the full sign-in experience. */
+.wl-dynamic-canvas{
+  position:absolute;inset:0;z-index:0;width:100%;height:100%;
+  pointer-events:none;mix-blend-mode:screen;opacity:.62
+}
+.wl-dynamic-grid{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.8),transparent 92%);
+  animation:wlGridDrift 24s linear infinite
+}
+.wl-auth-story{
+  z-index:1;
+  background-size:180% 180%;
+  animation:wlStoryBreath 12s ease-in-out infinite alternate;
+}
+.wl-auth-story:before{
+  content:"";position:absolute;inset:-45% auto -45% -55%;width:38%;
+  z-index:0;pointer-events:none;transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.11),transparent);
+  animation:wlStorySweep 8.5s ease-in-out infinite
+}
+.wl-auth-story>*{position:relative;z-index:1}
+.wl-auth-story:after{z-index:0}
+.wl-auth-live-dot{animation:wlAuthPulse 2s ease-in-out infinite,wlDotGlow 2s ease-in-out infinite}
+.wl-auth-feature-list>div{
+  transition:transform .28s ease,filter .28s ease;
+  animation:wlFeatureRise .7s cubic-bezier(.2,.7,.2,1) both
+}
+.wl-auth-feature-list>div:hover{transform:translateX(5px);filter:brightness(1.08)}
+.wl-auth-feature-list>div>span{transition:transform .3s ease,background .3s ease,box-shadow .3s ease}
+.wl-auth-feature-list>div:hover>span{
+  transform:translateY(-3px) rotate(-5deg);
+  background:rgba(255,255,255,.2);box-shadow:0 8px 20px rgba(0,0,0,.12)
+}
+.wl-auth-card{animation:wlBrandCardIn .85s cubic-bezier(.2,.7,.2,1) both}
+.wl-auth-actions button{position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .25s ease,filter .25s ease}
+#wlSignIn:before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg,transparent 28%,rgba(255,255,255,.25) 48%,transparent 68%);
+  transform:translateX(-130%);animation:wlButtonSheen 5.5s ease-in-out infinite
+}
+#wlSignIn:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 13px 26px rgba(8,122,67,.25)}
+#wlSignUp:hover{transform:translateY(-2px)}
+.wl-auth-mark{animation:wlMarkFloat 5s ease-in-out infinite}
+.wl-word-cycle{display:inline-block;transition:opacity .26s ease,transform .26s ease}
+.wl-word-out{opacity:0;transform:translateY(8px)}
+@keyframes wlStoryBreath{0%{background-position:0% 45%}100%{background-position:100% 55%}}
+@keyframes wlStorySweep{0%,18%{left:-55%;opacity:0}30%{opacity:1}55%,100%{left:125%;opacity:0}}
+@keyframes wlGridDrift{from{background-position:0 0,0 0}to{background-position:0 32px,32px 0}}
+@keyframes wlDotGlow{0%,100%{box-shadow:0 0 0 5px rgba(166,243,189,.13),0 0 0 0 rgba(166,243,189,0)}50%{box-shadow:0 0 0 7px rgba(166,243,189,.08),0 0 18px 4px rgba(166,243,189,.24)}}
+@keyframes wlButtonSheen{0%,62%{transform:translateX(-130%)}84%,100%{transform:translateX(130%)}}
+@keyframes wlMarkFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(max-width:760px){
+  .wl-auth-story{animation-duration:16s}
+  .wl-auth-story:before{animation-duration:11s}
+  .wl-auth-feature-list>div:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .wl-dynamic-grid,.wl-auth-story,.wl-auth-story:before,.wl-auth-live-dot,
+  .wl-auth-feature-list>div,.wl-auth-mark,#wlSignIn:before{
+    animation:none!important
+  }
+  .wl-auth-feature-list>div,.wl-auth-feature-list>div>span,
+  .wl-auth-actions button{transition:none!important}
+}
