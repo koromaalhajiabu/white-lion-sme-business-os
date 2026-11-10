@@ -1,0 +1,113 @@
+/* White Lion premium sign-in — green and white brand system. */
+.wl-auth-shell{
+  --wl-brand:#087a43;--wl-brand-dark:#075b35;--wl-brand-bright:#20a85d;
+  position:relative;isolation:isolate;overflow:hidden;
+  margin:18px clamp(12px,2.6vw,34px) 22px;
+  padding:clamp(20px,3vw,38px);
+  color:#173d2a;
+  background:
+    radial-gradient(ellipse at 90% 8%,rgba(32,168,93,.10),transparent 34%),
+    radial-gradient(ellipse at 4% 100%,rgba(8,122,67,.07),transparent 38%),
+    #fff;
+  border:1px solid #dcece1;border-radius:27px;
+  box-shadow:0 24px 70px rgba(7,91,53,.10);
+}
+.wl-auth-shell:before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(115deg,transparent 0 58%,rgba(8,122,67,.025) 58% 59%,transparent 59%);
+}
+.wl-auth-glow{filter:blur(1px);border-color:rgba(8,122,67,.15);animation:wlBrandFloat 13s ease-in-out infinite}
+.wl-auth-glow-one{border-color:rgba(8,122,67,.14);box-shadow:0 0 0 28px rgba(8,122,67,.025),0 0 0 58px rgba(8,122,67,.018)}
+.wl-auth-glow-two{background:rgba(32,168,93,.09);animation-delay:-5s}
+.wl-auth-brand{color:#075b35}
+.wl-auth-mark,.wl-auth-mini-mark{
+  color:#fff;background:linear-gradient(145deg,#20a85d,#075b35);
+  box-shadow:0 8px 22px rgba(8,122,67,.22);
+}
+.wl-auth-brand div span{color:#718879}
+.wl-auth-secure{border-color:#d8eade;color:#087a43;background:#f5fbf6}
+.wl-auth-layout{grid-template-columns:minmax(0,1.08fr) minmax(300px,.82fr);gap:clamp(22px,4vw,52px);max-width:1160px;margin:clamp(24px,4vw,46px) auto 30px}
+.wl-auth-story{
+  position:relative;overflow:hidden;min-height:410px;padding:clamp(25px,3.8vw,42px);
+  display:flex;flex-direction:column;justify-content:center;
+  border:1px solid rgba(255,255,255,.13);border-radius:23px;
+  background:radial-gradient(circle at 85% 12%,rgba(255,255,255,.14),transparent 34%),linear-gradient(145deg,#0a7540 0%,#075b35 58%,#06472c 100%);
+  box-shadow:0 20px 44px rgba(7,91,53,.17);
+}
+.wl-auth-story:after{
+  content:"";position:absolute;width:230px;height:230px;right:-105px;bottom:-125px;
+  border:1px solid rgba(255,255,255,.18);border-radius:50%;
+  box-shadow:0 0 0 24px rgba(255,255,255,.035),0 0 0 50px rgba(255,255,255,.025);
+  animation:wlBrandFloat 12s ease-in-out infinite reverse;pointer-events:none
+}
+.wl-auth-kicker{color:#c9f1d6}
+.wl-auth-live-dot{background:#a6f3bd;box-shadow:0 0 0 5px rgba(166,243,189,.15)}
+.wl-auth-story h1{color:#fff;font-size:clamp(34px,4.1vw,54px);letter-spacing:-1.9px}
+.wl-auth-story h1 em{color:#c6f4d2}
+.wl-auth-story>p{color:#e0f1e5}
+.wl-auth-feature-list{gap:15px;margin-top:26px}
+.wl-auth-feature-list>div>span{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.16);color:#d0f5d9}
+.wl-auth-feature-list b{color:#fff}
+.wl-auth-feature-list small{color:#d1e9d8}
+.wl-auth-footnote{color:#cce6d3}
+.wl-auth-orbit{color:#c6f4d2}
+.wl-auth-card{
+  position:relative;background:#fff;color:#173d2a;border:1px solid #e0ece3;
+  border-radius:22px;padding:clamp(21px,2.8vw,31px);
+  box-shadow:0 18px 50px rgba(7,91,53,.11);
+  animation:wlBrandCardIn .7s cubic-bezier(.2,.7,.2,1) both;
+}
+.wl-auth-mini-mark{width:38px;height:38px;border-radius:12px}
+.wl-auth-access{color:#087a43;letter-spacing:1.4px}
+.wl-auth-heading h2{color:#123d29;font-size:26px}
+.wl-auth-heading p{color:#738579}
+.wl-auth-status{background:#f0f8f2;color:#28764a;border:1px solid #e0efe4}
+.wl-auth-status-dot{background:#20a85d;box-shadow:0 0 0 4px rgba(32,168,93,.12)}
+.wl-auth-label{color:#315a42}
+.wl-auth-input-wrap{border-color:#dce9df;background:#fbfefc}
+.wl-auth-input-wrap:focus-within{border-color:#20a85d;background:#fff;box-shadow:0 0 0 4px rgba(32,168,93,.12)}
+.wl-auth-input-wrap>span{color:#7ca28a}
+.wl-auth-input-wrap input{color:#173d2a}
+.wl-auth-input-wrap input::placeholder{color:#9aaa9f}
+.wl-auth-hint{color:#819187}
+.wl-auth-actions button{min-height:48px;border-radius:12px}
+#wlSignIn{border-color:#075b35;background:linear-gradient(110deg,#0b8b4b,#075b35);box-shadow:0 9px 20px rgba(8,122,67,.19)}
+#wlSignUp{border-color:#d8e9dd;background:#f8fcf9;color:#087a43}
+#wlSignUp:hover{background:#edf8f0;border-color:#b9ddc4}
+.wl-auth-card-foot{border-color:#e8f0ea;color:#819187}
+.wl-auth-bottom{border-color:#dcece1;color:#748a7b}
+.wl-auth-bottom span:first-child{color:#087a43}
+.wl-password-reveal{
+  display:inline-flex;align-items:center;justify-content:center;margin:7px 0 0 auto;
+  min-width:58px;min-height:29px;padding:4px 10px;border:1px solid #dce9df;
+  border-radius:8px;background:#f5fbf6;color:#087a43;font-size:10px;font-weight:800;
+}
+.wl-password-reveal:focus-visible,.wl-auth-actions button:focus-visible{outline:3px solid rgba(32,168,93,.25);outline-offset:3px}
+.wl-auth-actions button:active{transform:translateY(1px) scale(.99)}
+.wl-dynamic-canvas{opacity:.8}
+.wl-dynamic-grid{opacity:.10;background-image:linear-gradient(rgba(8,122,67,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(8,122,67,.10) 1px,transparent 1px)}
+.wl-word-cycle{color:#c6f4d2}
+@keyframes wlBrandFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(13px,17px,0)}}
+@keyframes wlBrandCardIn{from{opacity:0;transform:translateY(17px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:760px){
+ .wl-auth-shell{margin:10px 8px 16px;padding:16px 13px;border-radius:20px}
+ .wl-auth-brand{gap:9px}.wl-auth-mark{width:40px;height:40px;border-radius:13px}
+ .wl-auth-secure{font-size:7px;padding:6px 7px;letter-spacing:.45px}
+ .wl-auth-layout{grid-template-columns:1fr;gap:15px;margin:20px auto 20px}
+ .wl-auth-story{min-height:0;padding:23px 20px;border-radius:17px}
+ .wl-auth-story h1{font-size:clamp(30px,8vw,38px);letter-spacing:-1.2px}
+ .wl-auth-feature-list{grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}
+ .wl-auth-feature-list>div{align-items:flex-start;gap:8px}
+ .wl-auth-feature-list>div>span{width:29px;height:29px;flex:0 0 29px}
+ .wl-auth-feature-list b{font-size:9px}.wl-auth-feature-list small{font-size:8px}
+ .wl-auth-footnote{margin-top:16px;font-size:9px}
+ .wl-auth-card{padding:20px 17px;border-radius:18px}
+ .wl-auth-heading{margin:16px 0 13px}
+ .wl-auth-heading h2{font-size:23px}
+ .wl-auth-bottom{font-size:8px;gap:8px}
+}
+@media(max-width:380px){.wl-auth-feature-list{grid-template-columns:1fr}.wl-auth-feature-list small{font-size:9px}}
+@media(prefers-reduced-motion:reduce){
+ .wl-auth-glow,.wl-auth-story:after,.wl-auth-live-dot,.wl-auth-card{animation:none!important}
+ .wl-auth-actions button,.wl-password-reveal{transition:none!important}
+}
