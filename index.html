@@ -10,7 +10,8 @@
    person always gets a visible, actionable message instead of nothing. */
 window.__wlScriptFail = [];
 setTimeout(function () {
-  var ok = document.getElementById('wlCloudBox') || document.querySelector('.content');
+  var contentEl = document.querySelector('.content');
+  var ok = document.getElementById('wlCloudBox') || (contentEl && contentEl.children.length > 0);
   if (ok && !window.__wlScriptFail.length) return;
   var box = document.createElement('div');
   box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:14px system-ui,-apple-system,sans-serif;padding:16px;text-align:center;cursor:pointer';
@@ -803,7 +804,7 @@ function applyIndustryWording(){
  else document.getElementById('crumb').textContent=labels[state.page]||({employees:'Employees',settings:'Business settings'}[state.page]||state.page);
 }
 const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:state.business.currency||'SLE',maximumFractionDigits:2}).format(Number(n||0));
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const d=r.result;stores.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id',autoIncrement:true})});if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'key'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function openDB(){return new Promise((resolve,reject)=>{let settled=false;const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error('Opening local storage timed out. Close any other open tabs of this app and try again.'))}},6000);const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const d=r.result;stores.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id',autoIncrement:true})});if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'key'})};r.onsuccess=()=>{if(!settled){settled=true;clearTimeout(timer);resolve(r.result)}};r.onerror=()=>{if(!settled){settled=true;clearTimeout(timer);reject(r.error)}};r.onblocked=()=>{if(!settled){settled=true;clearTimeout(timer);reject(new Error('This app is open in another tab with an older version. Close that tab, then try again.'))}}})}
 function all(store){return new Promise((resolve,reject)=>{const r=db.transaction(store).objectStore(store).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');const r=tx.objectStore(store).put(obj);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 function del(store,id){return new Promise((resolve,reject)=>{const numeric=Number(id),key=String(id).trim()!==''&&Number.isFinite(numeric)?numeric:id;const r=db.transaction(store,'readwrite').objectStore(store).delete(key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
