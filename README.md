@@ -57,7 +57,7 @@ This is a manual statement import and matching foundation. It does not connect d
 - Migrations 018 and 019 provide the double-entry ledger, chart of accounts, balanced journals, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting, moving weighted-average stock valuation and COGS posting foundation. Historical sales are not backfilled; opening balances and controlled period close/reversal workflows still require further work and acceptance testing.
 - Existing operational dashboard totals are not audited net profit or available cash. Do not use the platform as the sole statutory accounting record until independent accounting acceptance tests are complete.
 - The browser JSON export is a local-device backup, not a full Supabase backup.
-- A scheduled database + private Storage backup workflow is now in `.github/workflows/supabase-backup.yml`. It requires the documented GitHub Actions secrets, and a full recovery test in a separate Supabase project is still required.
+- A scheduled encrypted logical JSON + Auth metadata + private Storage backup workflow is in `.github/workflows/supabase-backup.yml`. It reads the `SUPABASE_SERVICE_ROLE_KEY` and `BACKUP_ENCRYPTION_PASSPHRASE` GitHub Actions secrets. It is not a physical PostgreSQL dump; a full recovery test in a separate Supabase project is still required.
 - Subscription plans, business trials, invoice records, payment submissions and administrator verification are present in the repository migrations and billing interface. Payments are manually submitted and verified; direct Orange Money/AfriMoney/bank API checkout, automated recurring collection and independent end-to-end billing acceptance remain outstanding. Do not advertise automatic provider integration.
 
 ## Production readiness
