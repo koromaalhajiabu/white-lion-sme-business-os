@@ -46,15 +46,16 @@ for each row execute function public.capture_platform_registration();
 
 -- Backfill accounts that registered before this feature was installed.
 insert into public.platform_registration_notifications
-  (user_id, email, full_name, registered_at, email_confirmed_at)
+  (user_id, email, full_name, registered_at, email_confirmed_at, viewed_at)
 select u.id, lower(coalesce(u.email, '')),
        coalesce(u.raw_user_meta_data ->> 'full_name', ''),
-       coalesce(u.created_at, now()), u.email_confirmed_at
+       coalesce(u.created_at, now()), u.email_confirmed_at, now()
 from auth.users u
 on conflict (user_id) do update
   set email = excluded.email,
       full_name = excluded.full_name,
-      email_confirmed_at = excluded.email_confirmed_at;
+      email_confirmed_at = excluded.email_confirmed_at,
+      viewed_at = coalesce(public.platform_registration_notifications.viewed_at, now());
 
 create or replace function public.get_platform_registrations(p_limit integer default 100)
 returns table (
