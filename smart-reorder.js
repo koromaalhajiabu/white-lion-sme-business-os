@@ -37,7 +37,7 @@ function analyse(data){
   else if(stock<=reorder||coverDays<=lead+cover){priority='reorder';reason='Replenishment is due within lead time plus target cover';}
   else if(coverDays<=lead+cover+7){priority='watch';reason='Stock cover is approaching the reorder horizon';}
   return {p,stock,u7,u30,daily,lead,cover,reorder,target,order,coverDays,stockout,priority,reason,hasHistory};
- }).sort((a,b)=>({out:0,urgent:1,reorder:2,watch:3,unknown:4,healthy:5}[a.priority]-({out:0,urgent:1,reorder:2,watch:3,unknown:4,healthy:5}[b.priority])||a.stock-b.stock);
+ }).sort((a,b)=>({out:0,urgent:1,reorder:2,watch:3,unknown:4,healthy:5}[a.priority]-({out:0,urgent:1,reorder:2,watch:3,unknown:4,healthy:5}[b.priority])||a.stock-b.stock));
  return {rows,transactions:sales.length,counts:Object.fromEntries(['out','urgent','reorder','watch','unknown','healthy'].map(k=>[k,rows.filter(x=>x.priority===k).length])),now};
 }
 function csv(rows){
