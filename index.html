@@ -1172,6 +1172,7 @@ async function render(){
  if(!insights.length)insights.push({tone:'good',title:'Records look clear',body:'No immediate rule-based alerts were found in the available records. Keep transactions up to date.'});
  const periodLabel=period===0?'All time':'Last '+period+' days';
  // Cloud accounting snapshot: use posted journal reports only; never present local estimates as ledger figures.
+ let ledgerExportRows=[];
  let ledgerPanel='<div class="panel"><div class="panel-head"><div><h3>Cloud accounting snapshot</h3><div class="panel-sub">Posted general-ledger figures for this business</div></div><span class="pill neutral">Unavailable</span></div><p class="panel-sub">Connect to the cloud while online and use an authorised owner, administrator, manager or accountant account to load the accounting reports. No ledger figures have been inferred from local records.</p></div>';
  const ledgerClient=window.whiteLionCloud?.getClient?.()||null;
  if(ledgerClient&&businessId&&navigator.onLine!==false){
@@ -1203,6 +1204,19 @@ async function render(){
    const ledgerCredits=trialRows.reduce((n,x)=>n+Number(x.total_credit||0),0);
    const hasLedgerActivity=ledgerDebits>0||ledgerCredits>0;
    const ledgerBalanced=Math.abs(ledgerDebits-ledgerCredits)<0.01;
+   ledgerExportRows=[
+    {metric:'Posted ledger income',value:ledgerIncome},
+    {metric:'Posted ledger expenses',value:ledgerExpenses},
+    {metric:'Posted ledger net income',value:ledgerNetIncome},
+    {metric:'Posted ledger assets',value:ledgerAssets},
+    {metric:'Posted ledger liabilities',value:ledgerLiabilities},
+    {metric:'Posted ledger cash received',value:ledgerCashIn},
+    {metric:'Posted ledger cash paid',value:ledgerCashOut},
+    {metric:'Posted ledger net cash movement',value:ledgerNetCash},
+    {metric:'Posted ledger net income margin percent',value:ledgerNetMargin===null?'':ledgerNetMargin},
+    {metric:'Posted ledger liabilities to assets percent',value:ledgerLiabilityShare===null?'':ledgerLiabilityShare},
+    {metric:'Posted ledger trial balance difference',value:ledgerDebits-ledgerCredits}
+   ];
    const ledgerKpi=(label,value,note)=>'<div class="report-kpi"><span>'+label+'</span><b>'+money(value)+'</b><small>'+note+'</small></div>';
    ledgerPanel='<div class="panel"><div class="panel-head"><div><h3>Cloud accounting snapshot</h3><div class="panel-sub">General-ledger reports · '+esc(periodLabel)+' income statement · balance sheet as of '+esc(ledgerAsOf)+'</div></div><span class="pill '+(hasLedgerActivity&&ledgerBalanced?'':'warn')+'">'+(hasLedgerActivity?(ledgerBalanced?'Trial balance balanced':'Review trial balance'):'No posted activity')+'</span></div><div class="report-kpis">'+ledgerKpi('Posted-ledger net income',ledgerNetIncome,'Ledger income less ledger expenses')+ledgerKpi('Assets',ledgerAssets,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Liabilities',ledgerLiabilities,'Posted balances as of '+ledgerAsOf)+ledgerKpi('Trial balance difference',ledgerDebits-ledgerCredits,'Total debits less total credits')+'</div><div class="report-kpis" style="margin-top:12px">'+ledgerKpi('Cash received',ledgerCashIn,cashFlowRows.length?'Posted cash-account debits · '+periodLabel:'No posted cash movements')+ledgerKpi('Cash paid',ledgerCashOut,cashFlowRows.length?'Posted cash-account credits · '+periodLabel:'No posted cash movements')+ledgerKpi('Net cash movement',ledgerNetCash,'Posted cash received less paid')+ledgerKpi('Net income margin',ledgerNetMargin===null?'—':ledgerNetMargin.toFixed(1)+'%','Posted net income ÷ posted income')+ledgerKpi('Liabilities / assets',ledgerLiabilityShare===null?'—':ledgerLiabilityShare.toFixed(1)+'%','Posted liabilities as a share of assets')+'</div><p class="panel-sub" style="margin-top:12px">These figures include posted journal entries only and are business-wide, not branch-filtered. Cash movement uses the ledger cash account only. Ratios are management indicators, not audit or lending opinions. Historical transactions were not automatically backfilled into the ledger; verify opening balances and journal coverage before relying on these figures for statutory reporting.</p></div>';
   }catch(ledgerLoadError){
@@ -1223,7 +1237,7 @@ async function render(){
  '<div class="intel-footnote"><b>Financial accuracy note:</b> These are management indicators from local records, not audited accounts. Purchases are shown as recorded procurement value, not confirmed cash payments. Sales less expenses is not net profit; cost of goods sold, depreciation, taxes and accrual adjustments are not included.</div>'+
  '<div class="toolbar" style="margin-top:14px"><button class="btn primary" id="intelExport">Export analysis CSV</button><button class="btn" id="intelPrint">Print analysis</button></div>';
  document.getElementById('intelPeriod').onchange=e=>{const u=new URL(location.href);u.searchParams.set('wlperiod',e.target.value);history.replaceState(null,'',u);render()};
- document.getElementById('intelExport').onclick=()=>{const rows=[{metric:'Local net sales',value:periodNet},{metric:'Operating expenses',value:periodExpenses},{metric:'Purchases recorded',value:periodPurchases},{metric:'Sales less expenses (not profit)',value:periodNet-periodExpenses},{metric:'Catalogue stock cost value',value:stockValue},{metric:'Customer opening balances',value:scoped.customers.reduce((n,x)=>n+Number(x.openingBalance||0),0)},{metric:'Supplier opening balances',value:scoped.suppliers.reduce((n,x)=>n+Number(x.openingBalance||0),0)}];const lines=['Metric,Amount',...rows.map(x=>'"'+x.metric.replace(/"/g,'""')+'",'+Number(x.value).toFixed(2))];const a=document.createElement('a'),url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.href=url;a.download='white-lion-business-analysis.csv';a.click();URL.revokeObjectURL(url)};
+ document.getElementById('intelExport').onclick=()=>{const rows=[{metric:'Local net sales',value:periodNet},{metric:'Operating expenses',value:periodExpenses},{metric:'Purchases recorded',value:periodPurchases},{metric:'Sales less expenses (not profit)',value:periodNet-periodExpenses},{metric:'Catalogue stock cost value',value:stockValue},{metric:'Customer opening balances',value:scoped.customers.reduce((n,x)=>n+Number(x.openingBalance||0),0)},{metric:'Supplier opening balances',value:scoped.suppliers.reduce((n,x)=>n+Number(x.openingBalance||0),0)},...ledgerExportRows];const lines=['Metric,Amount',...rows.map(x=>'"'+x.metric.replace(/"/g,'""')+'",'+(x.value===''?'':Number(x.value).toFixed(2)))];const a=document.createElement('a'),url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.href=url;a.download='white-lion-business-analysis.csv';a.click();URL.revokeObjectURL(url)};
  document.getElementById('intelPrint').onclick=()=>window.print();return
  }
  if(state.page==='reports'){
