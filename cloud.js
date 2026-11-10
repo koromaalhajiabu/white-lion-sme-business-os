@@ -36,6 +36,34 @@
     #wlDeveloperBox .dev-role-manager button{margin-top:10px}
     #wlDeveloperBox .dev-role-help{color:#bac6d8;font-size:10px;line-height:1.55;margin-top:8px}
     @media(max-width:620px){#wlDeveloperBox .dev-role-grid{grid-template-columns:1fr}#wlDeveloperBox .dev-row{align-items:flex-start;flex-direction:column}#wlDeveloperBox .dev-actions{width:100%}}
+    .app.wl-public-mode{display:block;min-height:100vh;background:radial-gradient(circle at 12% 8%,rgba(30,181,58,.10),transparent 34%),linear-gradient(135deg,#f5faf6 0%,#fff 58%,#edf7f0 100%)}
+    .wl-public-mode .sidebar,.wl-public-mode .topbar,.wl-public-mode #wlInstallBanner,.wl-public-mode #appearanceBar,.wl-public-mode .content,.wl-public-mode .footer{display:none!important}
+    .wl-public-mode .main{min-height:100vh;width:100%;padding:clamp(14px,3vw,34px);display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .wl-public-mode #wlCloudBox{width:min(1080px,100%);margin:0!important;padding:clamp(20px,4vw,46px)!important;border:1px solid #dcebe1;border-radius:26px;background:#fff;box-shadow:0 28px 90px rgba(7,91,53,.12);color:#203b2b}
+    .wl-public-mode #wlCloudBox .wl-public-brand{display:flex;align-items:center;gap:11px;margin-bottom:clamp(22px,4vw,42px)}
+    .wl-public-mode #wlCloudBox .wl-public-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#1eb53a 0 38%,#fff 38% 66%,#0072c6 66% 100%);border:1px solid #dcebe1;color:#075b35;font-size:21px;font-weight:900}
+    .wl-public-mode #wlCloudBox .wl-public-brand strong{display:block;font-size:13px;letter-spacing:1.6px;color:#075b35}
+    .wl-public-mode #wlCloudBox .wl-public-brand small{display:block;color:#829187;font-size:9px;letter-spacing:1.5px}
+    .wl-public-mode #wlCloudBox .wl-public-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:clamp(24px,5vw,64px);align-items:center}
+    .wl-public-mode #wlCloudBox .wl-public-kicker{color:#087a43;font-size:10px;font-weight:850;letter-spacing:2px;text-transform:uppercase}
+    .wl-public-mode #wlCloudBox .wl-public-copy h1{font-size:clamp(30px,5vw,54px);line-height:1.06;letter-spacing:-1.8px;color:#123b27;margin:12px 0 15px}
+    .wl-public-mode #wlCloudBox .wl-public-copy p{font-size:14px;line-height:1.8;color:#66776d;max-width:570px;margin:0}
+    .wl-public-mode #wlCloudBox .wl-public-features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:25px}
+    .wl-public-mode #wlCloudBox .wl-public-feature{padding:13px;border:1px solid #e4eee7;border-radius:13px;background:#f8fcf9}
+    .wl-public-mode #wlCloudBox .wl-public-feature b{display:block;color:#17452e;font-size:12px;margin-bottom:4px}
+    .wl-public-mode #wlCloudBox .wl-public-feature span{display:block;color:#718078;font-size:10px;line-height:1.55}
+    .wl-public-mode #wlCloudBox .wl-public-auth{padding:clamp(18px,3vw,28px);border:1px solid #e2ece5;border-radius:19px;background:linear-gradient(160deg,#fbfefc,#f4faf6)}
+    .wl-public-mode #wlCloudBox .wl-public-auth h2{font-size:21px;color:#173d29;margin:0 0 6px}
+    .wl-public-mode #wlCloudBox .wl-public-auth .wl-public-auth-note{font-size:11px;line-height:1.6;color:#738278;margin:0 0 15px}
+    .wl-public-mode #wlCloudBox input{padding:13px 12px;margin:6px 0;border-color:#d9e7dd;border-radius:10px;font-size:13px}
+    .wl-public-mode #wlCloudBox .cloud-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .wl-public-mode #wlCloudBox .cloud-actions button{min-height:45px;margin:0;border-radius:10px;font-size:12px}
+    .wl-public-mode #wlCloudBox #wlSignUp{background:#fff;color:#075b35}
+    .wl-public-mode #wlCloudBox .wl-public-privacy{font-size:10px;line-height:1.6;color:#819087;margin:13px 0 0}
+    .wl-public-mode #wlCloudBox .cloud-status{font-size:11px;min-height:17px}
+    .wl-public-mode .main:after{content:"Designed by Alhaji Abu Koroma · White Lion Tech Solutions";display:block;text-align:center;color:#8a9a90;font-size:10px;margin:20px 0 0}
+    @media(max-width:760px){.wl-public-mode .main{padding:12px;justify-content:flex-start}.wl-public-mode #wlCloudBox{padding:21px!important;border-radius:19px;margin:8px 0!important}.wl-public-mode #wlCloudBox .wl-public-grid{grid-template-columns:1fr;gap:22px}.wl-public-mode #wlCloudBox .wl-public-copy h1{font-size:34px;letter-spacing:-1.2px}.wl-public-mode #wlCloudBox .wl-public-brand{margin-bottom:24px}.wl-public-mode #wlCloudBox .wl-public-features{gap:8px}.wl-public-mode #wlCloudBox .wl-public-feature{padding:11px}.wl-public-mode #wlCloudBox .wl-public-auth{padding:17px}}
+    @media(prefers-reduced-motion:no-preference){.wl-public-mode #wlCloudBox{animation:wlWelcomeIn .45s ease-out both}@keyframes wlWelcomeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}}
   `;
   document.head.appendChild(style);
 
@@ -51,14 +79,29 @@
     const box = $('wlCloudBox') || document.createElement('section');
     box.id = 'wlCloudBox';
     box.innerHTML = `
-      <div style="font-weight:800">CLOUD ACCOUNT</div>
-      <div class="muted">Sign in to access your online business workspaces.</div>
-      <div id="wlCloudStatus" class="cloud-status">Connecting securely…</div>
-      <div id="wlCloudAuth">
-        <input id="wlCloudEmail" type="email" autocomplete="email" placeholder="Email address">
-        <input id="wlCloudPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 8 characters)">
-        <div class="cloud-actions"><button id="wlSignIn">Sign in</button><button id="wlSignUp">Create account</button></div>
+      <div class="wl-public-brand"><span class="wl-public-mark" aria-hidden="true">W</span><span><strong>WHITE LION</strong><small>BUSINESS SYSTEMS · SME BUSINESS OS</small></span></div>
+      <div id="wlCloudAuth" class="wl-public-grid">
+        <div class="wl-public-copy">
+          <div class="wl-public-kicker">One platform. Your whole business.</div>
+          <h1>Run your business with clarity and confidence.</h1>
+          <p>Manage sales, stock, purchases, customers, branches and business performance in one connected workspace. Start with your own account and set up your business when you are ready.</p>
+          <div class="wl-public-features">
+            <div class="wl-public-feature"><b>Sales &amp; inventory</b><span>Keep daily transactions and stock activity organised.</span></div>
+            <div class="wl-public-feature"><b>Finance &amp; reports</b><span>Understand business activity with useful records and insights.</span></div>
+            <div class="wl-public-feature"><b>Multi-branch operations</b><span>Manage outlets and staff from one business workspace.</span></div>
+            <div class="wl-public-feature"><b>Online &amp; offline-ready</b><span>Continue working locally and sync records when connected.</span></div>
+          </div>
+        </div>
+        <div class="wl-public-auth">
+          <h2>Get started</h2>
+          <p class="wl-public-auth-note">Create your account to set up your own business workspace, or sign in if you already have one.</p>
+          <input id="wlCloudEmail" type="email" autocomplete="email" placeholder="Email address" aria-label="Email address">
+          <input id="wlCloudPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 8 characters)" aria-label="Password">
+          <div class="cloud-actions"><button id="wlSignUp" type="button">Create your account</button><button id="wlSignIn" type="button">Sign in</button></div>
+          <p class="wl-public-privacy">Your account is separate from other businesses. You only see workspaces you are authorised to access. Email confirmation may be required before your first sign-in.</p>
+        </div>
       </div>
+      <div id="wlCloudStatus" class="cloud-status" role="status" aria-live="polite">Connecting securely…</div>
       <div id="wlCloudWork" hidden>
         <select id="wlBusinessSelect" aria-label="Choose business"></select>
         <div class="cloud-actions"><button id="wlCreateBusiness">＋ New business</button><button id="wlSyncNow">Upload local records</button><button id="wlDiagnoseData" type="button">Check local/cloud data</button><div id="wlDataDiagnostic" class="cloud-status" role="status" aria-live="polite">Diagnostic has not been run. This check will not upload, delete or modify records.</div><button id="wlDownloadNow">Download cloud records</button><button id="wlSignOut">Sign out</button></div><div id="wlSyncStatus" class="cloud-status">Local records are not yet synced.</div>
@@ -172,8 +215,9 @@
     };
   }
   function showSignedOut() {
+    document.querySelector('.app')?.classList.add('wl-public-mode');
     $('wlCloudAuth').hidden = false; $('wlCloudWork').hidden = true;
-    $('wlCloudStatus').textContent = 'Not signed in. Local records remain on this device.';
+    $('wlCloudStatus').textContent = 'Not signed in. Create an account or sign in to continue.';
   }
   async function authenticate(signUp) {
     const email = $('wlCloudEmail').value.trim();
@@ -198,6 +242,7 @@
       .select('business_id,role,is_active,businesses(id,name,industry,currency_code)')
       .eq('user_id', session.user.id).eq('is_active', true);
     if (error) return say('Could not load workspaces: ' + error.message);
+    document.querySelector('.app')?.classList.remove('wl-public-mode');
     const businesses = (memberships || []).map(m => ({...m.businesses, role:m.role})).filter(b => b.id);
     window.__wlBusinesses = businesses;
     $('wlCloudAuth').hidden = true; $('wlCloudWork').hidden = false;
