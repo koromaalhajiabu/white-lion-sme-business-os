@@ -80,7 +80,7 @@ async function runViewport(name, viewport) {
         const screenWidth = window.innerWidth;
         return {
           viewportMeta,
-          viewportConfigured: /width\\s*=\\s*device-width/i.test(viewportMeta),
+          viewportConfigured: /width\s*=\s*device-width/i.test(viewportMeta),
           screenWidth,
           documentWidth: document.documentElement.scrollWidth,
           horizontalOverflow: document.documentElement.scrollWidth > screenWidth + 1,
