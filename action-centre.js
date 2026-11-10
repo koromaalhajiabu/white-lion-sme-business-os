@@ -42,7 +42,7 @@ function render(d){
    if(!allowed)continue;
    const localTime=Date.parse(r.updatedAt||r.createdAt||0)||0,remoteTime=Date.parse(remote?.updated_at||0)||0;
    if(remote&&remoteTime>=localTime){actionIds.set(r.id,remote.id);continue}
-   const row={business_id:bid,branch_id:d.branchId||null,client_id:String(r.id),kind:r.kind==='alert'?'alert':'task',action_type:r.type||'Management task',title:String(r.title||'Action').slice(0,160),detail:String(r.detail||r.description||''),priority:['Normal','High','Urgent'].includes(r.priority)?r.priority:'Normal',status:['Open','Acknowledged','Resolved','Completed'].includes(r.status)?r.status:'Open',assignee_user_id:r.assigneeUserId||null,assignee_label:r.assignee||'',due_date:r.due||null,payload:{recommendation:r.recommendation||''},updated_by:uid,updated_at:r.updatedAt||new Date().toISOString()};
+   const row={business_id:bid,branch_id:r.branchId??d.branchId??null,client_id:String(r.id),kind:r.kind==='alert'?'alert':'task',action_type:r.type||'Management task',title:String(r.title||'Action').slice(0,160),detail:String(r.detail||r.description||''),priority:['Normal','High','Urgent'].includes(r.priority)?r.priority:'Normal',status:['Open','Acknowledged','Resolved','Completed'].includes(r.status)?r.status:'Open',assignee_user_id:r.assigneeUserId||null,assignee_label:r.assignee||'',due_date:r.due||null,payload:{recommendation:r.recommendation||''},updated_by:uid,updated_at:r.updatedAt||new Date().toISOString()};
    const result=await client.from('executive_actions').upsert(row,{onConflict:'business_id,client_id'}).select('id,client_id').single();
    if(result.error){setStatus('Cloud sync needs attention: '+result.error.message,false);return {ok:false,error:result.error}}
    actionIds.set(r.id,result.data.id);
@@ -80,7 +80,7 @@ function render(d){
    }
    const eventsByAction=new Map();
    events.forEach(e=>{const a=eventsByAction.get(e.action_id)||[];a.push({event_id:e.client_event_id,at:e.created_at,event:e.event,actor_user_id:e.actor_user_id,_cloudSynced:true});eventsByAction.set(e.action_id,a)});
-   let remoteRecords=remoteRows.filter(x=>!d.branchId||!x.branch_id||String(x.branch_id)===String(d.branchId)).map(x=>({id:x.client_id,remoteId:x.id,kind:x.kind,type:x.action_type,title:x.title,detail:x.detail,priority:x.priority,status:x.status,assigneeUserId:x.assignee_user_id,assignee:x.assignee_label||'',due:x.due_date||'',recommendation:x.payload?.recommendation||'',createdAt:x.created_at,updatedAt:x.updated_at,history:eventsByAction.get(x.id)||[]}));
+   let remoteRecords=remoteRows.filter(x=>!d.branchId||!x.branch_id||String(x.branch_id)===String(d.branchId)).map(x=>({id:x.client_id,remoteId:x.id,kind:x.kind,type:x.action_type,title:x.title,detail:x.detail,priority:x.priority,status:x.status,assigneeUserId:x.assignee_user_id,assignee:x.assignee_label||'',branchId:x.branch_id||null,due:x.due_date||'',recommendation:x.payload?.recommendation||'',createdAt:x.created_at,updatedAt:x.updated_at,history:eventsByAction.get(x.id)||[]}));
    const map=new Map(records.map(r=>[String(r.id),r]));
    remoteRecords.forEach(remote=>{
     const local=map.get(String(remote.id));
