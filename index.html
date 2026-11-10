@@ -758,6 +758,25 @@ html[data-theme="dark"] #view tr:hover{background:#202d40}
 html[data-theme="dark"] #appearanceBar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
 html[data-theme="dark"] .footer{color:#8795aa}
 
+/* INTERACTIVE DYNAMIC LOGIN LAYER */
+.wl-auth-shell{--wl-tilt-x:0deg;--wl-tilt-y:0deg}
+.wl-dynamic-canvas,.wl-dynamic-grid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wl-dynamic-canvas{z-index:0;opacity:.9}
+.wl-dynamic-grid{z-index:0;opacity:.16;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(90deg,transparent,#000 25%,#000 80%,transparent)}
+.wl-auth-brand,.wl-auth-layout,.wl-auth-bottom{z-index:1}
+.wl-auth-card{transform:perspective(900px) rotateX(var(--wl-tilt-x)) rotateY(var(--wl-tilt-y));transition:transform .22s ease,box-shadow .22s ease}
+.wl-auth-card:hover{box-shadow:0 30px 75px rgba(0,0,0,.3)}
+.wl-word-cycle{display:inline-block;transition:opacity .25s ease,transform .25s ease}
+.wl-word-cycle.wl-word-out{opacity:0;transform:translateY(9px)}
+.wl-password-reveal{border:0!important;background:transparent!important;color:#176347!important;font-size:10px!important;font-weight:800!important;padding:7px 2px!important;min-width:38px;cursor:pointer}
+.wl-auth-input-wrap:has(#wlCloudPassword){padding-right:9px}
+.wl-auth-feature-list>div{animation:wlFeatureRise .65s both}
+.wl-auth-feature-list>div:nth-child(2){animation-delay:.12s}
+.wl-auth-feature-list>div:nth-child(3){animation-delay:.24s}
+@keyframes wlFeatureRise{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:760px){.wl-dynamic-grid{background-size:32px 32px}.wl-auth-card{transform:none!important}}
+@media(prefers-reduced-motion:reduce){.wl-auth-card,.wl-word-cycle,.wl-auth-feature-list>div{animation:none!important;transition:none!important;transform:none!important}}
+
 /* PREMIUM CLOUD SIGN-IN EXPERIENCE */
 .wl-auth-shell{position:relative;isolation:isolate;overflow:hidden;margin:18px clamp(12px,2.6vw,34px) 22px;border-radius:25px;padding:clamp(20px,3vw,38px);color:#fff;background:radial-gradient(ellipse at 12% 90%,rgba(30,133,91,.28),transparent 38%),linear-gradient(125deg,#101d31 0%,#142c43 53%,#0c4938 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 55px rgba(13,31,49,.19)}
 .wl-auth-glow{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;filter:blur(2px);animation:wlAuthFloat 11s ease-in-out infinite}
@@ -1496,5 +1515,6 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
 <script src="./league.js?v=2" defer onerror="window.__wlScriptFail.push('league.js')"></script>
 <script src="./billing.js?v=9" defer onerror="window.__wlScriptFail.push('billing.js')"></script>
 <script src="./action-centre.js?v=4" defer></script>
+<script src="./dynamic-login.js?v=1" defer onerror="window.__wlScriptFail.push('dynamic-login.js')"></script>
 <script src="./premium-experience.js?v=1" defer onerror="window.__wlScriptFail.push('premium-experience.js')"></script>
 </body></html>
