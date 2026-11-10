@@ -127,6 +127,7 @@ public class MainActivity extends Activity {
                     String localPath = APP_ASSET_URL.substring(0, APP_ASSET_URL.lastIndexOf('/') + 1)
                             + (relative.isEmpty() ? "index.html" : relative);
                     if (uri.getQuery() != null) localPath += "?" + uri.getQuery();
+                    if (uri.getFragment() != null) localPath += "#" + uri.getFragment();
                     webView.loadUrl(localPath);
                     return true;
                 }
