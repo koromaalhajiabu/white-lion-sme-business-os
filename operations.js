@@ -58,7 +58,7 @@
     #wlOwnerDashboard .owner-track{height:6px;background:#edf3ee;border-radius:8px;overflow:hidden;margin:3px 0 5px}
     #wlOwnerDashboard .owner-track i{display:block;height:100%;background:#087a43;border-radius:8px}
     #wlOwnerDashboard .owner-track.expense i{background:#d59b36}
-    @media(max-width:760px){#wlOwnerDashboard .owner-insight-grid{grid-template-columns:1fr}}
+    @media(max-width:760px){#wlOwnerDashboard .owner-insight-grid,#wlOwnerDashboard .owner-decision-list{grid-template-columns:1fr}}
 
     @media(max-width:760px){#wlOwnerDashboard .owner-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#wlOwnerDashboard .owner-toolbar select{max-width:none;flex:1}}
     @media(max-width:560px){#wlOpsPanel{padding:14px;border-radius:14px}#wlOpsPanel .ops-grid{grid-template-columns:1fr}#wlOpsPanel .ops-summary{grid-template-columns:1fr 1fr}#wlOpsPanel summary{padding:12px}}
