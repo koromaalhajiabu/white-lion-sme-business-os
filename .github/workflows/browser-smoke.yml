@@ -41,6 +41,8 @@ jobs:
       - name: Test current branch on Android-sized and desktop viewports
         env:
           WHITE_LION_SMOKE_URL: http://127.0.0.1:4173/
+          WHITE_LION_TEST_EMAIL: ${{ secrets.WHITE_LION_TEST_EMAIL }}
+          WHITE_LION_TEST_PASSWORD: ${{ secrets.WHITE_LION_TEST_PASSWORD }}
         run: node scripts/browser-smoke.mjs
       - name: Upload browser evidence
         if: always()
