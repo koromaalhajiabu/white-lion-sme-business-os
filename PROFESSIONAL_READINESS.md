@@ -1,6 +1,6 @@
 # White Lion SME Business Operating System — Professional Readiness Review
 
-Last reviewed: 8 November 2026
+Last reviewed: 10 November 2026
 
 ## Existing capabilities found in the repository
 
@@ -25,7 +25,7 @@ These are repository-level findings. They do not independently prove every featu
 5. **Financial reports are operational summaries, not audited accounts.** Do not represent the current net sales less recorded expenses figure as net profit or available cash.
 6. **Production security needs independent verification.** Test cross-business isolation with separate accounts, role escalation attempts, branch scoping, storage access, account recovery and audit coverage.
 7. **Mobile/PWA quality needs device testing.** Test install/update behaviour, offline launch, theme persistence, language selection (including Arabic RTL), navigation, forms, keyboard handling, printing and small-screen tables on Android and iPhone.
-8. **Subscription billing is not implemented.** There is no verified subscription checkout, payment-provider integration, renewal handling or automatic entitlement enforcement. This must be designed with the chosen payment provider and commercial plan/pricing before being advertised.
+8. **Subscription capability is partly implemented.** The repository contains plan definitions, trials, invoice/payment records, manual payment submission and administrator verification, plus capacity and expiry enforcement migrations. Direct Orange Money/AfriMoney/bank API checkout and automated recurring collection are not implemented or independently verified. The numbered migration files also contain legacy duplicate version labels (022 and 026); do not rely on Supabase CLI migration history until those historical files are reconciled against the live project's migration history.
 
 ## New changes in this release
 
@@ -54,9 +54,9 @@ These are repository-level findings. They do not independently prove every featu
 - A statement import rejects malformed rows, skips duplicate external references, and reports inserted counts.
 - A statement line cannot be matched to another business, another bank account, a wrong amount or the wrong debit/credit direction.
 - A cashbook entry cannot be reconciled more than once.
-- The scheduled backup workflow succeeds with all four secrets configured; the encrypted archive passes checksum and HMAC verification.
+- The scheduled backup workflow succeeds with the configured required secrets; the encrypted archive passes checksum and HMAC verification. The latest successful run visible in GitHub was on 10 November 2026 before the current release commit; run it again after this release and retain the artifact outside GitHub.
 - A full database and Storage restoration succeeds in a separate Supabase project, including document downloads.
-- Subscription plan, pricing, payment-provider checkout, renewals, cancellation, failed-payment handling and entitlement enforcement are tested before commercial launch.
+- Subscription plan/pricing, manual payment submission and verification, renewals, cancellation, failed-payment handling and entitlement enforcement are tested before commercial launch. Direct provider checkout must remain clearly marked unavailable until implemented and tested.
 - Android and iPhone PWA installation, offline launch, update and theme persistence are verified.
 
 ## Release status
@@ -64,3 +64,21 @@ These are repository-level findings. They do not independently prove every featu
 The GitHub Actions deployment workflow for the latest dark-mode correction completed successfully. That confirms the repository workflow completed; it is not a substitute for live browser, Supabase or device acceptance testing.
 
 **Current assessment:** strong feature foundation; not yet independently certified for production accounting, disaster recovery or commercial subscription billing. The backup automation is committed but remains unverified until the repository secrets are configured, a backup run succeeds and a recovery drill is completed. Before commercial launch, finish the accounting acceptance tests, validate opening inventory and balances, test multi-device offline conflict handling and security boundaries, verify Android/iPhone PWA behaviour, and implement subscription billing only after the payment provider and plan/pricing model are selected.
+
+
+## Release engineering review — 10 November 2026
+
+Repository checks observed on commit `8a4f3ce37ef07c5111c99320850328ddf6cbf747`:
+- GitHub Pages deployment: successful.
+- JavaScript syntax validation: successful.
+- Browser interaction smoke test: successful on Android-sized and desktop Chromium viewports.
+- Android APK build and GitHub Release publication: successful. The current APK is debug-signed, not a Play Store production-signed package.
+- Supabase off-site backup: a successful run exists from earlier on 10 November, but it predates the latest release commit. A separate-project restore has not been demonstrated.
+
+The Android wrapper previously loaded the remote GitHub Pages URL even though the workflow packaged the web files into the APK. The production-readiness update changes the wrapper to load its bundled app shell through AndroidX WebViewAssetLoader, so the interface can open without network access; cloud authentication and sync still require connectivity. This is not considered device-verified until the rebuilt APK is installed and tested in airplane mode on a real Android device.
+
+The browser smoke suite now exercises Executive Action Centre, Financial Planning and Plans & Billing navigation, checks the Action Centre panels, and attempts an offline app-shell reload. The CI workflow now checks all root JavaScript files and validates manifest assets and migration filename integrity.
+
+The Supabase security audit SQL is read-only. It reports tables without RLS, RLS-enabled tables without policies, public/anonymous table grants, and SECURITY DEFINER functions without a fixed search_path. Review every result against intended public data and RPC access; a clean report is not a substitute for cross-account tests using two separate authenticated business accounts.
+
+**Remaining release blockers that require live Supabase/device acceptance:** execute the read-only security audit; verify RLS isolation and role-denial cases with separate accounts; verify bank statement reconciliation; apply and test migration 019 if it is not already installed; validate opening inventory and COGS; run and restore an encrypted backup in a separate recovery project; test offline sync conflict recovery across two devices; and test the rebuilt APK offline on Android.
