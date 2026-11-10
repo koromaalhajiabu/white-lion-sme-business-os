@@ -112,7 +112,7 @@ function render(d){
  if(d.cloudClient&&d.businessId&&d.userId){
   const scope=String(d.businessId)+'|'+String(d.branchId||'all');
   if(activeScope!==scope){
-   if(activeChannel){try{await d.cloudClient.removeChannel(activeChannel)}catch(_){}activeChannel=null}
+   if(activeChannel){try{Promise.resolve(d.cloudClient.removeChannel(activeChannel)).catch(()=>{})}catch(_){}activeChannel=null}
    activeScope=scope;
    activeChannel=d.cloudClient.channel('wl-executive-actions-'+scope.replace(/[^a-zA-Z0-9]/g,'-'))
     .on('postgres_changes',{event:'*',schema:'public',table:'executive_actions',filter:'business_id=eq.'+d.businessId},()=>{if(!syncBusy&&lastData)window.WhiteLionActionCentre.render({...lastData,_skipCloudLoad:false})})
