@@ -780,6 +780,7 @@ html[data-theme="dark"] .footer{color:#8795aa}
     <button data-page="expenses"><span class="ico">↗</span>Expenses</button>
     <button data-page="reports"><span class="ico">▤</span>Reports</button>
      <button data-page="intelligence"><span class="ico">✦</span>Business Intelligence</button>
+     <button data-page="executive"><span class="ico">◈</span>Executive Intelligence</button>
      <button data-page="finance"><span class="ico">◷</span>Financial Planning</button>
      <button data-page="documents"><span class="ico">▧</span>Business documents</button>
      <button data-page="league"><span class="ico">⚽</span>Sports & Local League</button>
@@ -824,7 +825,7 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',finance:'Financial Planning'};
+const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
  const labels={...industryWording(),league:'Sports & Local League'},icons={customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',league:'⚽',employees:'♟',settings:'⚙'};
@@ -839,7 +840,7 @@ function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transa
 function del(store,id){return new Promise((resolve,reject)=>{const numeric=Number(id),key=String(id).trim()!==''&&Number.isFinite(numeric)?numeric:id;const r=db.transaction(store,'readwrite').objectStore(store).delete(key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
 async function setting(key,value){if(value!==undefined){await put('settings',{key,value});return value}const rows=await all('settings');return rows.find(x=>x.key===key)?.value}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
-function setPage(p){if(!p)return;if(p==='billing'){document.getElementById('sidebar').classList.remove('open');if(window.whiteLionBilling&&typeof window.whiteLionBilling.render==='function'){window.whiteLionBilling.render()}else{document.getElementById('view').innerHTML='<div class="panel"><h2>Plans & Billing</h2><p>Billing module is still loading. Please wait a moment and try again.</p></div>'}return}if(p===state.page){document.getElementById('sidebar').classList.remove('open');render();return}state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>{const active=b.dataset.page===p;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',finance:'Financial Planning',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings',documents:'Business documents',league:'Sports & Local League'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');const view=document.getElementById('view');view.classList.remove('page-transition');void view.offsetWidth;view.classList.add('page-transition');render()}
+function setPage(p){if(!p)return;if(p==='billing'){document.getElementById('sidebar').classList.remove('open');if(window.whiteLionBilling&&typeof window.whiteLionBilling.render==='function'){window.whiteLionBilling.render()}else{document.getElementById('view').innerHTML='<div class="panel"><h2>Plans & Billing</h2><p>Billing module is still loading. Please wait a moment and try again.</p></div>'}return}if(p===state.page){document.getElementById('sidebar').classList.remove('open');render();return}state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>{const active=b.dataset.page===p;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings',documents:'Business documents',league:'Sports & Local League'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');const view=document.getElementById('view');view.classList.remove('page-transition');void view.offsetWidth;view.classList.add('page-transition');render()}
 window.setPage=setPage;
 window.addEventListener('whiteLionCloudReady',()=>{if(window.whiteLionCloud?.getActiveBusiness?.())render()});
 window.addEventListener('whiteLionWorkspaceChanged',()=>render());
@@ -1122,6 +1123,20 @@ async function render(){
  document.getElementById('editCash').onclick=()=>showModal('Update 30-day cash-flow assumptions',[cashField('Opening cash balance','opening',cash.opening),cashField('Expected customer collections','collections',cash.collections),cashField('Expected supplier payments','supplierPayments',cash.supplierPayments),cashField('Expected payroll','payroll',cash.payroll),cashField('Other expected payments','otherPayments',cash.otherPayments),{name:'asOf',label:'Assumption date',type:'date',required:true,value:cash.asOf||new Date().toISOString().slice(0,10)}],async d=>{plan.cash={opening:Number(d.opening||0),collections:Number(d.collections||0),supplierPayments:Number(d.supplierPayments||0),payroll:Number(d.payroll||0),otherPayments:Number(d.otherPayments||0),asOf:d.asOf};await setting(scopeKey,plan);toast('Cash-flow assumptions saved')});
  return
  }
+ if(state.page==='executive'){
+  const [sales,expenses,products,purchases,returns,customers,suppliers,branchInventory]=await Promise.all([all('sales'),all('expenses'),all('products'),all('purchases'),all('returns'),all('customers'),all('suppliers'),all('branchInventory')]);
+  const active=window.whiteLionCloud?.getActiveBusiness?.()||null;
+  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null;
+  const businessId=active?.id||null,branchId=branch?.id||null;
+  const belongs=x=>(!businessId||String(x.localBusinessId||x.businessId||'')===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId));
+  const scopedProducts=products.filter(x=>!businessId||String(x.localBusinessId||x.businessId||'')===String(businessId));
+  const selectedStock=branchId?branchInventory.filter(x=>String(x.businessId||'')===String(businessId)&&String(x.branchId||'')===String(branchId)):null;
+  const forecastProducts=branchId?scopedProducts.map(p=>({...p,stock:selectedStock.find(x=>String(x.productId)===String(p.id))?.quantity||0})):scopedProducts;
+  const dataset={sales:sales.filter(belongs),expenses:expenses.filter(belongs),products:forecastProducts,purchases:purchases.filter(belongs),returns:returns.filter(belongs),customers:customers.filter(belongs),suppliers:suppliers.filter(belongs),currency:state.business.currency||'SLE',businessName:active?.name||state.business.name||'Selected business'};
+  if(window.WhiteLionExecutive?.render)window.WhiteLionExecutive.render(dataset);
+  else v.innerHTML='<div class="panel"><h2>Executive Intelligence is loading</h2><p class="panel-sub">Please wait a moment, then reopen this section.</p></div>';
+  return;
+ }
  if(state.page==='intelligence'){
  const [sales,expenses,products,purchases,returns,customers,suppliers]=await Promise.all([all('sales'),all('expenses'),all('products'),all('purchases'),all('returns'),all('customers'),all('suppliers')]);
  const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null,branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||null;
@@ -1263,7 +1278,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render();window.__wlStartupComplete=true}catch(e){window.__wlStartupComplete=true;console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=102',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=103',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-simple-pwa-install">
 (function(){
