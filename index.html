@@ -757,6 +757,66 @@ html[data-theme="dark"] #view th{background:#223149!important}
 html[data-theme="dark"] #view tr:hover{background:#202d40}
 html[data-theme="dark"] #appearanceBar{background:#172235!important;color:#e7edf6!important;border-color:#2a374a!important}
 html[data-theme="dark"] .footer{color:#8795aa}
+
+/* PREMIUM CLOUD SIGN-IN EXPERIENCE */
+.wl-auth-shell{position:relative;isolation:isolate;overflow:hidden;margin:18px clamp(12px,2.6vw,34px) 22px;border-radius:25px;padding:clamp(20px,3vw,38px);color:#fff;background:radial-gradient(ellipse at 12% 90%,rgba(30,133,91,.28),transparent 38%),linear-gradient(125deg,#101d31 0%,#142c43 53%,#0c4938 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 55px rgba(13,31,49,.19)}
+.wl-auth-glow{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;filter:blur(2px);animation:wlAuthFloat 11s ease-in-out infinite}
+.wl-auth-glow-one{width:310px;height:310px;right:23%;top:-220px;border:1px solid rgba(231,199,126,.24);box-shadow:0 0 0 28px rgba(231,199,126,.025),0 0 0 58px rgba(231,199,126,.02)}
+.wl-auth-glow-two{width:230px;height:230px;left:-145px;bottom:-150px;background:rgba(29,153,102,.13);animation-delay:-4s}
+.wl-auth-brand{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.wl-auth-mark,.wl-auth-mini-mark{display:grid;place-items:center;font-weight:900;letter-spacing:-1px;color:#14243a;background:linear-gradient(145deg,#f5e5bb,#cda85d);box-shadow:0 7px 22px rgba(205,168,93,.22)}
+.wl-auth-mark{width:46px;height:46px;border-radius:15px;font-size:18px}
+.wl-auth-brand strong,.wl-auth-brand span{display:block}
+.wl-auth-brand strong{font-size:12px;letter-spacing:2px}
+.wl-auth-brand div span{font-size:9px;color:#c5d1dc;letter-spacing:2px;margin-top:3px}
+.wl-auth-secure{margin-left:auto!important;padding:8px 11px;border:1px solid rgba(255,255,255,.15);border-radius:30px;color:#d9e5df;font-size:9px;letter-spacing:1.1px}
+.wl-auth-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.78fr);gap:clamp(25px,6vw,82px);align-items:center;max-width:1120px;margin:clamp(30px,5vw,62px) auto 36px;position:relative;z-index:1}
+.wl-auth-story{padding:5px 0}
+.wl-auth-kicker{display:flex;align-items:center;gap:9px;color:#e8d19a;font-size:10px;font-weight:800;letter-spacing:1.7px}
+.wl-auth-live-dot{width:7px;height:7px;border-radius:50%;background:#64d6a1;box-shadow:0 0 0 5px rgba(100,214,161,.12);animation:wlAuthPulse 2s infinite}
+.wl-auth-story h1{font-size:clamp(32px,4.2vw,53px);line-height:1.08;letter-spacing:-1.8px;margin:19px 0 14px;font-weight:780}
+.wl-auth-story h1 em{font-style:normal;color:#e5c77f}
+.wl-auth-story>p{max-width:440px;color:#c2ced9;font-size:13px;line-height:1.8;margin:0}
+.wl-auth-feature-list{display:grid;gap:17px;margin-top:29px}
+.wl-auth-feature-list>div{display:flex;align-items:center;gap:13px}
+.wl-auth-feature-list>div>span{width:36px;height:36px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.1);color:#e5c77f;font-size:17px}
+.wl-auth-feature-list b,.wl-auth-feature-list small{display:block}
+.wl-auth-feature-list b{font-size:11px;color:#f4f6f8}
+.wl-auth-feature-list small{font-size:10px;color:#aebdca;margin-top:3px}
+.wl-auth-footnote{display:flex;align-items:center;gap:9px;margin-top:32px;color:#aebdca;font-size:10px}
+.wl-auth-orbit{color:#e5c77f;font-size:17px}
+.wl-auth-card{background:rgba(255,255,255,.98);color:#17243a;border:1px solid rgba(255,255,255,.7);border-radius:21px;padding:clamp(20px,2.7vw,29px);box-shadow:0 24px 65px rgba(0,0,0,.22);backdrop-filter:blur(18px);animation:wlAuthEnter .65s cubic-bezier(.2,.7,.2,1) both}
+.wl-auth-card-top{display:flex;justify-content:space-between;align-items:center}
+.wl-auth-mini-mark{width:34px;height:34px;border-radius:11px;font-size:13px}
+.wl-auth-access{font-size:9px;letter-spacing:1.3px;font-weight:800;color:#8290a0}
+.wl-auth-heading{margin:21px 0 17px}
+.wl-auth-heading h2{font-size:25px;letter-spacing:-.8px;margin:0;color:#15253b}
+.wl-auth-heading p{font-size:11px;color:#7c899b;margin:6px 0 0;line-height:1.6}
+.wl-auth-status{display:flex;align-items:center;gap:8px;min-height:34px;padding:8px 10px;margin:0 0 15px;border-radius:9px;background:#f1f7f3;color:#397456;font-size:10px;line-height:1.45}
+.wl-auth-status-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#35a875;box-shadow:0 0 0 4px rgba(53,168,117,.1)}
+.wl-auth-label{display:block;font-size:10px;font-weight:800;color:#43536a;margin:13px 0 7px}
+.wl-auth-input-wrap{display:flex;align-items:center;gap:10px;border:1px solid #dfe6ed;border-radius:11px;background:#fbfcfe;padding:0 12px;transition:border .2s,box-shadow .2s,background .2s}
+.wl-auth-input-wrap:focus-within{border-color:#c5a15a;background:#fff;box-shadow:0 0 0 4px rgba(205,168,93,.13)}
+.wl-auth-input-wrap>span{font-size:13px;color:#9aa6b4;width:15px;text-align:center}
+.wl-auth-input-wrap input{width:100%;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding:13px 0!important;margin:0!important;color:#17243a;font-size:12px}
+.wl-auth-input-wrap input::placeholder{color:#a4adba}
+.wl-auth-hint{font-size:9px;color:#8995a4;margin:8px 0 16px}
+.wl-auth-actions{display:grid;gap:9px}
+.wl-auth-actions button{min-height:44px;border-radius:11px;font-size:11px;font-weight:800;transition:transform .18s,box-shadow .18s,filter .18s}
+.wl-auth-actions button:hover{transform:translateY(-1px);filter:brightness(1.04)}
+#wlSignIn{display:flex;justify-content:space-between;align-items:center;padding:0 15px;border:1px solid #153d34;background:linear-gradient(110deg,#176347,#0d493b);color:#fff;box-shadow:0 8px 18px rgba(16,91,64,.2)}
+#wlSignIn span:last-child{font-size:17px}
+#wlSignUp{border:1px solid #dfe6ed;background:#fff;color:#34445a}
+.wl-auth-card-foot{border-top:1px solid #edf0f4;margin-top:18px;padding-top:13px;color:#8b97a6;font-size:9px;line-height:1.6}
+.wl-auth-bottom{position:relative;z-index:1;display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.13);padding-top:15px;color:#aebdca;font-size:9px;letter-spacing:.7px}
+.wl-auth-bottom span:first-child{font-weight:800;letter-spacing:1.4px;color:#d8c18e}
+@keyframes wlAuthFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(18px,15px,0)}}
+@keyframes wlAuthPulse{0%,100%{box-shadow:0 0 0 5px rgba(100,214,161,.12)}50%{box-shadow:0 0 0 8px rgba(100,214,161,.025)}}
+@keyframes wlAuthEnter{from{opacity:0;transform:translateY(13px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){.wl-auth-shell{margin:12px 10px 18px;padding:19px 15px;border-radius:19px}.wl-auth-secure{font-size:8px;padding:7px 8px}.wl-auth-layout{grid-template-columns:1fr;gap:22px;margin:28px auto 24px}.wl-auth-story h1{font-size:32px;margin:13px 0 9px}.wl-auth-story>p{font-size:11px}.wl-auth-feature-list{grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.wl-auth-feature-list>div{align-items:flex-start;gap:8px}.wl-auth-feature-list>div>span{width:30px;height:30px;flex:0 0 30px;border-radius:9px;font-size:14px}.wl-auth-feature-list b{font-size:9px}.wl-auth-feature-list small{font-size:8px;line-height:1.45}.wl-auth-footnote{margin-top:17px;font-size:9px}.wl-auth-card{padding:20px 17px}.wl-auth-bottom{font-size:8px}}
+@media(max-width:380px){.wl-auth-brand strong{font-size:10px}.wl-auth-brand div span{font-size:8px}.wl-auth-secure{letter-spacing:.5px}.wl-auth-feature-list{grid-template-columns:1fr}.wl-auth-feature-list small{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.wl-auth-glow,.wl-auth-live-dot,.wl-auth-card{animation:none!important}}
+
 </style>
 <style>@media(max-width:720px){#sidebar.sidebar{position:fixed!important;left:-280px!important;right:auto!important;top:0!important;bottom:0!important;height:100vh;height:100dvh;max-height:100dvh;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;z-index:30!important}#sidebar.sidebar.open{left:0!important}}</style>
 </head>
@@ -802,14 +862,28 @@ html[data-theme="dark"] .footer{color:#8795aa}
   <div style="display:flex;align-items:center;gap:12px"><button class="btn small mobile-menu" id="menuBtn">☰</button><div class="crumb" id="crumb">Overview</div></div>
   <div class="top-actions"><label class="wl-language-control" for="wlLanguage"><span>Language</span><select id="wlLanguage" aria-label="Choose language" onchange="if(window.wlSetLanguage)window.wlSetLanguage(this.value)"><option value="en">English</option><option value="fr">Français</option><option value="ar">العربية</option><option value="es">Español</option><option value="hi">हिन्दी</option><option value="zh">中文（简体）</option></select></label><button class="btn small theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Dark mode</span></button><div class="status"><span class="dot"></span><span id="connection">Offline-ready</span></div><div class="avatar">WL</div></div>
 </header>
-<section id="wlCloudBox" aria-label="Cloud account sign in" style="display:block;position:relative;z-index:6;margin:14px 24px;background:#fff;border:1px solid #dcebe1;border-radius:16px;padding:16px;color:#203b2b;box-shadow:0 8px 24px rgba(7,91,53,.06)">
-<strong style="color:#075b35">CLOUD ACCOUNT</strong><p style="margin:6px 0;color:#718078">Sign in to access your online business workspaces.</p>
-<div id="wlCloudStatus" role="status" style="margin:8px 0;color:#087a43">Connecting securely…</div>
-<div id="wlCloudAuth">
-<input id="wlCloudEmail" type="email" autocomplete="email" placeholder="Email address" aria-label="Email address" style="display:block;width:100%;padding:11px;margin:6px 0;border:1px solid #dce8df;border-radius:9px">
-<input id="wlCloudPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 8 characters)" aria-label="Password" style="display:block;width:100%;padding:11px;margin:6px 0;border:1px solid #dce8df;border-radius:9px">
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="wlSignIn" type="button" style="border:0;border-radius:9px;padding:11px 16px;background:#087a43;color:white;font-weight:750">Sign in</button><button id="wlSignUp" type="button" style="border:1px solid #087a43;border-radius:9px;padding:11px 16px;background:white;color:#075b35;font-weight:750">Create account</button></div>
-</div><div id="wlCloudWork" hidden></div></section>
+<section id="wlCloudBox" class="wl-auth-shell" aria-label="Cloud account sign in">
+ <div class="wl-auth-glow wl-auth-glow-one" aria-hidden="true"></div><div class="wl-auth-glow wl-auth-glow-two" aria-hidden="true"></div>
+ <div class="wl-auth-brand"><div class="wl-auth-mark" aria-hidden="true">WL</div><div><strong>WHITE LION</strong><span>SME BUSINESS OS</span></div><span class="wl-auth-secure">✦ SECURE WORKSPACE</span></div>
+ <div class="wl-auth-layout">
+  <div class="wl-auth-story"><div class="wl-auth-kicker"><span class="wl-auth-live-dot"></span> YOUR BUSINESS. IN ONE PLACE.</div><h1>Run your business<br><em>with confidence.</em></h1><p>One connected workspace for sales, inventory, purchasing, finance and your team.</p>
+   <div class="wl-auth-feature-list"><div><span>⌁</span><section><b>Connected operations</b><small>Keep your everyday business work organised.</small></section></div><div><span>◈</span><section><b>Insight that moves you forward</b><small>Understand performance and make informed decisions.</small></section></div><div><span>↗</span><section><b>Work from anywhere</b><small>Access your workspace on mobile or desktop.</small></section></div></div>
+   <div class="wl-auth-footnote"><span class="wl-auth-orbit">✦</span> Built for ambitious businesses across industries</div>
+  </div>
+  <div class="wl-auth-card"><div class="wl-auth-card-top"><div class="wl-auth-mini-mark">WL</div><span class="wl-auth-access">ACCOUNT ACCESS</span></div>
+   <div class="wl-auth-heading"><h2>Welcome back</h2><p>Sign in to continue to your business workspace.</p></div>
+   <div id="wlCloudStatus" class="wl-auth-status" role="status"><span class="wl-auth-status-dot"></span>Connecting securely…</div>
+   <div id="wlCloudAuth">
+    <label class="wl-auth-label" for="wlCloudEmail">Email address</label><div class="wl-auth-input-wrap"><span aria-hidden="true">✉</span><input id="wlCloudEmail" type="email" autocomplete="email" placeholder="you@business.com" aria-label="Email address"></div>
+    <label class="wl-auth-label" for="wlCloudPassword">Password</label><div class="wl-auth-input-wrap"><span aria-hidden="true">●</span><input id="wlCloudPassword" type="password" autocomplete="current-password" placeholder="Enter your password" aria-label="Password"></div>
+    <div class="wl-auth-hint">Use the password associated with your White Lion account.</div>
+    <div class="wl-auth-actions"><button id="wlSignIn" type="button"><span>Sign in to workspace</span><span aria-hidden="true">→</span></button><button id="wlSignUp" type="button">Create an account</button></div>
+   </div><div id="wlCloudWork" hidden></div>
+   <div class="wl-auth-card-foot"><span>◈ Your workspace is protected by secure account authentication.</span></div>
+  </div>
+ </div>
+ <div class="wl-auth-bottom"><span>WHITE LION TECH SOLUTIONS</span><span>Designed for better business management</span></div>
+</section>
 <div class="wl-install-banner" id="wlInstallBanner" hidden><div class="wl-install-copy"><b>Install White Lion SME</b><small id="wlInstallHint">Add the business system to your home screen for quick access.</small></div><button class="wl-install-button" id="wlInstallButton" type="button">Install app</button></div>
 <div id="appearanceBar"><div><strong>Appearance settings</strong><small id="appearanceBarLabel">Current theme: Light mode</small></div><button id="appearanceBarToggle" type="button">Switch to dark mode</button></div>
 <section class="content" id="view"></section>
