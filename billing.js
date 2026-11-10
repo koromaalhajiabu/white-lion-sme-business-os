@@ -12,6 +12,7 @@
   let selectedCurrency = 'SLE';
   let selectedCycle = 'monthly';
   let lastWorkspaceId = null;
+  const orangeMoneyNumber = '075075818';
 
   const style = document.createElement('style');
   style.textContent = `
@@ -41,6 +42,8 @@
     .wl-billing-metric small{display:block;color:#718096;font-size:10px}.wl-billing-metric strong{display:block;margin-top:6px;font-size:19px;color:#17243a}
     .wl-review-row{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #e9edf3}
     .wl-review-row small{display:block;color:#778397;font-size:10px;margin-top:3px}
+    .wl-orange-money{padding:12px 14px;background:#fff8e8;border:1px solid #f0dfb8;border-radius:11px;color:#74571e;font-size:12px;line-height:1.6;margin:10px 0}
+    .wl-orange-money strong{color:#49350e}
     @media(max-width:900px){.wl-plan-grid{grid-template-columns:1fr 1fr}.wl-billing-metrics{grid-template-columns:1fr 1fr}}
     @media(max-width:600px){.wl-plan-grid{grid-template-columns:1fr}.wl-billing-hero h1{font-size:21px}.wl-billing-metrics{grid-template-columns:1fr 1fr}.wl-review-row{align-items:flex-start;flex-direction:column}.wl-pay-form{grid-template-columns:1fr;min-width:0}.wl-pay-form button{width:100%}}
   `;
@@ -73,6 +76,7 @@
           return `<article class="wl-plan ${p.code==='professional'?'featured':''}"><h3>${esc(p.name)}</h3><p>${esc(p.description)}</p><div class="wl-plan-price">${money(amount,currency)} <small>/ ${cycle==='annual'?'year':'month'}</small></div><div class="panel-sub">${p.max_users} employees · ${p.max_branches} branch(es)</div><ul>${p.features.map(f=>'<li>'+esc(f)+'</li>').join('')}</ul><button class="btn primary" type="button" disabled>Set up business to subscribe</button></article>`;
         }).join('')}</div>
         <div class="wl-billing-note">Eligible accounts receive one free 7-day Professional trial for their first business workspace. Each account can claim the trial only once; additional workspaces require a paid subscription. No payment details are required to start the trial.</div>
+        <div class="wl-orange-money"><strong>Pay by Orange Money</strong><br>Send your subscription payment to <strong>${orangeMoneyNumber}</strong>. After paying, keep your transaction ID so you can submit it with your invoice. Payments are manually checked before subscription activation.</div>
       </div>`;
     document.getElementById('wlBillCurrency').onchange=e=>{selectedCurrency=e.target.value;renderCataloguePreview(view,message)};
     document.getElementById('wlBillCycle').onchange=e=>{selectedCycle=e.target.value;renderCataloguePreview(view,message)};
@@ -140,7 +144,7 @@
           <div class="wl-billing-note">${sub?.status==='trial'?'You are using the free Professional trial. '+trialDaysLeft+' day(s) remain. No payment is required during the trial.':sub?.status==='grace_period'?'You are in the seven-day renewal grace period. '+(daysRemaining??0)+' day(s) remain.':'A plan request creates an invoice only. Paid access is activated after White Lion verifies the payment. Payment screenshots or references do not automatically activate subscriptions.'}</div>
         </div>
         <div class="panel"><div class="panel-head"><div><h3>Invoices and payment records</h3><div class="panel-sub">Your workspace's subscription invoices and submitted payment references</div></div></div>
-          ${invoices.length?invoices.map(inv=>`<div class="panel" style="box-shadow:none;border:1px solid #e9edf3;margin:10px 0;padding:14px"><div class="panel-head"><div><b>${esc(inv.invoice_number)}</b><div class="panel-sub">${esc(inv.plan_code)} · ${esc(inv.billing_cycle)} · due ${new Date(inv.due_at).toLocaleDateString()}</div></div><div style="text-align:right"><b>${money(inv.amount_due,inv.currency_code)}</b><div>${statusPill(inv.status)}</div></div></div>${['pending','awaiting_verification'].includes(inv.status)?`<form class="wl-pay-form" data-pay-invoice="${esc(inv.id)}"><label>Payment method<select name="provider" required><option>Orange Money</option><option>Afrimoney</option><option>Bank transfer</option><option>Cash / manual</option></select></label><label>Transaction reference<input name="reference" required minlength="3" placeholder="Enter transaction ID / bank reference"></label><label>Exact amount<input name="amount" required type="number" min="0.01" step="0.01" value="${esc(inv.amount_due)}"></label><button class="btn primary" type="submit">Submit reference</button></form>`:'<div class="panel-sub">No payment action is required for this invoice.</div>'}</div>`).join(''):'<div class="empty">No subscription invoices have been created for this business.</div>'}
+          ${invoices.length?invoices.map(inv=>`<div class="panel" style="box-shadow:none;border:1px solid #e9edf3;margin:10px 0;padding:14px"><div class="panel-head"><div><b>${esc(inv.invoice_number)}</b><div class="panel-sub">${esc(inv.plan_code)} · ${esc(inv.billing_cycle)} · due ${new Date(inv.due_at).toLocaleDateString()}</div></div><div style="text-align:right"><b>${money(inv.amount_due,inv.currency_code)}</b><div>${statusPill(inv.status)}</div></div></div>${['pending','awaiting_verification'].includes(inv.status)?`<div class="wl-orange-money"><strong>Orange Money payment instructions</strong><br>1. Send <strong>${money(inv.amount_due,inv.currency_code)}</strong> to <strong>${orangeMoneyNumber}</strong> using Orange Money.<br>2. Enter the transaction reference and exact amount below.<br>3. Submit the reference. White Lion will verify it manually before activating your subscription.</div><form class="wl-pay-form" data-pay-invoice="${esc(inv.id)}"><label>Payment method<select name="provider" required><option value="Orange Money">Orange Money · 075075818</option><option>Afrimoney</option><option>Bank transfer</option><option>Cash / manual</option></select></label><label>Transaction reference<input name="reference" required minlength="3" placeholder="Enter Orange Money transaction ID"></label><label>Exact amount<input name="amount" required type="number" min="0.01" step="0.01" value="${esc(inv.amount_due)}"></label><button class="btn primary" type="submit">Submit reference</button></form>`:'<div class="panel-sub">No payment action is required for this invoice.</div>'}</div>`).join(''):'<div class="empty">No subscription invoices have been created for this business.</div>'}
         </div>
         <div id="wlBillingDeveloper"></div>`;
       document.getElementById('wlBillCurrency').onchange=e=>{selectedCurrency=e.target.value;render()};
