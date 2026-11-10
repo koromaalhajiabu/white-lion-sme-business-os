@@ -312,6 +312,13 @@
     if (panel.hidden) return;
     $('wlDevIdentity').textContent = 'Authenticated: ' + session.user.email + ' · Private developer';
     await loadDeveloperDashboard();
+    if (!window.__wlRegistrationRefreshTimer) {
+      window.__wlRegistrationRefreshTimer = setInterval(() => {
+        if (session && session.user.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com' && !document.hidden) {
+          loadDeveloperRegistrations();
+        }
+      }, 60000);
+    }
   }
   async function loadDeveloperDashboard() {
     const status = $('wlDevStatus');
