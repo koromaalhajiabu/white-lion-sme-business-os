@@ -3,10 +3,12 @@ name: Browser interaction smoke test
 on:
   push:
     paths:
-      - 'scripts/browser-smoke.mjs'
-      - 'i18n.js'
-      - 'index.html'
+      - '**/*.js'
+      - '**/*.html'
+      - '**/*.css'
+      - 'manifest.webmanifest'
       - 'sw.js'
+      - 'scripts/browser-smoke.mjs'
       - '.github/workflows/browser-smoke.yml'
   workflow_dispatch:
 
@@ -28,7 +30,17 @@ jobs:
         run: npm install --no-save playwright
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Test live Android-sized and desktop app
+      - name: Serve the current branch build locally
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/white-lion-http.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+      - name: Test current branch on Android-sized and desktop viewports
+        env:
+          WHITE_LION_SMOKE_URL: http://127.0.0.1:4173/
         run: node scripts/browser-smoke.mjs
       - name: Upload browser evidence
         if: always()

@@ -19,12 +19,18 @@ import android.widget.TextView;
 import android.widget.Button;
 import android.graphics.Color;
 
+import androidx.webkit.WebViewAssetLoader;
+
 public class MainActivity extends Activity {
-    private static final String APP_HOST = "koromaalhajiabu.github.io";
-    private static final String APP_URL = "https://koromaalhajiabu.github.io/white-lion-sme-business-os/";
+    private static final String ASSET_HOST = "appassets.androidplatform.net";
+    private static final String APP_ASSET_URL =
+            "https://appassets.androidplatform.net/assets/site/index.html";
+    private static final String APP_URL =
+            "https://koromaalhajiabu.github.io/white-lion-sme-business-os/";
     private static final int FILE_PICKER_REQUEST = 4102;
 
     private WebView webView;
+    private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> filePathCallback;
 
     @Override
@@ -36,6 +42,10 @@ public class MainActivity extends Activity {
     }
 
     private void openApplication(Bundle state) {
+        assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
+
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
 
@@ -83,6 +93,12 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return handleNavigation(request.getUrl());
             }
@@ -95,19 +111,41 @@ public class MainActivity extends Activity {
 
             private boolean handleNavigation(Uri uri) {
                 String scheme = uri.getScheme() == null ? "" : uri.getScheme();
-                if ("https".equalsIgnoreCase(scheme) &&
-                        APP_HOST.equalsIgnoreCase(uri.getHost())) return false;
+                String host = uri.getHost() == null ? "" : uri.getHost();
 
-                if ("mailto".equalsIgnoreCase(scheme) || "tel".equalsIgnoreCase(scheme) ||
-                        "https".equalsIgnoreCase(scheme)) {
-                    try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
-                    catch (Exception e) { android.util.Log.w("WhiteLionWeb", "No app for " + uri); }
+                if ("https".equalsIgnoreCase(scheme) && ASSET_HOST.equalsIgnoreCase(host)) {
+                    return false;
+                }
+
+                // Keep links back to the hosted White Lion app inside the bundled local app.
+                if ("https".equalsIgnoreCase(scheme)
+                        && "koromaalhajiabu.github.io".equalsIgnoreCase(host)
+                        && uri.getPath() != null
+                        && uri.getPath().startsWith("/white-lion-sme-business-os/")) {
+                    String relative = uri.getPath().substring(
+                            "/white-lion-sme-business-os/".length());
+                    String localPath = APP_ASSET_URL.substring(0, APP_ASSET_URL.lastIndexOf('/') + 1)
+                            + (relative.isEmpty() ? "index.html" : relative);
+                    if (uri.getQuery() != null) localPath += "?" + uri.getQuery();
+                    if (uri.getFragment() != null) localPath += "#" + uri.getFragment();
+                    webView.loadUrl(localPath);
+                    return true;
+                }
+
+                if ("mailto".equalsIgnoreCase(scheme) || "tel".equalsIgnoreCase(scheme)
+                        || "https".equalsIgnoreCase(scheme)) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                    } catch (Exception e) {
+                        android.util.Log.w("WhiteLionWeb", "No app for " + uri);
+                    }
                 }
                 return true;
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            public void onReceivedError(WebView view, WebResourceRequest request,
+                    WebResourceError error) {
                 if (request.isForMainFrame()) showConnectionError();
             }
 
@@ -122,7 +160,9 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         if (state != null && webView.restoreState(state) != null) return;
-        webView.loadUrl(APP_URL);
+        // Load the packaged web application, not GitHub Pages. The app shell therefore
+        // opens without internet; Supabase sync is available whenever connectivity returns.
+        webView.loadUrl(APP_ASSET_URL);
     }
 
     private void showConnectionError() {
@@ -139,20 +179,21 @@ public class MainActivity extends Activity {
         title.setTypeface(null, android.graphics.Typeface.BOLD);
 
         TextView message = new TextView(this);
-        message.setText("The application could not connect. Check your internet connection, then retry.");
+        message.setText("The application files could not be opened. Retry, or reinstall the latest APK.");
         message.setTextColor(Color.rgb(55, 65, 81));
         message.setTextSize(16);
         message.setPadding(0, 18, 0, 22);
 
         Button retry = new Button(this);
         retry.setText("Retry");
-        retry.setOnClickListener(v -> webView.loadUrl(APP_URL));
+        retry.setOnClickListener(v -> webView.loadUrl(APP_ASSET_URL));
 
         Button browser = new Button(this);
-        browser.setText("Open in Chrome");
+        browser.setText("Open web version");
         browser.setOnClickListener(v -> {
-            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL))); }
-            catch (Exception ignored) {}
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL)));
+            } catch (Exception ignored) {}
         });
 
         page.addView(title);

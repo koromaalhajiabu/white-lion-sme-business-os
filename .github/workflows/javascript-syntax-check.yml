@@ -4,9 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - '*.js'
-      - 'scripts/*.mjs'
-      - 'index.html'
+      - '**/*.js'
+      - '**/*.mjs'
+      - '**/*.html'
+      - 'manifest.webmanifest'
+      - 'android/**'
+      - 'supabase/migrations/**'
       - '.github/workflows/javascript-syntax-check.yml'
   workflow_dispatch:
 
@@ -26,12 +29,13 @@ jobs:
       - name: Validate standalone JavaScript files
         run: |
           set -e
-          for file in cloud.js operations.js documents.js league.js i18n.js shared.js sw.js scripts/*.mjs; do
-            if [ -f "$file" ]; then
-              echo "Checking $file"
-              node --check "$file"
-            fi
+          for file in ./*.js ./scripts/*.mjs; do
+            [ -f "$file" ] || continue
+            echo "Checking $file"
+            node --check "$file"
           done
+      - name: Check release and migration integrity
+        run: node scripts/release-integrity.mjs
       - name: Validate inline scripts in index.html
         run: |
           node <<'NODE'

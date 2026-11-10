@@ -19,12 +19,11 @@ The workflow encrypts the collected files before uploading an artifact to GitHub
 Open:
 https://github.com/koromaalhajiabu/white-lion-sme-business-os/settings/secrets/actions
 
-Required Actions secrets:
-1. `SUPABASE_URL` — `https://nclncqlgnxnijlumznnt.supabase.co`.
-2. `SUPABASE_SERVICE_ROLE_KEY` — service-role key for this project. It is used only inside the GitHub-hosted runner; never put it in frontend code or repository files.
-3. `BACKUP_ENCRYPTION_PASSPHRASE` — a long, unique passphrase. Store it securely; without it, artifacts cannot be decrypted.
+Required Actions secrets (the current workflow reads exactly these two):
+1. `SUPABASE_SERVICE_ROLE_KEY` — service-role key for this project. It is used only inside the GitHub-hosted runner; never put it in frontend code or repository files.
+2. `BACKUP_ENCRYPTION_PASSPHRASE` — a long, unique passphrase. Store it securely; without it, artifacts cannot be decrypted.
 
-`SUPABASE_DB_URL` is no longer used by this workflow. It may remain in GitHub Secrets, but it is not required for this backup method.
+The project URL (`https://nclncqlgnxnijlumznnt.supabase.co`) is currently set directly in `.github/workflows/supabase-backup.yml`, so a `SUPABASE_URL` secret is not required. `SUPABASE_DB_URL` is not used by this REST logical-backup workflow.
 
 Open Actions → **Supabase off-site backup** → **Run workflow**. A successful run and artifact are required before considering the scheduled backup operational.
 
