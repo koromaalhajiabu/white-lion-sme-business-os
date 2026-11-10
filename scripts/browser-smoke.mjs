@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
-const base = 'https://koromaalhajiabu.github.io/white-lion-sme-business-os/';
+const base = process.env.WHITE_LION_SMOKE_URL || 'https://koromaalhajiabu.github.io/white-lion-sme-business-os/';
 const report = { testedAt: new Date().toISOString(), base, browsers: [], summary: 'running' };
 
 async function runViewport(name, viewport) {
