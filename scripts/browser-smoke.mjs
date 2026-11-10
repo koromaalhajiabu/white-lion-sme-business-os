@@ -41,7 +41,7 @@ async function runViewport(name, viewport) {
       await page.locator('#menuBtn').click({timeout:5000}).catch(e=>result.checks.push({name:'mobile menu tap',pass:false,error:e.message}));
       await page.waitForTimeout(300);
     }
-    for (const [key, expected] of [['products','Products'],['sales','Sales'],['purchases','Purchases'],['expenses','Expenses'],['actions','Executive Action Centre'],['finance','Financial Planning'],['billing','Plans & Billing'],['settings','Business settings']]) {
+    for (const [key, expected] of [['products','Products'],['sales','Sales'],['purchases','Purchases'],['expenses','Expenses'],['actions','Executive Action Centre'],['reorder','Smart Reorder Planner'],['finance','Financial Planning'],['billing','Plans & Billing'],['settings','Business settings']]) {
       if (viewport.width < 720) {
         const sidebarOpen = await page.locator('#sidebar').evaluate(el => el.classList.contains('open'));
         if (!sidebarOpen) {
