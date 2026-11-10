@@ -37,6 +37,13 @@ async function runViewport(name, viewport) {
     result.checks.push({name:'app loaded', pass:!!result.startup.startupComplete});
     result.checks.push({name:'service worker controls app after reload', pass:!!result.startup.serviceWorkerControlled, state:result.startup.serviceWorkerScript});
     result.checks.push({name:'main navigation listeners registered', pass:result.startup.mainNavBound});
+    // Exercise the new planner directly as the public smoke runner has no authenticated workspace.
+    await page.evaluate(() => window.setPage('reorder'));
+    await page.waitForTimeout(700);
+    const reorderView = await page.locator('#view').innerText();
+    result.checks.push({name:'Smart Reorder Planner renders',pass:reorderView.includes('Demand forecast & reorder queue') && reorderView.includes('Suggested order')});
+    await page.evaluate(() => window.setPage('dashboard'));
+    await page.waitForTimeout(300);
     if (viewport.width < 720) {
       await page.locator('#menuBtn').click({timeout:5000}).catch(e=>result.checks.push({name:'mobile menu tap',pass:false,error:e.message}));
       await page.waitForTimeout(300);
