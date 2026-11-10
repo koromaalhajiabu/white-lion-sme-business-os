@@ -772,6 +772,7 @@ html[data-theme="dark"] .footer{color:#8795aa}
     <button data-page="returns"><span class="ico">↩</span>Returns & Refunds</button>
     <button data-page="inventory"><span class="ico">▤</span>Inventory Management</button>
     <button data-page="stockcontrol"><span class="ico">⌁</span>Inventory Intelligence</button>
+    <button data-page="reorder"><span class="ico">↗</span>Smart Reorder Planner</button>
     <button data-page="products"><span class="ico">◇</span>Products & Catalogue</button>
     <button data-page="purchases"><span class="ico">⇩</span>Purchases</button>
     <button data-page="customers"><span class="ico">♙</span>Customers</button>
@@ -828,10 +829,10 @@ const INDUSTRY_WORDING={
  'Hardware & Building Materials':{sales:'Counter Sales',products:'Materials Inventory',purchases:'Stock Procurement',customers:'Customers & Contractors',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Business Reports'},
  'Restaurant & Hospitality':{sales:'Food & Service Sales',products:'Ingredients & Stock',purchases:'Supplier Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Operating Expenses',reports:'Hospitality Reports'}
 };
-const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',supplierintel:'Supplier Intelligence',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning'};
+const BASE_WORDING={documents:'Business documents',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',sales:'Sales & POS',returns:'Returns & Refunds',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',customerintel:'Customer Intelligence',suppliers:'Suppliers',supplierintel:'Supplier Intelligence',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning',reorder:'Smart Reorder Planner'};
 function industryWording(){return {...BASE_WORDING,...(INDUSTRY_WORDING[state.business.industry]||{})}}
 function applyIndustryWording(){
- const labels={...industryWording(),league:'Sports & Local League'},icons={supplierintel:'◈',customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',league:'⚽',employees:'♟',settings:'⚙'};
+ const labels={...industryWording(),league:'Sports & Local League'},icons={supplierintel:'◈',customerintel:'✦',dashboard:'▦',inventory:'▤',stockcontrol:'⌁',reorder:'↗',sales:'▣',returns:'↩',products:'◇',purchases:'⇩',customers:'♙',suppliers:'♧',expenses:'↗',reports:'▤',intelligence:'✦',finance:'◷',documents:'▧',league:'⚽',employees:'♟',settings:'⚙'};
  document.querySelectorAll('[data-page]').forEach(b=>{const p=b.dataset.page;if(labels[p]||p==='dashboard'||p==='employees'||p==='settings')b.innerHTML='<span class="ico">'+icons[p]+'</span>'+(labels[p]||({dashboard:'Overview',employees:'Employees',settings:'Business settings'}[p]))});
  if(state.page==='dashboard')document.getElementById('crumb').textContent='Overview';
  else document.getElementById('crumb').textContent=labels[state.page]||({employees:'Employees',settings:'Business settings'}[state.page]||state.page);
@@ -843,7 +844,7 @@ function put(store,obj){return new Promise((resolve,reject)=>{const tx=db.transa
 function del(store,id){return new Promise((resolve,reject)=>{const numeric=Number(id),key=String(id).trim()!==''&&Number.isFinite(numeric)?numeric:id;const r=db.transaction(store,'readwrite').objectStore(store).delete(key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
 async function setting(key,value){if(value!==undefined){await put('settings',{key,value});return value}const rows=await all('settings');return rows.find(x=>x.key===key)?.value}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
-function setPage(p){if(!p)return;if(p==='billing'){document.getElementById('sidebar').classList.remove('open');if(window.whiteLionBilling&&typeof window.whiteLionBilling.render==='function'){window.whiteLionBilling.render()}else{document.getElementById('view').innerHTML='<div class="panel"><h2>Plans & Billing</h2><p>Billing module is still loading. Please wait a moment and try again.</p></div>'}return}if(p===state.page){document.getElementById('sidebar').classList.remove('open');render();return}state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>{const active=b.dataset.page===p;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings',documents:'Business documents',league:'Sports & Local League'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');const view=document.getElementById('view');view.classList.remove('page-transition');void view.offsetWidth;view.classList.add('page-transition');render()}
+function setPage(p){if(!p)return;if(p==='billing'){document.getElementById('sidebar').classList.remove('open');if(window.whiteLionBilling&&typeof window.whiteLionBilling.render==='function'){window.whiteLionBilling.render()}else{document.getElementById('view').innerHTML='<div class="panel"><h2>Plans & Billing</h2><p>Billing module is still loading. Please wait a moment and try again.</p></div>'}return}if(p===state.page){document.getElementById('sidebar').classList.remove('open');render();return}state.page=p;applyIndustryWording();document.querySelectorAll('[data-page]').forEach(b=>{const active=b.dataset.page===p;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});document.getElementById('crumb').textContent=({dashboard:'Overview',sales:'Sales & POS',products:'Products & Inventory',purchases:'Purchases',customers:'Customers',suppliers:'Suppliers',expenses:'Expenses',reports:'Reports',intelligence:'Business Intelligence',executive:'Executive Intelligence',finance:'Financial Planning',inventory:'Inventory Management',stockcontrol:'Inventory Intelligence',reorder:'Smart Reorder Planner',returns:'Returns & Refunds',employees:'Employees',settings:'Business settings',documents:'Business documents',league:'Sports & Local League'})[p];applyIndustryWording();document.getElementById('sidebar').classList.remove('open');const view=document.getElementById('view');view.classList.remove('page-transition');void view.offsetWidth;view.classList.add('page-transition');render()}
 window.setPage=setPage;
 window.addEventListener('whiteLionCloudReady',()=>{if(window.whiteLionCloud?.getActiveBusiness?.())render()});
 window.addEventListener('whiteLionWorkspaceChanged',()=>render());
@@ -885,7 +886,19 @@ async function render(){
  };
  
 
- if(state.page==='stockcontrol'){
+ if(state.page==='reorder'){
+  const [products,sales,stockRows]=await Promise.all([all('products'),all('sales'),all('branchInventory')]);
+  const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null;
+  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
+  const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
+  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!x.branchId||String(x.branchId)===String(branchId)));
+  const scopedStock=stockRows.filter(x=>!businessId||!x.businessId||String(x.businessId)===String(businessId));
+  const data={products:scopedProducts,sales:scopedSales,stockRows:scopedStock,branchId,businessName:active?.name||state.business.name||'Selected business',branchName:branch?.name||'Local device stock',currency:state.business.currency||'SLE'};
+  if(window.WhiteLionSmartReorder?.render)window.WhiteLionSmartReorder.render(data);
+  else v.innerHTML='<div class="panel"><h2>Smart Reorder Planner is loading</h2><p class="panel-sub">Please wait a moment, then reopen this section.</p></div>';
+  return;
+ }
+  if(state.page==='stockcontrol'){
   const [products,sales,stockRows]=await Promise.all([all('products'),all('sales'),all('branchInventory')]);
   const activeBusiness=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=activeBusiness?.id||null;
   const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
@@ -1402,6 +1415,7 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
 </script>
 <script src="./executive-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('executive-intelligence.js')"></script>
 <script src="./supplier-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('supplier-intelligence.js')"></script>
+<script src="./smart-reorder.js?v=1" defer onerror="window.__wlScriptFail.push('smart-reorder.js')"></script>
 <script src="./cloud.js?v=42" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
 <script src="./operations.js?v=22" defer onerror="window.__wlScriptFail.push('operations.js')"></script>
 <script src="./documents.js?v=3" defer onerror="window.__wlScriptFail.push('documents.js')"></script>
