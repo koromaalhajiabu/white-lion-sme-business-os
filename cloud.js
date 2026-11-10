@@ -126,7 +126,7 @@
         <button id="wlDevResetData" class="danger">Reset all business data</button>
       </div>
       <div id="wlDevBusinesses"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New customer registrations</h3><button id="wlDevRegistrationsRefresh" type="button">Refresh registrations</button></div><div id="wlDevRegistrations" class="dev-meta">Registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
       <div class="dev-meta" style="margin-top:10px">Deletion requests suspend access immediately. Accounts remain recoverable for 30 days. Business owners and developer accounts are protected. Permanent deletion is only available after the recovery period through the secure server-side function.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px"><h3 style="margin:0">30-day deletion &amp; recovery</h3><button id="wlDevDeletionRefresh">Refresh requests</button></div>
@@ -145,6 +145,7 @@
     $('wlDevRegistrationLimitRefresh').onclick = loadDeveloperRegistrationLimits;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
+    $('wlDevRegistrationsRefresh').onclick = loadDeveloperRegistrations;
     $('wlDevDeletionRefresh').onclick = loadDeveloperDeletionRequests;
     $('wlDevAuditRefresh').onclick = loadDeveloperActivity;
     $('wlDevAuditSearch').oninput = renderDeveloperActivity;
@@ -339,6 +340,7 @@
       };
     });
     status.textContent = 'Developer authorization verified by Supabase. Platform controls are available.';
+    await loadDeveloperRegistrations();
     await loadDeveloperAccounts();
     await loadDeveloperRegistrationLimits();
     await loadDeveloperDeletionRequests();
@@ -491,6 +493,35 @@
       '. Existing businesses: ' + Number(data?.existing_owned_businesses || 0) + '.';
     await loadDeveloperRegistrationLimits();
     await loadDeveloperAccounts();
+  }
+
+  async function loadDeveloperRegistrations() {
+    const host = $('wlDevRegistrations');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading new registrations…';
+    const {data,error} = await client.rpc('get_platform_registrations', {p_limit:200});
+    if (error) {
+      host.textContent = 'Registration notifications unavailable: ' + error.message + '. Run migration 028 first.';
+      return;
+    }
+    const rows = Array.isArray(data) ? data : [];
+    const unseen = rows.filter(x => !x.viewed_at).length;
+    host.innerHTML = '<div class="dev-meta" style="margin:7px 0 10px">' +
+      rows.length + ' registered account(s) · ' + unseen + ' not yet reviewed</div>' +
+      rows.map(x => {
+        const when = x.registered_at ? new Date(x.registered_at).toLocaleString() : 'Time unavailable';
+        return '<div class="dev-row"><div style="min-width:0"><strong>' +
+          esc(x.full_name || 'New customer') + '</strong><div class="dev-meta">' +
+          esc(x.email || '') + '</div><div class="dev-meta">Registered: ' + esc(when) +
+          ' · ' + (x.email_confirmed_at ? 'Email verified' : 'Email not verified') +
+          (x.viewed_at ? ' · Reviewed' : ' · NEW REGISTRATION') +
+          '</div></div></div>';
+      }).join('') || '<div class="dev-meta">No registrations have been recorded yet.</div>';
+    if (unseen) {
+      const marked = await client.rpc('mark_platform_registrations_viewed');
+      if (marked.error) host.insertAdjacentHTML('beforeend',
+        '<div class="dev-meta">Could not mark notifications as reviewed: ' + esc(marked.error.message) + '</div>');
+    }
   }
 
   async function loadDeveloperAccounts() {
