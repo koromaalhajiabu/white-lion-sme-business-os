@@ -838,6 +838,7 @@ html[data-theme="dark"] .footer{color:#8795aa}
 
 </style>
 <style>@media(max-width:720px){#sidebar.sidebar{position:fixed!important;left:-280px!important;right:auto!important;top:0!important;bottom:0!important;height:100vh;height:100dvh;max-height:100dvh;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;z-index:30!important}#sidebar.sidebar.open{left:0!important}}</style>
+<link rel="stylesheet" href="./login-premium.css?v=1">
 </head>
 <body>
 <div class="app">
@@ -1433,7 +1434,7 @@ function csv(rows){const keys=['receipt','date','customer','payment','total'];co
 window.addEventListener('whiteLionBranchChanged',()=>{if(state.page==='sales'||state.page==='purchases'||state.page==='intelligence'||state.page==='stockcontrol')render()});
 (async()=>{const v=document.getElementById('view');try{db=await openDB();state.business=await setting('business')||state.business;await setting('business',state.business);await render();window.__wlStartupComplete=true}catch(e){window.__wlStartupComplete=true;console.error('White Lion startup failed:',e);v.innerHTML='<div class="panel"><h2>White Lion could not finish starting</h2><p class="panel-sub">Your saved local records have not been deleted. The startup error is: '+esc(e&&e.message?e.message:String(e))+'</p><button class="btn primary" id="wlRetryStartup" type="button">Try again</button></div>';const b=document.getElementById('wlRetryStartup');if(b)b.onclick=()=>location.reload()}})();
 
-if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=103',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
+if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=104',{scope:'./',updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script>
 <script id="wl-simple-pwa-install">
 (function(){
@@ -1515,6 +1516,6 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
 <script src="./league.js?v=2" defer onerror="window.__wlScriptFail.push('league.js')"></script>
 <script src="./billing.js?v=9" defer onerror="window.__wlScriptFail.push('billing.js')"></script>
 <script src="./action-centre.js?v=4" defer></script>
-<script src="./dynamic-login.js?v=1" defer onerror="window.__wlScriptFail.push('dynamic-login.js')"></script>
+<script src="./dynamic-login.js?v=2" defer onerror="window.__wlScriptFail.push('dynamic-login.js')"></script>
 <script src="./premium-experience.js?v=1" defer onerror="window.__wlScriptFail.push('premium-experience.js')"></script>
 </body></html>
