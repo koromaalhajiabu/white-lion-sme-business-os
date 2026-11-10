@@ -33,7 +33,9 @@ function addTop(){
 }
 async function refreshAlerts(){
  const host=$('wlPeList');if(!host)return;host.innerHTML='<div class="wl-pe-note">Reviewing local activity…</div>';
- const [p,s,pu,e]=await Promise.all(['products','sales','purchases','expenses'].map(read));
+ const [p0,s0,pu0,e0]=await Promise.all(['products','sales','purchases','expenses'].map(read));
+ const activeId=biz()?.id,scope=rows=>rows.filter(x=>!activeId||!x.localBusinessId||String(x.localBusinessId)===String(activeId));
+ const [p,s,pu,e]=[p0,s0,pu0,e0].map(scope);
  const low=p.filter(x=>Number(x.stock||0)<=Number(x.reorder||0)),out=low.filter(x=>Number(x.stock||0)<=0),offline=navigator.onLine===false,sync=$('wlSyncStatus')?.textContent||'';
  const alerts=[];
  if(offline)alerts.push({t:'Offline mode is active',d:'Local work can continue. Cloud updates require an internet connection.',w:1});
