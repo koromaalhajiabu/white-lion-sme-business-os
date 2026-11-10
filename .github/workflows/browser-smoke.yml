@@ -3,10 +3,12 @@ name: Browser interaction smoke test
 on:
   push:
     paths:
-      - 'scripts/browser-smoke.mjs'
-      - 'i18n.js'
-      - 'index.html'
+      - '**/*.js'
+      - '**/*.html'
+      - '**/*.css'
+      - 'manifest.webmanifest'
       - 'sw.js'
+      - 'scripts/browser-smoke.mjs'
       - '.github/workflows/browser-smoke.yml'
   workflow_dispatch:
 
