@@ -140,6 +140,7 @@
       });
       $('wluOrders').addEventListener('click', updateOrderStatus);
       $('wluOrders').addEventListener('click', approveOrder);
+      $('wluOrders').addEventListener('click', rejectOrder);
       $('wluServices').addEventListener('click', editService);
     }
     return root;
@@ -292,6 +293,25 @@
     if(error) return say('Could not save order: '+error.message,true);
     form.reset(); await load(); say('Unlocking order '+reference+' created.');
   }
+  async function rejectOrder(event) {
+    const button=event.target.closest('[data-wlu-reject]'); if(!button) return;
+    const order=orders.find(item=>item.id===button.dataset.id); if(!order) return;
+    if(role!=='owner') return say('Only the business owner can reject orders.',true);
+    if((order.approval_status||'pending')!=='pending') return say('This order has already been reviewed.',true);
+    const reason=window.prompt('Optional reason for rejecting order '+order.reference+':','');
+    if(reason===null) return;
+    if(!window.confirm('Reject this customer order? It will not be submitted to Mobile-Unlock.')) return;
+    button.disabled=true;
+    try {
+      const {error}=await client.rpc('reject_phone_unlocking_order',{
+        p_business_id:business.id,p_order_id:order.id,p_reason:reason.trim()||null
+      });
+      if(error) throw error;
+      await load(); say('Order '+order.reference+' rejected. It will not be sent to Mobile-Unlock.');
+    } catch(error) {
+      say('Could not reject order: '+(error.message||String(error)),true);
+    } finally { button.disabled=false; }
+  }
   async function approveOrder(event) {
     const button=event.target.closest('[data-wlu-approve]'); if(!button) return;
     const order=orders.find(item=>item.id===button.dataset.id); if(!order) return;
@@ -379,7 +399,7 @@
       const approvalText=APPROVAL_LABELS[o.approval_status||'pending']||'Awaiting owner approval';
       const canApprove=role==='owner'&&(o.approval_status||'pending')==='pending'&&Number(o.amount_paid)>=Number(o.service_price)&&!['cancelled','failed','refunded'].includes(o.status);
       const providerText=o.provider_submission_status==='submitted'?'Submitted · '+(o.provider_reference||'reference pending'):o.provider_submission_status==='submitting'?'Submission in progress':o.provider_submission_status==='unknown'?'Submission uncertain — reconcile before retry':o.provider_submission_status==='failed'?'Provider rejected/failed':o.provider_service_id?'Provider service mapped':'Manual service';
-      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Mobile-Unlock')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Net paid: '+esc(money(netPaid))+'<br>Due: '+esc(money(balance))+'<br>Refunded: '+esc(money(o.amount_refunded))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td><strong>'+esc(approvalText)+'</strong><br><small>'+esc(providerText)+'</small>'+(o.provider_submission_message?'<br><small>'+esc(o.provider_submission_message)+'</small>':'')+'</td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td>'+(canApprove?'<button type="button" data-wlu-approve data-id="'+esc(o.id)+'">Approve'+(o.provider_service_id&&String(o.provider_service_type).toUpperCase()==='IMEI'?' &amp; submit':'')+'</button>':(o.approval_status==='pending'&&Number(o.amount_paid)<Number(o.service_price)?'<small>Full payment required before approval</small>':''))+'<select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="'+esc(o.status)+'" data-id="'+esc(o.id)+'" '+(o.status==='refunded'?'disabled':'')+'>Update</button></td></tr>'
+      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Mobile-Unlock')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Net paid: '+esc(money(netPaid))+'<br>Due: '+esc(money(balance))+'<br>Refunded: '+esc(money(o.amount_refunded))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td><strong>'+esc(approvalText)+'</strong><br><small>'+esc(providerText)+'</small>'+(o.provider_submission_message?'<br><small>'+esc(o.provider_submission_message)+'</small>':'')+'</td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td>'+((o.approval_status||'pending')==='pending'&&role==='owner'?'<button type="button" data-wlu-reject data-id="'+esc(o.id)+'" class="secondary">Reject</button>':'')+(canApprove?'<button type="button" data-wlu-approve data-id="'+esc(o.id)+'">Approve'+(o.provider_service_id&&String(o.provider_service_type).toUpperCase()==='IMEI'?' &amp; submit':'')+'</button>':(o.approval_status==='pending'&&Number(o.amount_paid)<Number(o.service_price)?'<small>Full payment required before approval</small>':''))+'<select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="'+esc(o.status)+'" data-id="'+esc(o.id)+'" '+(o.status==='refunded'?'disabled':'')+'>Update</button></td></tr>'
     }).join('')+'</tbody></table>':'<p class="wlu-muted">No unlocking orders yet. Create the first order above.</p>';
     $('wluOrders').querySelectorAll('[data-status-select]').forEach(select=>select.addEventListener('change',()=>{
       const btn=$('wluOrders').querySelector('[data-id="'+select.dataset.statusSelect+'"]');
