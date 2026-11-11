@@ -1018,7 +1018,7 @@ async function render(){
   const activeBusiness=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=activeBusiness?.id||null;
   const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
   const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
-  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||!x.branchId||String(x.branchId)===String(branchId)));
+  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId)));
   const scopedStock=stockRows.filter(x=>(!businessId||!x.businessId||String(x.businessId)===String(businessId))&&String(x.branchId||'local-main')===String(branchId));
   const qtyFor=p=>{const r=scopedStock.find(x=>String(x.productId)===String(p.id));const any=stockRows.some(x=>String(x.productId)===String(p.id)&&(!businessId||!x.businessId||String(x.businessId)===String(businessId)));return r?Number(r.quantity||0):(!any?Number(p.stock||0):0)};
   const planKey='stockIntel:'+String(businessId||'local')+':'+String(branchId);
@@ -1205,7 +1205,7 @@ async function render(){
   const active=window.whiteLionCloud?.getActiveBusiness?.()||null;
   const branch=window.whiteLionCloud?.getSelectedBranch?.()||null;
   const businessId=active?.id||null,branchId=branch?.id||null;
-  const belongs=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||!x.branchId||String(x.branchId)===String(branchId));
+  const belongs=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId));
   const scopedPurchases=purchases.filter(belongs);
   const scopedSuppliers=suppliers.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId));
   const scopedProducts=products.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId));
@@ -1217,7 +1217,7 @@ async function render(){
  if(state.page==='customerintel'){
   const [contacts,sales,returns]=await Promise.all([all('customers'),all('sales'),all('returns')]);
   const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null,branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||null;
-  const inScope=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||!x.branchId||String(x.branchId)===String(branchId));
+  const inScope=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId));
   const scopedContacts=contacts.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId));
   const scopedSales=sales.filter(inScope),scopedReturns=returns.filter(inScope),refundBySale=new Map();
   scopedReturns.forEach(r=>{const k=String(r.saleId||'');if(k)refundBySale.set(k,(refundBySale.get(k)||0)+Number(r.refundTotal||0));});
@@ -1287,7 +1287,7 @@ async function render(){
  if(state.page==='intelligence'){
  const [sales,expenses,products,purchases,returns,customers,suppliers]=await Promise.all([all('sales'),all('expenses'),all('products'),all('purchases'),all('returns'),all('customers'),all('suppliers')]);
  const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null,branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||null;
- const belongs=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||!x.branchId||String(x.branchId)===String(branchId));
+ const belongs=x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId));
  const scoped={sales:sales.filter(belongs),expenses:expenses.filter(belongs),products:products.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId)),purchases:purchases.filter(belongs),returns:returns.filter(belongs),customers:customers.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId)),suppliers:suppliers.filter(x=>!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))};
  const allSales=scoped.sales,allExpenses=scoped.expenses,allPurchases=scoped.purchases,allReturns=scoped.returns;
  const gross=allSales.reduce((n,x)=>n+Number(x.total||0),0),refund=allReturns.reduce((n,x)=>n+Number(x.refundTotal||0),0),net=gross-refund,expense=allExpenses.reduce((n,x)=>n+Number(x.amount||0),0),purchaseSpend=allPurchases.reduce((n,x)=>n+Number(x.total||0),0);
