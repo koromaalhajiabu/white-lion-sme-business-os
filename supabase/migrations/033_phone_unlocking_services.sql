@@ -10,6 +10,26 @@ select id,'phone_unlocking',false
 from public.businesses
 on conflict (business_id,module_key) do nothing;
 
+-- The original module-seeding trigger predates this module. Seed it for future businesses too.
+create or replace function public.seed_phone_unlocking_module()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  insert into public.business_industry_modules(business_id,module_key,is_enabled)
+  values(new.id,'phone_unlocking',false)
+  on conflict (business_id,module_key) do nothing;
+  return new;
+end;
+$;
+
+drop trigger if exists phone_unlocking_module_seed on public.businesses;
+create trigger phone_unlocking_module_seed
+after insert on public.businesses
+for each row execute function public.seed_phone_unlocking_module();
+
 create table if not exists public.phone_unlocking_services (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
@@ -121,8 +141,18 @@ using (public.has_business_role(business_id,array['owner','admin','manager']::pu
 revoke all on public.phone_unlocking_services from anon;
 revoke all on public.phone_unlocking_orders from anon;
 revoke all on public.phone_unlocking_payments from anon;
-grant select,insert,update on public.phone_unlocking_services to authenticated;
-grant select,insert,update on public.phone_unlocking_orders to authenticated;
+grant select on public.phone_unlocking_services to authenticated;
+grant insert (business_id,service_name,description,default_price) on public.phone_unlocking_services to authenticated;
+grant update (service_name,description,default_price,is_active,updated_at) on public.phone_unlocking_services to authenticated;
+
+grant select on public.phone_unlocking_orders to authenticated;
+grant insert (
+  business_id,branch_id,reference,customer_name,customer_phone,device_brand,device_model,
+  imei,network_name,country,service_name,provider_name,provider_reference,provider_cost,
+  service_price,notes
+) on public.phone_unlocking_orders to authenticated;
+grant update (status,updated_at,completed_at,notes,provider_name,provider_reference,provider_cost,service_price)
+  on public.phone_unlocking_orders to authenticated;
 grant select on public.phone_unlocking_payments to authenticated;
 
 create or replace function public.record_phone_unlocking_payment(
