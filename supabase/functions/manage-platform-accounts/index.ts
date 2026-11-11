@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       const fullName = String(body.full_name || "").trim();
       const businessId = String(body.business_id || "");
       const role = String(body.role || "admin");
-      if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email) || !fullName || !businessId || !ALLOWED_ROLES.has(role)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !fullName || !businessId || !ALLOWED_ROLES.has(role)) {
         return Response.json({ error: "Provide a valid email, full name, business workspace and permitted role." }, { status: 400, headers: cors });
       }
       if (email === DEVELOPER_EMAIL) return Response.json({ error: "The developer account cannot be invited or replaced." }, { status: 403, headers: cors });
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       const userId = String(body.user_id || "");
       const fullName = String(body.full_name || "").trim();
       const email = String(body.email || "").trim().toLowerCase();
-      if (!userId || !fullName || !/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email)) {
+      if (!userId || !fullName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return Response.json({ error: "Provide the account ID, full name and a valid email address." }, { status: 400, headers: cors });
       }
       if (userId === actorId || email === DEVELOPER_EMAIL) {
