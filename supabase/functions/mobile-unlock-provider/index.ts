@@ -31,7 +31,7 @@ function countServices(value: any): number {
 
 async function callProvider(action: string, apiKey: string) {
   const body = new URLSearchParams({ action, apikey: apiKey });
-  const response = await fetch("https://www.mobile-unlock.com/api/fusion", {
+  const response = await fetch("https://mobile-unlock.com/api/fusion", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
     body,
