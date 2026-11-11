@@ -743,8 +743,23 @@
       const name = a.full_name || 'Name not provided';
       const last = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString() : 'Never signed in';
       const protectedAccount = a.email?.toLowerCase() === 'koromaalhajiabu0@gmail.com';
-      return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(name) + '</strong><div class="dev-meta">' + esc(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + esc(last) + '</div></div><div class="dev-actions"><button data-account-user="' + esc(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (protectedAccount ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button>' + (!protectedAccount ? '<button class="danger" data-account-delete="' + esc(a.user_id) + '" data-account-email="' + esc(a.email || '') + '">Request deletion</button>' : '') + '</div></div>';
+      return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(name) + '</strong><div class="dev-meta">' + esc(a.email || '') + '</div><div class="dev-meta">' + (active ? 'ACTIVE' : 'SUSPENDED') + ' · ' + (a.email_confirmed ? 'Email verified' : 'Email not verified') + ' · ' + Number(a.business_count || 0) + ' workspaces</div><div class="dev-meta">Last sign-in: ' + esc(last) + '</div></div><div class="dev-actions">' + (!protectedAccount ? '<button data-account-edit="' + esc(a.user_id) + '" data-account-name="' + esc(name) + '" data-account-email="' + esc(a.email || '') + '">Edit profile</button>' : '') + '<button data-account-user="' + esc(a.user_id) + '" data-account-active="' + (active ? 'true':'false') + '" ' + (protectedAccount ? 'disabled' : '') + '>' + (active ? 'Suspend access' : 'Restore access') + '</button>' + (!protectedAccount ? '<button class="danger" data-account-delete="' + esc(a.user_id) + '" data-account-email="' + esc(a.email || '') + '">Request deletion</button>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No registered accounts found.</div>';
+    host.querySelectorAll('[data-account-edit]').forEach(button => {
+      button.onclick = async () => {
+        const userId = button.dataset.accountEdit;
+        const oldName = button.dataset.accountName || '';
+        const oldEmail = button.dataset.accountEmail || '';
+        const fullName = prompt('Edit account full name:', oldName); if (fullName === null) return;
+        const email = prompt('Edit account email address. A new address requires email confirmation:', oldEmail); if (email === null) return;
+        if (!fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { say('Enter a valid full name and email. No changes were made.'); return; }
+        if (!confirm('Save profile changes for ' + oldEmail + '? A changed email must be confirmed by the new address.')) return;
+        button.disabled = true;
+        const {data,error} = await client.functions.invoke('manage-platform-accounts',{body:{action:'update_profile',user_id:userId,full_name:fullName.trim(),email:email.trim().toLowerCase()}});
+        if (error || !data?.ok) { say('Profile update failed: ' + (error?.message || data?.error || 'Unknown error')); button.disabled = false; return; }
+        say(data.message || 'Account profile updated.'); await loadDeveloperAccounts(); await loadDeveloperActivity();
+      };
+    });
     host.querySelectorAll('[data-account-delete]').forEach(button => {
       button.onclick = async () => {
         const email = button.dataset.accountEmail || '';
