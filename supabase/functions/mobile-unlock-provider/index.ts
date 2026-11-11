@@ -71,6 +71,25 @@ async function callProvider(action: string, apiKey: string) {
   return payload;
 }
 
+async function callProviderRestAccount(apiKey: string) {
+  const response = await fetch("https://mobile-unlock.com/api/v1/account", {
+    method: "GET",
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Accept": "application/json",
+    },
+  });
+  const text = await response.text();
+  let payload: any;
+  try { payload = JSON.parse(text); }
+  catch { throw new Error("REST account endpoint returned non-JSON (HTTP " + response.status + ")."); }
+  if (!response.ok) {
+    const message = payload?.message || payload?.error || "REST account endpoint returned HTTP " + response.status + ".";
+    throw new Error(String(message).slice(0, 240));
+  }
+  return payload;
+}
+
 async function callProviderRestServices(apiKey: string) {
   const response = await fetch("https://mobile-unlock.com/api/v1/services", {
     method: "GET",
@@ -146,6 +165,13 @@ Deno.serve(async (req) => {
       callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
       callProvider("getserverservicelist", providerKey),
     ]);
+    let restAccountPayload: any = null;
+    let restAccountError: string | null = null;
+    try {
+      restAccountPayload = await callProviderRestAccount(providerKey);
+    } catch (error) {
+      restAccountError = String(error?.message || "REST account request failed.").slice(0, 240);
+    }
     let restPayload: any = null;
     let restError: string | null = null;
     try {
@@ -238,8 +264,9 @@ Deno.serve(async (req) => {
     if (!rows.length) {
       const imeiShape = describeShape(imeiPayload);
       const serverShape = describeShape(serverPayload);
-      const restShape = restPayload ? describeShape(restPayload) : "REST unavailable: " + (restError || "not returned");
-      throw new Error("No services were returned by the Fusion or REST catalogues. No catalogue records were changed. IMEI: " + imeiShape + " || SERVER: " + serverShape + " || REST: " + restShape + (restError ? " || REST error: " + restError : ""));
+      const restAccountShape = restAccountPayload ? describeShape(restAccountPayload) : "REST account unavailable: " + (restAccountError || "not returned");
+      const restShape = restPayload ? describeShape(restPayload) : "REST services unavailable: " + (restError || "not returned");
+      throw new Error("No services were returned by the Fusion or REST catalogues. No catalogue records were changed. ACCOUNT: " + restAccountShape + " || IMEI: " + imeiShape + " || SERVER: " + serverShape + " || REST SERVICES: " + restShape + (restAccountError ? " || REST account error: " + restAccountError : "") + (restError ? " || REST services error: " + restError : ""));
     }
     const { error: upsertError } = await userClient.from("phone_unlocking_provider_services")
       .upsert(rows, { onConflict: "business_id,provider_service_type,provider_service_id" });
