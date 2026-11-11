@@ -109,7 +109,7 @@
           </details>
           <h4>Unlocking order register</h4>
           <div class="wlu-scroll" id="wluOrders">Loading orders…</div>
-          <div class="wlu-muted" style="margin-top:9px">Provider API automation is not active. Orders can be processed manually and provider references recorded here. Any future provider integration must use a verified provider API through a server-side secret, never a key embedded in this browser app.</div>
+          <div class="wlu-muted" style="margin-top:9px">Provider API automation is not active. Orders can be processed manually and provider references recorded here. Payment and refund records are stored in this module; automatic general-ledger journal posting is not enabled yet. Any future provider integration must use a verified provider API through a server-side secret, never a key embedded in this browser app.</div>
         </div>`;
       host.appendChild(root);
       $('wluEnable').addEventListener('click', enableModule);
@@ -126,6 +126,7 @@
         if (order) $('wluPaymentForm').elements.amount.placeholder = 'Balance: ' + money(Number(order.service_price)-Number(order.amount_paid));
       });
       $('wluOrders').addEventListener('click', updateOrderStatus);
+      $('wluServices').addEventListener('click', editService);
     }
     return root;
   }
@@ -147,6 +148,18 @@
     });
     if(error) return say('Could not save service: '+error.message,true);
     form.reset(); await loadServices(); say('Service and default price saved.');
+  }
+  async function editService(event) {
+    const button=event.target.closest('[data-wlu-service-edit]'); if(!button) return;
+    if(!canManage()) return say('Your role cannot change service pricing.',true);
+    const service=services.find(item=>item.id===button.dataset.wluServiceEdit); if(!service) return;
+    const next=prompt('New default price for '+service.service_name, String(service.default_price));
+    if(next===null) return;
+    const price=Number(next);
+    if(!Number.isFinite(price)||price<0) return say('Enter a valid non-negative price.',true);
+    const {error}=await client.from('phone_unlocking_services').update({default_price:price,updated_at:new Date().toISOString()}).eq('id',service.id).eq('business_id',business.id);
+    if(error) return say('Could not update service price: '+error.message,true);
+    await loadServices(); say('Default service price updated. Existing orders were not changed.');
   }
   async function createOrder(event) {
     event.preventDefault();
@@ -208,7 +221,7 @@
     if(error) throw error;
     services=data||[];
     $('wluServiceSelect').innerHTML='<option value="">Choose service / price</option>'+services.map(item=>'<option value="'+esc(item.id)+'">'+esc(item.service_name)+' — '+esc(money(item.default_price))+'</option>').join('');
-    $('wluServices').innerHTML=services.map(item=>'<div class="wlu-service-row"><span><strong>'+esc(item.service_name)+'</strong><br><small class="wlu-muted">'+esc(item.description||'')+'</small></span><strong>'+esc(money(item.default_price))+'</strong></div>').join('')||'<p class="wlu-muted">No services yet. Add the services you offer and their default prices.</p>';
+    $('wluServices').innerHTML=services.map(item=>'<div class="wlu-service-row"><span><strong>'+esc(item.service_name)+'</strong><br><small class="wlu-muted">'+esc(item.description||'')+'</small></span><span><strong>'+esc(money(item.default_price))+'</strong> <button type="button" class="secondary" data-wlu-service-edit="'+esc(item.id)+'">Change price</button></span></div>').join('')||'<p class="wlu-muted">No services yet. Add the services you offer and their default prices.</p>';
   }
   async function loadOrders() {
     const {data,error}=await client.from('phone_unlocking_orders').select('id,reference,customer_name,customer_phone,device_brand,device_model,imei,network_name,service_name,provider_name,provider_reference,provider_cost,service_price,amount_paid,amount_refunded,status,created_at').eq('business_id',business.id).order('created_at',{ascending:false}).limit(60);
@@ -216,15 +229,15 @@
     orders=data||[];
     const total=orders.length, open=orders.filter(o=>!['completed','failed','cancelled','refunded'].includes(o.status)).length;
     const revenue=orders.reduce((sum,o)=>sum+Number(o.amount_paid||0)-Number(o.amount_refunded||0),0);
-    const estimatedMargin=orders.reduce((sum,o)=>sum+Math.max(0,Number(o.service_price||0)-Number(o.provider_cost||0)-Number(o.amount_refunded||0)),0);
+    const estimatedMargin=orders.filter(o=>o.status==='completed').reduce((sum,o)=>sum+Number(o.service_price||0)-Number(o.provider_cost||0)-Number(o.amount_refunded||0),0);
     $('wluKpis').innerHTML='<div class="wlu-kpi">Orders in register<b>'+total+'</b></div><div class="wlu-kpi">Active orders<b>'+open+'</b></div><div class="wlu-kpi">Net receipts<b>'+esc(money(revenue))+'</b></div><div class="wlu-kpi">Estimated gross margin<b>'+esc(money(estimatedMargin))+'</b></div>';
     $('wluPaymentOrder').innerHTML='<option value="">Choose outstanding order</option>'+orders.filter(o=>Number(o.service_price)>Number(o.amount_paid)&&!['cancelled','refunded','failed'].includes(o.status)).map(o=>'<option value="'+esc(o.id)+'">'+esc(o.reference)+' · '+esc(o.customer_name)+' · '+esc(money(Number(o.service_price)-Number(o.amount_paid)))+'</option>').join('');
     $('wluRefundOrder').innerHTML='<option value="">Choose paid order</option>'+orders.filter(o=>Number(o.amount_paid)>Number(o.amount_refunded||0)&&o.status!=='cancelled').map(o=>'<option value="'+esc(o.id)+'">'+esc(o.reference)+' · '+esc(o.customer_name)+' · refundable '+esc(money(Number(o.amount_paid)-Number(o.amount_refunded||0)))+'</option>').join('');
     $('wluOrders').innerHTML=orders.length?'<table><thead><tr><th>Order / customer</th><th>Device &amp; IMEI</th><th>Network / service</th><th>Provider</th><th>Price / paid / balance</th><th>Status</th><th>Update</th></tr></thead><tbody>'+orders.map(o=>{
       const balance=Math.max(0,Number(o.service_price)-Number(o.amount_paid));
       const netPaid=Number(o.amount_paid)-Number(o.amount_refunded||0);
-      const options=STATUSES.map(s=>'<option value="'+s+'" '+(s===o.status?'selected':'')+'>'+STATUS_LABELS[s]+'</option>').join('');
-      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Manual')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Net paid: '+esc(money(netPaid))+'<br>Due: '+esc(money(balance))+'<br>Refunded: '+esc(money(o.amount_refunded))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td><select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="'+esc(o.status)+'" data-id="'+esc(o.id)+'">Update</button></td></tr>'
+      const options=(o.status==='refunded'?'<option value="refunded" selected disabled>Refunded</option>':'')+STATUSES.map(s=>'<option value="'+s+'" '+(s===o.status?'selected':'')+'>'+STATUS_LABELS[s]+'</option>').join('');
+      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Manual')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Net paid: '+esc(money(netPaid))+'<br>Due: '+esc(money(balance))+'<br>Refunded: '+esc(money(o.amount_refunded))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td><select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="'+esc(o.status)+'" data-id="'+esc(o.id)+'" '+(o.status==='refunded'?'disabled':'')+'>Update</button></td></tr>'
     }).join('')+'</tbody></table>':'<p class="wlu-muted">No unlocking orders yet. Create the first order above.</p>';
     $('wluOrders').querySelectorAll('[data-status-select]').forEach(select=>select.addEventListener('change',()=>{
       const btn=$('wluOrders').querySelector('[data-id="'+select.dataset.statusSelect+'"]');
