@@ -13,13 +13,13 @@ function analyse(data){
  const sales=(data.sales||[]).map(row=>({row,date:dateOf(row)})).filter(x=>x.date&&x.date<=now&&x.date.getTime()>=t90);
  const oldest=sales.length?Math.min(...sales.map(x=>x.date.getTime())):now.getTime();
  const historyDays=sales.length?Math.max(1,Math.min(90,Math.ceil((now.getTime()-oldest)/86400000)+1)):0;
- const units7={},units30={},units90={},txCount={},activeDays={},products=data.products||[];
+ const units7={},units30={},units90={},saleRefs={},activeDays={},products=data.products||[];
  const byId=new Map(products.map(p=>[String(p.id),p])),byName=new Map(products.map(p=>[String(p.name||'').trim().toLowerCase(),p]));
  sales.forEach(({row,date})=>(row.items||[]).forEach(item=>{
   const p=byId.get(String(item.productId))||byName.get(String(item.name||'').trim().toLowerCase());if(!p)return;
   const q=Math.max(0,n(item.quantity));if(!q)return;const id=String(p.id),day=date.toISOString().slice(0,10);
   units90[id]=(units90[id]||0)+q;if(date.getTime()>=now.getTime()-30*86400000)units30[id]=(units30[id]||0)+q;if(date.getTime()>=now.getTime()-7*86400000)units7[id]=(units7[id]||0)+q;
-  txCount[id]=(txCount[id]||0)+1;if(!activeDays[id])activeDays[id]=new Set();activeDays[id].add(day);
+  if(!saleRefs[id])saleRefs[id]=new Set();saleRefs[id].add(String(row.id||row.receipt||day));if(!activeDays[id])activeDays[id]=new Set();activeDays[id].add(day);
  }));
  const rows=products.map(p=>{
   const productStock=(data.stockRows||[]).filter(x=>String(x.productId)===String(p.id)),branchRow=productStock.find(x=>String(x.branchId||'local-main')===String(data.branchId||'local-main'));
@@ -28,7 +28,7 @@ function analyse(data){
   const d90=u90/w90,d30=u30/w30,d7=u7/w7;
   const baseline=historyDays>=30?d90*.65+d30*.35:historyDays>=7?d30*.7+d7*.3:d7;
   const trendRatio=d30>0?d7/d30:null,trendFactor=trendRatio===null||historyDays<14?1:Math.max(.8,Math.min(1.2,trendRatio)),daily=baseline*trendFactor,hasHistory=u90>0;
-  const activeCount=activeDays[id]?.size||0,transactions=txCount[id]||0,confidence=!hasHistory?'none':historyDays>=60&&activeCount>=5&&transactions>=8?'high':historyDays>=14&&transactions>=3?'moderate':'low';
+  const activeCount=activeDays[id]?.size||0,transactions=saleRefs[id]?.size||0,confidence=!hasHistory?'none':historyDays>=60&&activeCount>=5&&transactions>=8?'high':historyDays>=14&&transactions>=3?'moderate':'low';
   const lead=Math.max(0,n(p.leadTimeDays)||7),cover=Math.max(0,n(p.minCoverDays)||14),reorder=Math.max(0,n(p.reorder)),target=hasHistory?Math.ceil(daily*(lead+cover)):reorder,order=qty(Math.max(0,target-stock)),coverDays=daily>0?stock/daily:null,stockout=coverDays===null?null:new Date(now.getTime()+Math.max(0,coverDays)*86400000);
   let priority='healthy',reason='Stock position is above the planning threshold';
   if(stock<=0){priority='out';reason='No available stock';}else if(!hasHistory){priority=stock<=reorder?'reorder':'unknown';reason=stock<=reorder?'At or below saved reorder level':'No recent sales history; set a reorder level or record sales';}
