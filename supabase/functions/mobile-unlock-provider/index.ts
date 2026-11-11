@@ -305,7 +305,15 @@ Deno.serve(async (req) => {
       const serverShape = describeShape(serverPayload);
       const restAccountShape = restAccountPayload ? describeShape(restAccountPayload) : "REST account unavailable: " + (restAccountError || "not returned");
       const restShape = restPayload ? describeShape(restPayload) : "REST services unavailable: " + (restError || "not returned");
-      throw new Error("No services were returned by the Fusion or REST catalogues. No catalogue records were changed. ACCOUNT: " + restAccountShape + " || IMEI: " + imeiShape + " || SERVER: " + serverShape + " || REST SERVICES: " + restShape + (restAccountError ? " || REST account error: " + restAccountError : "") + (restError ? " || REST services error: " + restError : ""));
+      const restAccountData = restAccountPayload?.data && typeof restAccountPayload.data === "object" ? restAccountPayload.data : null;
+      const accountSummary = restAccountData
+        ? "balance=" + (restAccountData.balance ?? restAccountData.credit ?? "unknown") +
+          " currency=" + (restAccountData.currency ?? "unknown") +
+          " user_type=" + (restAccountData.user_type ?? "unknown") +
+          " group=" + (restAccountData.group ?? "unknown") +
+          " discount_percent=" + (restAccountData.discount_percent ?? "unknown")
+        : "Account details unavailable.";
+      throw new Error("No services were returned by the Fusion or REST catalogues. No catalogue records were changed. YOUR ACCOUNT STATUS: " + accountSummary + " — this usually means the provider has not switched on any service groups for this account yet (a zero balance, an unverified/trial account, or a reseller group with no assigned services), not a fault in this app. Check your account status directly at mobile-unlock.com, or contact their support, then try the sync again. ACCOUNT: " + restAccountShape + " || IMEI: " + imeiShape + " || SERVER: " + serverShape + " || REST SERVICES: " + restShape + (restAccountError ? " || REST account error: " + restAccountError : "") + (restError ? " || REST services error: " + restError : ""));
     }
     const { error: upsertError } = await userClient.from("phone_unlocking_provider_services")
       .upsert(rows, { onConflict: "business_id,provider_service_type,provider_service_id" });
