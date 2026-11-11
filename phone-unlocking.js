@@ -24,28 +24,28 @@
       root.id = 'wlPhoneUnlocking';
       root.innerHTML = `
         <style>
-          #wlPhoneUnlocking{margin-top:18px;padding:16px;border:1px solid #dce9df;border-radius:14px;background:#fff;color:#203b2b;font:12px/1.5 system-ui;box-shadow:0 8px 24px #0c37220b}
-          #wlPhoneUnlocking h3{margin:0;color:#075b35;font-size:15px}
-          #wlPhoneUnlocking h4{margin:16px 0 8px;color:#075b35;font-size:12px}
-          #wlPhoneUnlocking p{color:#68796f;margin:5px 0 12px}
-          #wlPhoneUnlocking input,#wlPhoneUnlocking select,#wlPhoneUnlocking textarea{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #dce8df;border-radius:8px;background:#fff;color:#203b2b;font:inherit;margin:3px 0}
-          #wlPhoneUnlocking button{border:1px solid #087a43;border-radius:8px;padding:9px 12px;background:#087a43;color:#fff;font-weight:750;font:inherit;margin:4px 4px 4px 0}
+          #wlPhoneUnlocking{margin-top:18px;padding:16px;border:1px solid #dce9df;border-radius:14px;background:#fff;color:#203b2b;font:14px/1.65 system-ui;box-shadow:0 8px 24px #0c37220b}
+          #wlPhoneUnlocking h3{margin:0;color:#075b35;font-size:17px;line-height:1.35}
+          #wlPhoneUnlocking h4{margin:18px 0 10px;color:#075b35;font-size:15px;line-height:1.4}
+          #wlPhoneUnlocking p{color:#68796f;font-size:14px;line-height:1.6;margin:7px 0 14px}
+          #wlPhoneUnlocking input,#wlPhoneUnlocking select,#wlPhoneUnlocking textarea{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #dce8df;border-radius:8px;background:#fff;color:#203b2b;font:inherit;font-size:14px;min-height:46px;margin:5px 0}
+          #wlPhoneUnlocking button{border:1px solid #087a43;border-radius:8px;padding:9px 12px;background:#087a43;color:#fff;font-weight:750;font:inherit;font-size:14px;min-height:44px;margin:5px 5px 5px 0}
           #wlPhoneUnlocking button.secondary{background:#fff;color:#075b35}
           #wlPhoneUnlocking button:disabled{opacity:.5}
           #wlPhoneUnlocking .wlu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
           #wlPhoneUnlocking .wlu-full{grid-column:1/-1}
-          #wlPhoneUnlocking .wlu-muted{color:#718078;font-size:10px;line-height:1.55}
+          #wlPhoneUnlocking .wlu-muted{color:#718078;font-size:12px;line-height:1.65}
           #wlPhoneUnlocking .wlu-status{padding:9px;border-radius:8px;background:#f3f8f4;color:#315641;margin:8px 0;overflow-wrap:anywhere}
           #wlPhoneUnlocking .wlu-scroll{overflow-x:auto}
-          #wlPhoneUnlocking table{width:100%;min-width:760px;border-collapse:collapse;font-size:10px}
+          #wlPhoneUnlocking table{width:100%;min-width:820px;border-collapse:collapse;font-size:12px;line-height:1.55}
           #wlPhoneUnlocking th,#wlPhoneUnlocking td{text-align:left;padding:8px;border-bottom:1px solid #e8eee9;vertical-align:top}
-          #wlPhoneUnlocking th{color:#64776b;background:#f5faf6}
+          #wlPhoneUnlocking th{color:#64776b;background:#f5faf6;font-size:12px;line-height:1.4}
           #wlPhoneUnlocking .wlu-actions{display:flex;gap:4px;flex-wrap:wrap}
           #wlPhoneUnlocking .wlu-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
           #wlPhoneUnlocking .wlu-kpi{padding:10px;border:1px solid #e2eee5;border-radius:9px;background:#f7fbf8;color:#65776b}
-          #wlPhoneUnlocking .wlu-kpi b{display:block;color:#075b35;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+          #wlPhoneUnlocking .wlu-kpi b{display:block;color:#075b35;font-size:16px;margin-top:4px;overflow-wrap:anywhere}
           #wlPhoneUnlocking .wlu-service-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid #edf2ee}
-          @media(max-width:560px){#wlPhoneUnlocking{padding:12px}#wlPhoneUnlocking .wlu-grid{grid-template-columns:1fr}#wlPhoneUnlocking .wlu-full{grid-column:auto}#wlPhoneUnlocking .wlu-kpis{grid-template-columns:1fr 1fr}}
+          @media(max-width:560px){#wlPhoneUnlocking{padding:14px;font-size:14px}#wlPhoneUnlocking h3{font-size:16px}#wlPhoneUnlocking .wlu-grid{grid-template-columns:1fr;gap:10px}#wlPhoneUnlocking .wlu-full{grid-column:auto}#wlPhoneUnlocking .wlu-kpis{grid-template-columns:1fr 1fr;gap:8px}#wlPhoneUnlocking .wlu-service-row{align-items:flex-start;flex-wrap:wrap}#wlPhoneUnlocking .wlu-service-row>span{min-width:0;overflow-wrap:anywhere}#wlPhoneUnlocking summary{font-size:14px;line-height:1.5;padding:4px 0}#wlPhoneUnlocking th,#wlPhoneUnlocking td{padding:10px 9px}}
         </style>
         <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
           <div><h3>PHONE UNLOCKING &amp; DEVICE SERVICES</h3><p>Manage legitimate network-unlocking service requests, payments and provider costs.</p></div>
