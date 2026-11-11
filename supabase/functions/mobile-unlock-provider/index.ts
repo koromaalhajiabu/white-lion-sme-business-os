@@ -22,6 +22,31 @@ function successItem(payload: any): any {
   return payload?.SUCCESS?.[0] || payload?.data?.[0] || payload?.data || payload || {};
 }
 
+
+function describeShape(value: any, depth = 0, path = "$", out: string[] = []): string {
+  if (depth > 5 || out.length >= 45 || value == null) return out.join(" | ");
+  if (Array.isArray(value)) {
+    out.push(path + " = array(" + value.length + ")");
+    value.slice(0, 3).forEach((item, index) => describeShape(item, depth + 1, path + "[" + index + "]", out));
+    return out.join(" | ");
+  }
+  if (typeof value !== "object") {
+    out.push(path + " = " + typeof value);
+    return out.join(" | ");
+  }
+  const entries = Object.entries(value);
+  out.push(path + " = object(" + entries.length + ")");
+  for (const [key, child] of entries.slice(0, 18)) {
+    if (out.length >= 45) break;
+    const childPath = path + "." + key;
+    if (child === null) out.push(childPath + " = null");
+    else if (Array.isArray(child)) describeShape(child, depth + 1, childPath, out);
+    else if (typeof child === "object") describeShape(child, depth + 1, childPath, out);
+    else out.push(childPath + " = " + typeof child);
+  }
+  return out.join(" | ");
+}
+
 function countServices(value: any): number {
   if (Array.isArray(value)) return value.reduce((n, item) => n + countServices(item), 0);
   if (!value || typeof value !== "object") return 0;
@@ -170,7 +195,11 @@ Deno.serve(async (req) => {
       return rows;
     };
     const rows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
-    if (!rows.length) throw new Error("Provider returned no readable services. Existing catalogue records were left unchanged.");
+    if (!rows.length) {
+      const imeiShape = describeShape(imeiPayload);
+      const serverShape = describeShape(serverPayload);
+      throw new Error("Provider returned no readable services. No catalogue records were changed. IMEI response structure: " + imeiShape + " || SERVER response structure: " + serverShape);
+    }
     const { error: upsertError } = await userClient.from("phone_unlocking_provider_services")
       .upsert(rows, { onConflict: "business_id,provider_service_type,provider_service_id" });
     if (upsertError) throw upsertError;
