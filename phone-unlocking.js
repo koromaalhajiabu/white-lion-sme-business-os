@@ -52,6 +52,7 @@
           <span class="wlu-muted" id="wluWorkspace">No workspace selected</span>
         </div>
         <div id="wluStatus" class="wlu-status" role="status" aria-live="polite">Waiting for a business workspace…</div>
+        <div class="wlu-provider-tools"><button id="wluTestProvider" type="button" class="secondary">Test Mobile-Unlock API connection</button><span id="wluProviderResult" class="wlu-muted" role="status">Provider API not connected</span></div>
         <div id="wluEnableArea" hidden><p>This specialist module is not enabled for this business.</p><button id="wluEnable" type="button">Enable Phone Unlocking</button></div>
         <div id="wluApp" hidden>
           <div class="wlu-kpis" id="wluKpis"></div>
@@ -114,6 +115,7 @@
         </div>`;
       host.appendChild(root);
       $('wluEnable').addEventListener('click', enableModule);
+      $('wluTestProvider').addEventListener('click', testProviderConnection);
       $('wluOrderForm').addEventListener('submit', createOrder);
       $('wluServiceForm').addEventListener('submit', createService);
       $('wluPaymentForm').addEventListener('submit', recordPayment);
@@ -133,6 +135,25 @@
   }
   function say(message, error=false) {
     const el=$('wluStatus'); if(el){el.textContent=message;el.style.background=error?'#fff1f0':'#f3f8f4';el.style.color=error?'#9b2c24':'#315641';}
+  }
+  async function testProviderConnection() {
+    const button=$('wluTestProvider'), output=$('wluProviderResult');
+    if(!client||!business?.id) return say('Select a business workspace first.',true);
+    if(!canManage()) return say('Only an owner, administrator or manager can test the provider connection.',true);
+    button.disabled=true; button.textContent='Testing provider connection…'; output.textContent='Checking provider account and live service catalogue…';
+    try {
+      const {data,error}=await client.functions.invoke('mobile-unlock-provider',{body:{action:'test_connection',business_id:business.id}});
+      if(error) throw new Error(error.message||'Supabase function request failed.');
+      if(!data?.ok) throw new Error(data?.error||'Provider connection could not be verified.');
+      const balance=data.balance==null?'Balance unavailable':String(data.balance)+(data.currency?' '+data.currency:'');
+      output.textContent='Connected · Provider balance: '+balance+' · '+Number(data.service_count||0)+' live services found.';
+      say('Mobile-Unlock API connection verified. No order was submitted and no provider credit was spent.');
+    } catch(error) {
+      output.textContent='Connection not verified.';
+      say('Provider connection test failed: '+(error.message||String(error)),true);
+    } finally {
+      button.disabled=false; button.textContent='Test Mobile-Unlock API connection';
+    }
   }
   async function enableModule() {
     if (!client || !business?.id || !['owner','admin'].includes(role)) return say('Only the business owner or administrator can enable this module.',true);
