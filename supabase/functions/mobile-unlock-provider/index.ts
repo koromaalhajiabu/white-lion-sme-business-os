@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     const syncedAt = new Date().toISOString();
     const [accountPayload, imeiPayload, serverPayload] = await Promise.all([
       callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
-      callProvider("serverservicelist", providerKey),
+      callProvider("getserverservicelist", providerKey),
     ]);
     const account = successItem(accountPayload);
     const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
