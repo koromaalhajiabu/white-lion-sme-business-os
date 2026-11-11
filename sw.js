@@ -3,7 +3,8 @@ const CACHE_NAME='white-lion-sme-v136';
 const APP_SHELL=[
   './',
   './index.html',
-  './login-premium.css?v=3',\n  './workspace-polish.css?v=1',
+  './login-premium.css?v=3',
+  './workspace-polish.css?v=1',
   './workspace-navigation.js?v=1',
   './manifest.webmanifest?v=46',
   './shared.js?v=2',
