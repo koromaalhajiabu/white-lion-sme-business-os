@@ -16,14 +16,14 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $seed$
 begin
   insert into public.business_industry_modules(business_id,module_key,is_enabled)
   values(new.id,'phone_unlocking',false)
   on conflict (business_id,module_key) do nothing;
   return new;
 end;
-$;
+$seed$;
 
 drop trigger if exists phone_unlocking_module_seed on public.businesses;
 create trigger phone_unlocking_module_seed
@@ -255,7 +255,7 @@ create or replace function public.record_phone_unlocking_refund(
 language plpgsql
 security definer
 set search_path = public, auth
-as $
+as $refund$
 declare
   v_order public.phone_unlocking_orders%rowtype;
   v_refund_id uuid := gen_random_uuid();
@@ -303,7 +303,7 @@ begin
 
   return v_refund_id;
 end;
-$;
+$refund$;
 
 revoke all on function public.record_phone_unlocking_refund(uuid,uuid,numeric,text,text,text) from public;
 grant execute on function public.record_phone_unlocking_refund(uuid,uuid,numeric,text,text,text) to authenticated;
