@@ -54,9 +54,9 @@ function countServices(value: any): number {
   return Object.values(value).reduce((n, item) => n + countServices(item), 0);
 }
 
-async function callProvider(action: string, apiKey: string) {
+async function callProviderAtHost(host: string, action: string, apiKey: string) {
   const body = new URLSearchParams({ action, apikey: apiKey });
-  const response = await fetch("https://mobile-unlock.com/api/fusion", {
+  const response = await fetch(host + "/api/fusion", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
     body,
@@ -69,6 +69,29 @@ async function callProvider(action: string, apiKey: string) {
   const problem = providerError(payload);
   if (problem) throw new Error(problem);
   return payload;
+}
+
+// Account verification continues using the already-confirmed apex host.
+// Catalogue requests also try the documented www host because the provider
+// may route its reseller catalogue differently between the two hostnames.
+async function callProvider(action: string, apiKey: string) {
+  return callProviderAtHost("https://mobile-unlock.com", action, apiKey);
+}
+
+async function callProviderCatalogue(action: string, apiKey: string) {
+  const hosts = ["https://www.mobile-unlock.com", "https://mobile-unlock.com"];
+  const results = await Promise.all(hosts.map(async (host) => {
+    try {
+      return { host, payload: await callProviderAtHost(host, action, apiKey), error: null as string | null };
+    } catch (error) {
+      return { host, payload: null as any, error: String(error?.message || "Catalogue request failed.") };
+    }
+  }));
+  const populated = results.find((item) => item.payload && countServices(item.payload) > 0);
+  if (populated) return populated.payload;
+  const available = results.find((item) => item.payload);
+  if (available) return available.payload;
+  throw new Error("Both documented and apex Fusion hosts failed: " + results.map((item) => item.host + ": " + item.error).join(" || "));
 }
 
 async function callProviderRestAccount(apiKey: string) {
@@ -90,8 +113,8 @@ async function callProviderRestAccount(apiKey: string) {
   return payload;
 }
 
-async function callProviderRestServices(apiKey: string) {
-  const response = await fetch("https://mobile-unlock.com/api/v1/services", {
+async function callProviderRestServicesAtHost(host: string, apiKey: string) {
+  const response = await fetch(host + "/api/v1/services", {
     method: "GET",
     headers: {
       "Authorization": "Bearer " + apiKey,
@@ -107,6 +130,22 @@ async function callProviderRestServices(apiKey: string) {
     throw new Error(String(message).slice(0, 240));
   }
   return payload;
+}
+
+async function callProviderRestServices(apiKey: string) {
+  const hosts = ["https://www.mobile-unlock.com", "https://mobile-unlock.com"];
+  const results = await Promise.all(hosts.map(async (host) => {
+    try {
+      return { host, payload: await callProviderRestServicesAtHost(host, apiKey), error: null as string | null };
+    } catch (error) {
+      return { host, payload: null as any, error: String(error?.message || "REST catalogue request failed.") };
+    }
+  }));
+  const populated = results.find((item) => item.payload && countServices(item.payload) > 0);
+  if (populated) return populated.payload;
+  const available = results.find((item) => item.payload);
+  if (available) return available.payload;
+  throw new Error("Both REST catalogue hosts failed: " + results.map((item) => item.host + ": " + item.error).join(" || "));
 }
 
 Deno.serve(async (req) => {
@@ -162,8 +201,8 @@ Deno.serve(async (req) => {
 
     const syncedAt = new Date().toISOString();
     const [accountPayload, imeiPayload, serverPayload] = await Promise.all([
-      callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
-      callProvider("getserverservicelist", providerKey),
+      callProvider("accountinfo", providerKey), callProviderCatalogue("imeiservicelist", providerKey),
+      callProviderCatalogue("getserverservicelist", providerKey),
     ]);
     let restAccountPayload: any = null;
     let restAccountError: string | null = null;
