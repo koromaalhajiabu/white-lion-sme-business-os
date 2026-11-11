@@ -71,6 +71,25 @@ async function callProvider(action: string, apiKey: string) {
   return payload;
 }
 
+async function callProviderRestServices(apiKey: string) {
+  const response = await fetch("https://mobile-unlock.com/api/v1/services", {
+    method: "GET",
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Accept": "application/json",
+    },
+  });
+  const text = await response.text();
+  let payload: any;
+  try { payload = JSON.parse(text); }
+  catch { throw new Error("REST services endpoint returned non-JSON (HTTP " + response.status + ")."); }
+  if (!response.ok) {
+    const message = payload?.message || payload?.error || "REST services endpoint returned HTTP " + response.status + ".";
+    throw new Error(String(message).slice(0, 240));
+  }
+  return payload;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "POST required." }, 405);
@@ -127,6 +146,13 @@ Deno.serve(async (req) => {
       callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
       callProvider("getserverservicelist", providerKey),
     ]);
+    let restPayload: any = null;
+    let restError: string | null = null;
+    try {
+      restPayload = await callProviderRestServices(providerKey);
+    } catch (error) {
+      restError = String(error?.message || "REST catalogue request failed.").slice(0, 240);
+    }
     const account = successItem(accountPayload);
     const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
     const currency = accountData.currency ?? accountData.CURRENCY ?? null;
@@ -194,11 +220,26 @@ Deno.serve(async (req) => {
       read(list, "", fallback);
       return rows;
     };
-    const rows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
+    const fusionRows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
+    const restRoot = restPayload?.data && typeof restPayload.data === "object" ? restPayload.data : restPayload;
+    const restRows = restPayload
+      ? [
+          ...normalise(restRoot?.imei ?? restRoot?.IMEI ?? {}, "IMEI"),
+          ...normalise(restRoot?.server ?? restRoot?.SERVER ?? {}, "SERVER"),
+          ...normalise(restRoot?.remote ?? restRoot?.REMOTE ?? {}, "REMOTE"),
+        ]
+      : [];
+    const combined = [...fusionRows, ...restRows];
+    const uniqueRows = new Map<string, any>();
+    for (const row of combined) {
+      uniqueRows.set(row.provider_service_type + ":" + row.provider_service_id, row);
+    }
+    const rows = [...uniqueRows.values()];
     if (!rows.length) {
       const imeiShape = describeShape(imeiPayload);
       const serverShape = describeShape(serverPayload);
-      throw new Error("Provider returned no readable services. No catalogue records were changed. IMEI response structure: " + imeiShape + " || SERVER response structure: " + serverShape);
+      const restShape = restPayload ? describeShape(restPayload) : "REST unavailable: " + (restError || "not returned");
+      throw new Error("No services were returned by the Fusion or REST catalogues. No catalogue records were changed. IMEI: " + imeiShape + " || SERVER: " + serverShape + " || REST: " + restShape + (restError ? " || REST error: " + restError : ""));
     }
     const { error: upsertError } = await userClient.from("phone_unlocking_provider_services")
       .upsert(rows, { onConflict: "business_id,provider_service_type,provider_service_id" });
@@ -210,7 +251,8 @@ Deno.serve(async (req) => {
       imei_count: rows.filter(r => r.provider_service_type === "IMEI").length,
       server_count: rows.filter(r => r.provider_service_type !== "IMEI").length,
       provider_currency: currency == null ? null : String(currency), synced_at: syncedAt,
-      note: "Catalogue synchronised only. No order was submitted and no provider credit was spent." });
+      fusion_count: fusionRows.length, rest_count: restRows.length,
+      note: "Catalogue synchronised from read-only Fusion/REST service lists. No order was submitted and no provider credit was spent." });
   } catch (error) {
     return json({ ok: false, error: error?.message || "Provider connection test failed." }, 502);
   }
