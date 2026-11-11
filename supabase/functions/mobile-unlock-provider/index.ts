@@ -50,7 +50,9 @@ function describeShape(value: any, depth = 0, path = "$", out: string[] = []): s
 function countServices(value: any): number {
   if (Array.isArray(value)) return value.reduce((n, item) => n + countServices(item), 0);
   if (!value || typeof value !== "object") return 0;
-  if (value.SERVICEID != null || value.service_id != null) return 1;
+  const hasId = value.SERVICEID != null || value.service_id != null || value.serviceId != null || value.serviceid != null || value.id != null || value.ID != null;
+  const hasName = value.SERVICENAME != null || value.service_name != null || value.serviceName != null || value.name != null || value.NAME != null;
+  if (hasId && hasName) return 1;
   return Object.values(value).reduce((n, item) => n + countServices(item), 0);
 }
 
@@ -304,7 +306,9 @@ Deno.serve(async (req) => {
     const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
     const currency = accountData.currency ?? accountData.CURRENCY ?? null;
     const normalise = (payload: any, fallback: string) => {
-      const root = successItem(payload);
+      // Keep REST data arrays intact; successItem() intentionally unwraps the
+      // first item for account/Fusion responses and would discard other services.
+      const root = payload?.SUCCESS?.[0] ?? payload;
       const rows: any[] = [];
       const seen = new Set<string>();
       const read = (value: any, groupName = "", groupType = fallback, inheritedKey = ""): void => {
@@ -319,28 +323,30 @@ Deno.serve(async (req) => {
           for (const key of keys) if (v[key] !== undefined && v[key] !== null && v[key] !== "") return v[key];
           return undefined;
         };
-        const id = pick("SERVICEID", "service_id", "serviceId", "serviceid");
-        const name = pick("SERVICENAME", "service_name", "serviceName", "name", "NAME");
+        const id = pick("SERVICEID", "service_id", "serviceId", "serviceid", "id", "ID");
+        const name = pick("SERVICENAME", "service_name", "serviceName", "name", "NAME", "title", "service");
         if (id !== undefined && name !== undefined) {
           const serviceId = String(id);
           const serviceName = String(name).trim();
-          const type = String(pick("SERVICETYPE") || groupType || fallback).toUpperCase();
+          const type = String(pick("SERVICETYPE", "service_type", "serviceType", "type") || groupType || fallback).toUpperCase();
           const identity = type + ":" + serviceId;
           if (serviceName && !seen.has(identity)) {
             seen.add(identity);
-            const credit = pick("CREDIT", "credit", "PRICE", "price");
+            const credit = pick("CREDIT", "credit", "PRICE", "price", "cost", "amount", "selling_price");
             const numericCredit = credit == null ? null : Number(credit);
             const custom = pick("Requires.Custom", "requires_custom", "Requires", "requires");
+            const rowCurrency = pick("CURRENCY", "currency", "currency_code") ?? currency;
+            const category = pick("category", "CATEGORY", "group", "GROUPNAME", "group_name");
             rows.push({
               business_id: businessId,
               provider_service_id: serviceId,
               provider_service_type: type,
-              provider_group: String(groupName || pick("GROUPNAME", "group_name") || "Other"),
+              provider_group: String(category || groupName || "Other"),
               service_name: serviceName,
               provider_credit: credit == null || credit === "" || !Number.isFinite(numericCredit) ? null : numericCredit,
-              provider_currency: currency == null ? null : String(currency),
-              delivery_time: pick("TIME", "time", "delivery_time") == null ? null : String(pick("TIME", "time", "delivery_time")),
-              description: pick("INFO", "info", "description") == null ? null : String(pick("INFO", "info", "description")),
+              provider_currency: rowCurrency == null ? null : String(rowCurrency),
+              delivery_time: pick("TIME", "time", "delivery_time", "estimated_time", "eta") == null ? null : String(pick("TIME", "time", "delivery_time", "estimated_time", "eta")),
+              description: pick("INFO", "info", "description", "details") == null ? null : String(pick("INFO", "info", "description", "details")),
               quantity: Number.isFinite(Number(pick("QNT", "quantity"))) ? Number(pick("QNT", "quantity")) : null,
               requires_custom: Array.isArray(custom) ? custom : [],
               is_active: true,
@@ -363,19 +369,17 @@ Deno.serve(async (req) => {
         }
       };
 
-      const list = root.LIST ?? root.list ?? root.data?.LIST ?? root.data?.list ?? root.data ?? root;
+      const list = root?.LIST ?? root?.list ?? root?.services ?? root?.SERVICES ??
+        root?.data?.LIST ?? root?.data?.list ?? root?.data?.services ??
+        root?.data?.SERVICES ?? root?.data ?? root;
       read(list, "", fallback);
       return rows;
     };
     const fusionRows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
-    const restRoot = restPayload?.data && typeof restPayload.data === "object" ? restPayload.data : restPayload;
-    const restRows = restPayload
-      ? [
-          ...normalise(restRoot?.imei ?? restRoot?.IMEI ?? {}, "IMEI"),
-          ...normalise(restRoot?.server ?? restRoot?.SERVER ?? {}, "SERVER"),
-          ...normalise(restRoot?.remote ?? restRoot?.REMOTE ?? {}, "REMOTE"),
-        ]
-      : [];
+    // REST v1 may return a direct array, {data: [...]}, {services: [...]},
+    // or a grouped object. Pass the complete payload to the recursive normaliser
+    // so no service entries are lost and unknown wrapper keys remain inspectable.
+    const restRows = restPayload ? normalise(restPayload, "IMEI") : [];
     const combined = [...fusionRows, ...restRows];
     const uniqueRows = new Map<string, any>();
     for (const row of combined) {
