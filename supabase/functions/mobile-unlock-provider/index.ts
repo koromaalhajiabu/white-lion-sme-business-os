@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const action = String(body?.action || "");
-    if (!["test_connection", "sync_catalogue"].includes(action)) return json({ ok: false, error: "Unsupported action." }, 400);
+    if (!["test_connection", "sync_catalogue", "submit_approved_order"].includes(action)) return json({ ok: false, error: "Unsupported action." }, 400);
     const businessId = String(body.business_id || "");
     if (!businessId) return json({ ok: false, error: "Business ID is required." }, 400);
 
@@ -183,6 +183,88 @@ Deno.serve(async (req) => {
     if (membershipError) throw membershipError;
     if (!membership || !["owner", "admin", "manager"].includes(String(membership.role).toLowerCase())) {
       return json({ ok: false, error: "Business owner, administrator or manager access is required." }, 403);
+    }
+
+    if (action === "submit_approved_order") {
+      if (String(membership.role).toLowerCase() !== "owner") {
+        return json({ ok: false, error: "Only the business owner can submit an approved order." }, 403);
+      }
+      const orderId = String(body.order_id || "");
+      if (!orderId) return json({ ok: false, error: "Order ID is required." }, 400);
+
+      // This database RPC checks owner approval, full payment, service mapping,
+      // and atomically prevents duplicate submissions before any provider call.
+      const { data: order, error: claimError } = await userClient.rpc(
+        "claim_phone_unlocking_provider_submission",
+        { p_business_id: businessId, p_order_id: orderId },
+      );
+      if (claimError) throw claimError;
+      if (!order || typeof order !== "object") throw new Error("The approved order could not be claimed for submission.");
+
+      const params = new URLSearchParams({
+        action: "placeimeiorder",
+        apikey: providerKey,
+        ID: String(order.provider_service_id),
+        IMEI: String(order.imei),
+      });
+      let response: Response;
+      let payload: any;
+      try {
+        // One request to the provider's documented canonical API host.
+        // Never retry automatically: a timeout can occur after the provider accepts an order.
+        response = await fetch("https://www.mobile-unlock.com/api/fusion", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+          body: params,
+        });
+        const responseText = await response.text();
+        try { payload = JSON.parse(responseText); }
+        catch {
+          await userClient.rpc("finish_phone_unlocking_provider_submission", {
+            p_business_id: businessId, p_order_id: orderId, p_outcome: "unknown",
+            p_provider_reference: null, p_message: "Provider response was not readable JSON; reconcile with provider before retrying.",
+          });
+          return json({ ok: false, uncertain: true, error: "Provider response could not be confirmed. Check the provider dashboard before any retry." }, 502);
+        }
+      } catch (error) {
+        await userClient.rpc("finish_phone_unlocking_provider_submission", {
+          p_business_id: businessId, p_order_id: orderId, p_outcome: "unknown",
+          p_provider_reference: null, p_message: "Network/transport outcome is uncertain; reconcile with provider before retrying.",
+        });
+        return json({ ok: false, uncertain: true, error: "The provider request outcome is uncertain. Check the Mobile-Unlock dashboard before any retry." }, 502);
+      }
+
+      const providerProblem = providerError(payload);
+      if (providerProblem) {
+        const { error: finishError } = await userClient.rpc("finish_phone_unlocking_provider_submission", {
+          p_business_id: businessId, p_order_id: orderId, p_outcome: "failed",
+          p_provider_reference: null, p_message: providerProblem,
+        });
+        if (finishError) throw finishError;
+        return json({ ok: false, error: "Mobile-Unlock rejected the order: " + providerProblem }, 502);
+      }
+      if (!response.ok) {
+        await userClient.rpc("finish_phone_unlocking_provider_submission", {
+          p_business_id: businessId, p_order_id: orderId, p_outcome: "unknown",
+          p_provider_reference: null, p_message: "Provider returned HTTP " + response.status + "; acceptance could not be ruled out.",
+        });
+        return json({ ok: false, uncertain: true, error: "Provider returned HTTP " + response.status + ". Check the provider dashboard before retrying." }, 502);
+      }
+      const item = successItem(payload);
+      const reference = item?.REFERENCEID ?? item?.LIST?.REFERENCEID ?? item?.data?.REFERENCEID;
+      if (reference == null || String(reference).trim() === "") {
+        await userClient.rpc("finish_phone_unlocking_provider_submission", {
+          p_business_id: businessId, p_order_id: orderId, p_outcome: "unknown",
+          p_provider_reference: null, p_message: "Provider response did not include a reference ID; reconcile before retrying.",
+        });
+        return json({ ok: false, uncertain: true, error: "Provider response did not include an order reference. Check the provider dashboard before retrying." }, 502);
+      }
+      const { error: finishError } = await userClient.rpc("finish_phone_unlocking_provider_submission", {
+        p_business_id: businessId, p_order_id: orderId, p_outcome: "submitted",
+        p_provider_reference: String(reference), p_message: "Accepted by Mobile-Unlock.",
+      });
+      if (finishError) throw finishError;
+      return json({ ok: true, provider_reference: String(reference), provider_status: item?.STATUS || item?.LIST?.STATUS || "PENDING" });
     }
 
     if (action === "test_connection") {
