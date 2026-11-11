@@ -1,0 +1,26 @@
+/* White Lion SME connected navigation: groups and related workflow links. */
+(function(){
+ 'use strict';
+ var groups=[
+  {id:'home',title:'Home & overview',pages:['dashboard']},
+  {id:'daily',title:'Daily operations',pages:['sales','returns','customers']},
+  {id:'stock',title:'Products & stock',pages:['products','inventory','stockcontrol','reorder','purchases']},
+  {id:'partners',title:'Customers & suppliers',pages:['customerintel','suppliers','supplierintel','employees']},
+  {id:'finance',title:'Finance & performance',pages:['expenses','finance','reports','intelligence','executive','actions']},
+  {id:'tools',title:'Business tools',pages:['documents','league']}
+ ];
+ var labels={dashboard:'Overview',sales:'Sales & POS',returns:'Returns & refunds',customers:'Customers',products:'Products & catalogue',inventory:'Inventory management',stockcontrol:'Inventory intelligence',reorder:'Smart reorder planner',purchases:'Purchases',customerintel:'Customer insights',suppliers:'Suppliers',supplierintel:'Supplier insights',employees:'Employees',expenses:'Expenses',finance:'Financial planning',reports:'Reports',intelligence:'Business intelligence',executive:'Executive intelligence',actions:'Action centre',documents:'Business documents',league:'Sports & local league'};
+ var paths={dashboard:['sales','inventory','reports'],sales:['returns','customers','products','reports'],returns:['sales','customers','reports'],customers:['sales','customerintel','reports'],products:['inventory','purchases','reorder'],inventory:['products','stockcontrol','reorder','purchases'],stockcontrol:['inventory','reorder','purchases','reports'],reorder:['inventory','products','purchases'],purchases:['suppliers','inventory','products','expenses'],customerintel:['customers','sales','reports'],suppliers:['purchases','supplierintel','expenses'],supplierintel:['suppliers','purchases','reports'],employees:['reports','settings'],expenses:['finance','reports','suppliers'],finance:['expenses','reports','executive'],reports:['intelligence','finance','executive'],intelligence:['reports','executive','actions'],executive:['intelligence','actions','reports'],actions:['executive','reports','finance'],documents:['reports','settings'],league:['reports','documents']};
+ var nav=document.getElementById('nav'),view=document.getElementById('view');if(!nav||!view)return;
+ function buttons(){var o={};nav.querySelectorAll('[data-page]').forEach(function(b){o[b.dataset.page]=b});return o}
+ function build(){if(nav.dataset.connectedNav==='yes')return;var b=buttons(),frag=document.createDocumentFragment();groups.forEach(function(g,i){var pages=g.pages.filter(function(p){return !!b[p]});if(!pages.length)return;var d=document.createElement('details');d.className='wl-nav-group';d.dataset.group=g.id;d.open=i<2;var s=document.createElement('summary');s.innerHTML='<span>'+g.title+'</span><span class="wl-nav-count">'+pages.length+'</span>';d.appendChild(s);var inner=document.createElement('div');inner.className='wl-nav-group-items';pages.forEach(function(p){inner.appendChild(b[p])});d.appendChild(inner);frag.appendChild(d)});nav.replaceChildren(frag);nav.dataset.connectedNav='yes'}
+ function current(){var b=nav.querySelector('[data-page].active');return b?b.dataset.page:'dashboard'}
+ function sync(){var p=current();groups.forEach(function(g){var d=nav.querySelector('[data-group="'+g.id+'"]');if(d&&g.pages.indexOf(p)>=0)d.open=true})}
+ function flow(){var p=current(),g=groups.find(function(x){return x.pages.indexOf(p)>=0});if(!g)return;var old=view.querySelector('.wl-workflow-path');if(old)old.remove();var related=(paths[p]||[]).filter(function(x){return !!buttons()[x]}).slice(0,4);var bar=document.createElement('section');bar.className='wl-workflow-path';bar.setAttribute('aria-label','Related workflow navigation');bar.innerHTML='<div class="wl-flow-heading"><span class="wl-flow-eyebrow">WORKSPACE PATH</span><span class="wl-flow-crumb">Workspace <span>›</span> '+g.title+' <span>›</span> <strong>'+labels[p]+'</strong></span></div><div class="wl-flow-links"><span class="wl-flow-next">Related pages</span>'+related.map(function(x){return '<button type="button" data-wl-workflow-page="'+x+'">'+labels[x]+'</button>'}).join('')+'</div>';var h=view.querySelector('.page-title');if(h&&h.parentNode)h.parentNode.insertBefore(bar,h.nextSibling);else view.insertBefore(bar,view.firstChild)}
+ build();sync();
+ new MutationObserver(function(){if(!view.querySelector('.wl-workflow-path'))flow();sync()}).observe(view,{childList:true});
+ document.addEventListener('click',function(e){var link=e.target.closest('[data-wl-workflow-page]');if(link){e.preventDefault();if(typeof window.setPage==='function')window.setPage(link.dataset.wlWorkflowPage);return}var navButton=e.target.closest('#nav [data-page]');if(navButton)setTimeout(function(){sync();flow()},0)},true);
+ window.addEventListener('whiteLionWorkspaceChanged',function(){setTimeout(function(){sync();flow()},0)});
+ window.addEventListener('load',function(){flow();sync()});
+ window.__wlConnectedNavigationReady=true;
+})();
