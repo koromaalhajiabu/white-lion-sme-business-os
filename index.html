@@ -1004,9 +1004,9 @@ async function render(){
  if(state.page==='reorder'){
   const [products,sales,stockRows]=await Promise.all([all('products'),all('sales'),all('branchInventory')]);
   const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null;
-  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
+  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,selectedBranchId=branch?.id||null,branchId=selectedBranchId||'local-main';
   const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
-  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!x.branchId||String(x.branchId)===String(branchId)));
+  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!selectedBranchId||String(x.branchId||'')===String(selectedBranchId)));
   const scopedStock=stockRows.filter(x=>!businessId||!x.businessId||String(x.businessId)===String(businessId));
   const data={products:scopedProducts,sales:scopedSales,stockRows:scopedStock,branchId,businessName:active?.name||state.business.name||'Selected business',branchName:branch?.name||'Local device stock',currency:state.business.currency||'SLE'};
   if(window.WhiteLionSmartReorder?.render)window.WhiteLionSmartReorder.render(data);
@@ -1279,7 +1279,25 @@ async function render(){
   const scopedProducts=products.filter(x=>!businessId||String(x.localBusinessId||x.businessId||'')===String(businessId));
   const selectedStock=branchId?branchInventory.filter(x=>String(x.businessId||'')===String(businessId)&&String(x.branchId||'')===String(branchId)):null;
   const forecastProducts=branchId?scopedProducts.map(p=>({...p,stock:selectedStock.find(x=>String(x.productId)===String(p.id))?.quantity||0})):scopedProducts;
-  const dataset={sales:sales.filter(belongs),expenses:expenses.filter(belongs),products:forecastProducts,purchases:purchases.filter(belongs),returns:returns.filter(belongs),customers:customers.filter(belongs),suppliers:suppliers.filter(belongs),currency:state.business.currency||'SLE',businessName:active?.name||state.business.name||'Selected business'};
+  let costSales=[],costMovements=[],costDataStatus='Cloud cost data not loaded';
+  const financeClient=window.whiteLionCloud?.getClient?.()||null;
+  if(financeClient&&businessId&&navigator.onLine!==false){
+   try{
+    const [movementResult,cloudSalesResult,cloudProductsResult]=await Promise.all([
+     financeClient.from('inventory_cost_movements').select('source_id,product_id,branch_id,quantity_out,total_cost').eq('business_id',businessId).eq('movement_type','sale').eq('source_type','offline_sales'),
+     financeClient.from('offline_sales').select('id,client_transaction_id,transaction_date,branch_id').eq('business_id',businessId),
+     financeClient.from('products').select('id,client_record_id').eq('business_id',businessId)
+    ]);
+    if(movementResult.error)throw movementResult.error;if(cloudSalesResult.error)throw cloudSalesResult.error;if(cloudProductsResult.error)throw cloudProductsResult.error;
+    const cloudSaleById=new Map((cloudSalesResult.data||[]).map(x=>[String(x.id),x])),cloudSaleByTxn=new Map((cloudSalesResult.data||[]).map(x=>[String(x.client_transaction_id),x]));
+    const localProductByClientId=new Map(scopedProducts.filter(p=>p.cloudClientRecordId).map(p=>[String(p.cloudClientRecordId),String(p.id)]));
+    const cloudProductToLocal=new Map((cloudProductsResult.data||[]).map(p=>[String(p.id),localProductByClientId.get(String(p.client_record_id))||null]));
+    costSales=sales.filter(s=>s.cloudTransactionId&&cloudSaleByTxn.has(String(s.cloudTransactionId))).map(s=>{const cloud=cloudSaleByTxn.get(String(s.cloudTransactionId));return{...s,date:cloud.transaction_date||s.date,branchId:cloud.branch_id||null};}).filter(s=>!branchId||String(s.branchId||'')===String(branchId));
+    costMovements=(movementResult.data||[]).map(m=>{const sale=cloudSaleById.get(String(m.source_id)),productId=cloudProductToLocal.get(String(m.product_id));if(!sale||!productId||(branchId&&String(m.branch_id||'')!==String(branchId)))return null;return{productId,branchId:m.branch_id||null,date:sale.transaction_date||'',quantity:Number(m.quantity_out||0),totalCost:Number(m.total_cost||0)};}).filter(Boolean);
+    costDataStatus=costMovements.length?'Weighted-average cost movements loaded':'No weighted-average cost movements found for matched sales';
+   }catch(error){costSales=[];costMovements=[];costDataStatus='Weighted-average cost data unavailable: '+String(error?.message||error).slice(0,180);}
+  }else if(!businessId)costDataStatus='Select a cloud business workspace to load actual cost movements';else costDataStatus='Connect to the cloud to load actual cost movements';
+  const dataset={sales:sales.filter(belongs),expenses:expenses.filter(belongs),products:forecastProducts,purchases:purchases.filter(belongs),returns:returns.filter(belongs),customers:customers.filter(belongs),suppliers:suppliers.filter(belongs),costSales,costMovements,costDataStatus,currency:state.business.currency||'SLE',businessName:active?.name||state.business.name||'Selected business'};
   if(window.WhiteLionExecutive?.render)window.WhiteLionExecutive.render(dataset);
   else v.innerHTML='<div class="panel"><h2>Executive Intelligence is loading</h2><p class="panel-sub">Please wait a moment, then reopen this section.</p></div>';
   return;
@@ -1530,9 +1548,9 @@ if('serviceWorker'in navigator && location.protocol!=='file:'){window.addEventLi
  setTheme(saved);
 })();
 </script>
-<script src="./executive-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('executive-intelligence.js')"></script>
+<script src="./executive-intelligence.js?v=2" defer onerror="window.__wlScriptFail.push('executive-intelligence.js')"></script>
 <script src="./supplier-intelligence.js?v=1" defer onerror="window.__wlScriptFail.push('supplier-intelligence.js')"></script>
-<script src="./smart-reorder.js?v=1" defer onerror="window.__wlScriptFail.push('smart-reorder.js')"></script>
+<script src="./smart-reorder.js?v=2" defer onerror="window.__wlScriptFail.push('smart-reorder.js')"></script>
 <script src="./cloud.js?v=45" defer onerror="window.__wlScriptFail.push('cloud.js')"></script>
 <script src="./phone-unlocking.js?v=7" defer onerror="window.__wlScriptFail.push('phone-unlocking.js')"></script>
 <script src="./operations.js?v=22" defer onerror="window.__wlScriptFail.push('operations.js')"></script>
