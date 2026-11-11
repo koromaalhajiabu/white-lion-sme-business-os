@@ -143,7 +143,18 @@
     button.disabled=true; button.textContent='Testing provider connection…'; output.textContent='Checking provider account and live service catalogue…';
     try {
       const {data,error}=await client.functions.invoke('mobile-unlock-provider',{body:{action:'test_connection',business_id:business.id}});
-      if(error) throw new Error(error.message||'Supabase function request failed.');
+      if(error) {
+        let detail=error.message||'Supabase function request failed.';
+        const response=error.context;
+        if(response && typeof response.clone==='function') {
+          try {
+            const payload=await response.clone().json();
+            if(payload?.error) detail=String(payload.error);
+            else if(payload?.message) detail=String(payload.message);
+          } catch (_) {}
+        }
+        throw new Error(detail);
+      }
       if(!data?.ok) throw new Error(data?.error||'Provider connection could not be verified.');
       const balance=data.balance==null?'Balance unavailable':String(data.balance)+(data.currency?' '+data.currency:'');
       output.textContent='Connected · Provider balance: '+balance+' · '+Number(data.service_count||0)+' live services found.';
