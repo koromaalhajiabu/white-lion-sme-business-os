@@ -44,7 +44,7 @@
           #wlPhoneUnlocking .wlu-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
           #wlPhoneUnlocking .wlu-kpi{padding:10px;border:1px solid #e2eee5;border-radius:9px;background:#f7fbf8;color:#65776b}
           #wlPhoneUnlocking .wlu-kpi b{display:block;color:#075b35;font-size:16px;margin-top:4px;overflow-wrap:anywhere}
-          #wlPhoneUnlocking .wlu-service-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid #edf2ee}
+          #wlPhoneUnlocking .wlu-catalogue-panel{margin:12px 0;padding:12px;border:2px solid #0b7545;border-radius:12px;background:#f5fbf7}#wlPhoneUnlocking .wlu-catalogue-panel>summary{color:#075b35;font-size:16px;font-weight:700;cursor:pointer;list-style-position:inside}#wlPhoneUnlocking .wlu-service-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid #edf2ee}
           @media(max-width:560px){#wlPhoneUnlocking{padding:14px;font-size:14px}#wlPhoneUnlocking h3{font-size:16px}#wlPhoneUnlocking .wlu-grid{grid-template-columns:1fr;gap:10px}#wlPhoneUnlocking .wlu-full{grid-column:auto}#wlPhoneUnlocking .wlu-kpis{grid-template-columns:1fr 1fr;gap:8px}#wlPhoneUnlocking .wlu-service-row{align-items:flex-start;flex-wrap:wrap}#wlPhoneUnlocking .wlu-service-row>span{min-width:0;overflow-wrap:anywhere}#wlPhoneUnlocking summary{font-size:14px;line-height:1.5;padding:4px 0}#wlPhoneUnlocking th,#wlPhoneUnlocking td{padding:10px 9px}}
         </style>
         <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
@@ -55,6 +55,16 @@
         <div id="wluEnableArea" hidden><p>This specialist module is not enabled for this business.</p><button id="wluEnable" type="button">Enable Phone Unlocking</button></div>
         <div id="wluApp" hidden>
           <div class="wlu-kpis" id="wluKpis"></div>
+          <details open class="wlu-catalogue-panel">
+            <summary><strong>Service catalogue &amp; pricing</strong></summary>
+            <form id="wluServiceForm" class="wlu-grid">
+              <input name="service_name" required minlength="2" maxlength="120" placeholder="Service name">
+              <input name="default_price" type="number" required min="0" step="0.01" placeholder="Default customer price">
+              <input name="description" maxlength="240" placeholder="Description (optional)">
+              <button type="submit">Add service</button>
+            </form>
+            <div id="wluServices"></div>
+          </details>
           <details open>
             <summary><strong>Create unlocking order</strong></summary>
             <p class="wlu-muted">Record only devices you are authorised to service. IMEI is restricted to business owners, administrators and managers.</p>
@@ -76,16 +86,6 @@
               </div>
               <button type="submit">Save unlocking order</button>
             </form>
-          </details>
-          <details>
-            <summary><strong>Service catalogue &amp; pricing</strong></summary>
-            <form id="wluServiceForm" class="wlu-grid">
-              <input name="service_name" required minlength="2" maxlength="120" placeholder="Service name">
-              <input name="default_price" type="number" required min="0" step="0.01" placeholder="Default customer price">
-              <input name="description" maxlength="240" placeholder="Description (optional)">
-              <button type="submit">Add service</button>
-            </form>
-            <div id="wluServices"></div>
           </details>
           <details>
             <summary><strong>Record customer payment</strong></summary>
