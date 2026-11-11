@@ -1004,9 +1004,9 @@ async function render(){
  if(state.page==='reorder'){
   const [products,sales,stockRows]=await Promise.all([all('products'),all('sales'),all('branchInventory')]);
   const active=window.whiteLionCloud?.getActiveBusiness?.()||null,businessId=active?.id||null;
-  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,branchId=branch?.id||'local-main';
+  const branch=window.whiteLionCloud?.getSelectedBranch?.()||null,selectedBranchId=branch?.id||null,branchId=selectedBranchId||'local-main';
   const scopedProducts=products.filter(p=>!businessId||!p.localBusinessId||String(p.localBusinessId)===String(businessId));
-  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!branchId||String(x.branchId||'')===String(branchId)));
+  const scopedSales=sales.filter(x=>(!businessId||!x.localBusinessId||String(x.localBusinessId)===String(businessId))&&(!selectedBranchId||String(x.branchId||'')===String(selectedBranchId)));
   const scopedStock=stockRows.filter(x=>!businessId||!x.businessId||String(x.businessId)===String(businessId));
   const data={products:scopedProducts,sales:scopedSales,stockRows:scopedStock,branchId,businessName:active?.name||state.business.name||'Selected business',branchName:branch?.name||'Local device stock',currency:state.business.currency||'SLE'};
   if(window.WhiteLionSmartReorder?.render)window.WhiteLionSmartReorder.render(data);
