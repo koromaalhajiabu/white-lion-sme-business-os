@@ -119,7 +119,7 @@
           </details>
           <h4>Unlocking order register</h4>
           <div class="wlu-scroll" id="wluOrders">Loading orders…</div>
-          <div class="wlu-muted" style="margin-top:9px">Provider API automation is not active. Orders can be processed manually and provider references recorded here. Payment and refund records are stored in this module; automatic general-ledger journal posting is not enabled yet. Any future provider integration must use a verified provider API through a server-side secret, never a key embedded in this browser app.</div>
+          <div class="wlu-muted" style="margin-top:9px">Provider submissions are available only for supported Mobile-Unlock IMEI services after full customer payment and your explicit approval. Orders without a provider service mapping remain manual. Payment and refund records are stored here; automatic general-ledger journal posting is not enabled yet.</div>
         </div>`;
       host.appendChild(root);
       $('wluEnable').addEventListener('click', enableModule);
