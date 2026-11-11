@@ -10,7 +10,7 @@ const APP_SHELL=[
   './shared.js?v=2',
   './i18n.js?v=11',
   './cloud.js?v=44',
-  './phone-unlocking.js?v=6',
+  './phone-unlocking.js?v=7',
   './operations.js?v=22',
   './documents.js?v=3',
   './icons/white-lion-icon.svg',
