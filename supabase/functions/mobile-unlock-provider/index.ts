@@ -100,39 +100,73 @@ Deno.serve(async (req) => {
     const syncedAt = new Date().toISOString();
     const [accountPayload, imeiPayload, serverPayload] = await Promise.all([
       callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
-      callProvider("getserverservicelist", providerKey),
+      callProvider("serverservicelist", providerKey),
     ]);
     const account = successItem(accountPayload);
     const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
     const currency = accountData.currency ?? accountData.CURRENCY ?? null;
     const normalise = (payload: any, fallback: string) => {
-      const item = successItem(payload), groups = item.LIST || item.list || item.data || {};
+      const root = successItem(payload);
       const rows: any[] = [];
-      if (!groups || typeof groups !== "object") return rows;
-      for (const [groupKey, groupValue] of Object.entries(groups as Record<string, any>)) {
-        const group = groupValue || {}, services = group.SERVICES || group.services || {};
-        const entries: Array<[string, any]> = Array.isArray(services)
-          ? services.map((v: any, i: number) => [String(v?.SERVICEID ?? i), v])
-          : Object.entries(services);
-        for (const [key, raw] of entries) {
-          const v = raw || {}, id = String(v.SERVICEID ?? v.service_id ?? key);
-          const name = String(v.SERVICENAME ?? v.service_name ?? v.name ?? "").trim();
-          if (!id || !name) continue;
-          const credit = v.CREDIT ?? v.credit ?? null, numericCredit = credit == null || credit === "" ? null : Number(credit);
-          rows.push({
-            business_id: businessId, provider_service_id: id,
-            provider_service_type: String(v.SERVICETYPE ?? group.GROUPTYPE ?? fallback).toUpperCase(),
-            provider_group: String(group.GROUPNAME ?? groupKey), service_name: name,
-            provider_credit: Number.isFinite(numericCredit) ? numericCredit : null,
-            provider_currency: currency == null ? null : String(currency),
-            delivery_time: v.TIME == null ? null : String(v.TIME),
-            description: v.INFO == null ? null : String(v.INFO),
-            quantity: Number.isFinite(Number(v.QNT)) ? Number(v.QNT) : null,
-            requires_custom: Array.isArray(v["Requires.Custom"]) ? v["Requires.Custom"] : [],
-            is_active: true, last_synced_at: syncedAt, updated_at: syncedAt,
-          });
+      const seen = new Set<string>();
+      const read = (value: any, groupName = "", groupType = fallback, inheritedKey = ""): void => {
+        if (Array.isArray(value)) {
+          value.forEach((entry, index) => read(entry, groupName, groupType, String(index)));
+          return;
         }
-      }
+        if (!value || typeof value !== "object") return;
+
+        const v = value as Record<string, any>;
+        const pick = (...keys: string[]) => {
+          for (const key of keys) if (v[key] !== undefined && v[key] !== null && v[key] !== "") return v[key];
+          return undefined;
+        };
+        const id = pick("SERVICEID", "service_id", "serviceId", "serviceid");
+        const name = pick("SERVICENAME", "service_name", "serviceName", "name", "NAME");
+        if (id !== undefined && name !== undefined) {
+          const serviceId = String(id);
+          const serviceName = String(name).trim();
+          const type = String(pick("SERVICETYPE") || groupType || fallback).toUpperCase();
+          const identity = type + ":" + serviceId;
+          if (serviceName && !seen.has(identity)) {
+            seen.add(identity);
+            const credit = pick("CREDIT", "credit", "PRICE", "price");
+            const numericCredit = credit == null ? null : Number(credit);
+            const custom = pick("Requires.Custom", "requires_custom", "Requires", "requires");
+            rows.push({
+              business_id: businessId,
+              provider_service_id: serviceId,
+              provider_service_type: type,
+              provider_group: String(groupName || pick("GROUPNAME", "group_name") || "Other"),
+              service_name: serviceName,
+              provider_credit: credit == null || credit === "" || !Number.isFinite(numericCredit) ? null : numericCredit,
+              provider_currency: currency == null ? null : String(currency),
+              delivery_time: pick("TIME", "time", "delivery_time") == null ? null : String(pick("TIME", "time", "delivery_time")),
+              description: pick("INFO", "info", "description") == null ? null : String(pick("INFO", "info", "description")),
+              quantity: Number.isFinite(Number(pick("QNT", "quantity"))) ? Number(pick("QNT", "quantity")) : null,
+              requires_custom: Array.isArray(custom) ? custom : [],
+              is_active: true,
+              last_synced_at: syncedAt,
+              updated_at: syncedAt,
+            });
+          }
+          return;
+        }
+
+        const localGroup = String(pick("GROUPNAME", "group_name") || groupName || inheritedKey || "Other");
+        const localType = String(pick("GROUPTYPE", "group_type") || groupType || fallback).toUpperCase();
+        if (v.SERVICES && typeof v.SERVICES === "object") read(v.SERVICES, localGroup, localType);
+        else if (v.services && typeof v.services === "object") read(v.services, localGroup, localType);
+        else {
+          for (const [key, child] of Object.entries(v)) {
+            if (["MESSAGE", "message", "ACCOUNTINFO", "Account", "AccountInfo", "AccoutInfo", "apiversion"].includes(key)) continue;
+            read(child, localGroup, localType, key);
+          }
+        }
+      };
+
+      const list = root.LIST ?? root.list ?? root.data?.LIST ?? root.data?.list ?? root.data ?? root;
+      read(list, "", fallback);
       return rows;
     };
     const rows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
