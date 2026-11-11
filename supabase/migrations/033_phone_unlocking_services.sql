@@ -63,6 +63,7 @@ create table if not exists public.phone_unlocking_orders (
   provider_cost numeric(18,2) not null default 0 check (provider_cost >= 0),
   service_price numeric(18,2) not null check (service_price >= 0),
   amount_paid numeric(18,2) not null default 0 check (amount_paid >= 0 and amount_paid <= service_price),
+  amount_refunded numeric(18,2) not null default 0 check (amount_refunded >= 0 and amount_refunded <= amount_paid),
   status text not null default 'received'
     check (status in ('received','quoted','awaiting_payment','processing','completed','failed','cancelled','refunded')),
   notes text,
@@ -94,6 +95,23 @@ create index if not exists phone_unlocking_orders_business_created_idx
   on public.phone_unlocking_orders(business_id,created_at desc);
 create index if not exists phone_unlocking_orders_business_status_idx
   on public.phone_unlocking_orders(business_id,status,created_at desc);
+create table if not exists public.phone_unlocking_refunds (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  order_id uuid not null,
+  amount numeric(18,2) not null check (amount > 0),
+  refund_method text not null check (refund_method in ('cash','mobile_money','bank_transfer','card','other')),
+  refund_reference text,
+  notes text,
+  issued_by uuid not null default auth.uid() references auth.users(id),
+  created_at timestamptz not null default now(),
+  foreign key (order_id,business_id)
+    references public.phone_unlocking_orders(id,business_id) on delete cascade
+);
+
+create index if not exists phone_unlocking_refunds_order_idx
+  on public.phone_unlocking_refunds(business_id,order_id,created_at desc);
+
 create index if not exists phone_unlocking_payments_order_idx
   on public.phone_unlocking_payments(business_id,order_id,created_at desc);
 create index if not exists phone_unlocking_services_business_idx
@@ -102,6 +120,7 @@ create index if not exists phone_unlocking_services_business_idx
 alter table public.phone_unlocking_services enable row level security;
 alter table public.phone_unlocking_orders enable row level security;
 alter table public.phone_unlocking_payments enable row level security;
+alter table public.phone_unlocking_refunds enable row level security;
 
 drop policy if exists phone_unlocking_services_read on public.phone_unlocking_services;
 create policy phone_unlocking_services_read on public.phone_unlocking_services
@@ -133,6 +152,11 @@ for update to authenticated
 using (public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[]))
 with check (public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[]));
 
+drop policy if exists phone_unlocking_refunds_read on public.phone_unlocking_refunds;
+create policy phone_unlocking_refunds_read on public.phone_unlocking_refunds
+for select to authenticated
+using (public.has_business_role(business_id,array['owner','admin','manager']::public.business_role[]));
+
 drop policy if exists phone_unlocking_payments_read on public.phone_unlocking_payments;
 create policy phone_unlocking_payments_read on public.phone_unlocking_payments
 for select to authenticated
@@ -141,6 +165,7 @@ using (public.has_business_role(business_id,array['owner','admin','manager']::pu
 revoke all on public.phone_unlocking_services from anon;
 revoke all on public.phone_unlocking_orders from anon;
 revoke all on public.phone_unlocking_payments from anon;
+revoke all on public.phone_unlocking_refunds from anon;
 grant select on public.phone_unlocking_services to authenticated;
 grant insert (business_id,service_name,description,default_price) on public.phone_unlocking_services to authenticated;
 grant update (service_name,description,default_price,is_active,updated_at) on public.phone_unlocking_services to authenticated;
@@ -154,6 +179,7 @@ grant insert (
 grant update (status,updated_at,completed_at,notes,provider_name,provider_reference,provider_cost,service_price)
   on public.phone_unlocking_orders to authenticated;
 grant select on public.phone_unlocking_payments to authenticated;
+grant select on public.phone_unlocking_refunds to authenticated;
 
 create or replace function public.record_phone_unlocking_payment(
   p_business_id uuid,
@@ -215,5 +241,69 @@ $$;
 
 revoke all on function public.record_phone_unlocking_payment(uuid,uuid,numeric,text,text,text) from public;
 grant execute on function public.record_phone_unlocking_payment(uuid,uuid,numeric,text,text,text) to authenticated;
+
+create or replace function public.record_phone_unlocking_refund(
+  p_business_id uuid,
+  p_order_id uuid,
+  p_amount numeric,
+  p_refund_method text,
+  p_refund_reference text default null,
+  p_notes text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, auth
+as $
+declare
+  v_order public.phone_unlocking_orders%rowtype;
+  v_refund_id uuid := gen_random_uuid();
+  v_new_refunded numeric(18,2);
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_business_role(p_business_id,array['owner','admin','manager']::public.business_role[]) then
+    raise exception 'Not authorised to issue unlocking refunds';
+  end if;
+  if p_amount is null or p_amount <= 0 then raise exception 'Refund amount must be greater than zero'; end if;
+  if p_refund_method not in ('cash','mobile_money','bank_transfer','card','other') then
+    raise exception 'Unsupported refund method';
+  end if;
+
+  select * into v_order
+  from public.phone_unlocking_orders
+  where id=p_order_id and business_id=p_business_id
+  for update;
+  if not found then raise exception 'Unlocking order not found'; end if;
+  if v_order.status='cancelled' then raise exception 'Cancelled orders cannot be refunded through this workflow'; end if;
+
+  v_new_refunded := v_order.amount_refunded + p_amount;
+  if v_new_refunded > v_order.amount_paid then
+    raise exception 'Refund exceeds the amount received from the customer';
+  end if;
+
+  insert into public.phone_unlocking_refunds(
+    id,business_id,order_id,amount,refund_method,refund_reference,notes,issued_by
+  ) values (
+    v_refund_id,p_business_id,p_order_id,p_amount,p_refund_method,
+    nullif(trim(coalesce(p_refund_reference,'')),''),
+    nullif(trim(coalesce(p_notes,'')),''),
+    auth.uid()
+  );
+
+  update public.phone_unlocking_orders
+  set amount_refunded=v_new_refunded,
+      status=case when v_new_refunded=v_order.amount_paid then 'refunded' else status end,
+      updated_at=now()
+  where id=p_order_id and business_id=p_business_id;
+
+  insert into public.audit_logs(business_id,actor_user_id,action,entity_table,entity_id,details)
+  values(p_business_id,auth.uid(),'phone_unlocking_refund_recorded','phone_unlocking_refunds',
+    v_refund_id::text,jsonb_build_object('order_id',p_order_id,'amount',p_amount,'method',p_refund_method));
+
+  return v_refund_id;
+end;
+$;
+
+revoke all on function public.record_phone_unlocking_refund(uuid,uuid,numeric,text,text,text) from public;
+grant execute on function public.record_phone_unlocking_refund(uuid,uuid,numeric,text,text,text) to authenticated;
 
 commit;
