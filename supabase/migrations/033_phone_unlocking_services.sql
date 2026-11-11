@@ -67,6 +67,7 @@ create table if not exists public.phone_unlocking_orders (
   status text not null default 'received'
     check (status in ('received','quoted','awaiting_payment','processing','completed','failed','cancelled','refunded')),
   check (status <> 'cancelled' or amount_paid = amount_refunded),
+  check (status <> 'refunded' or (amount_paid > 0 and amount_refunded = amount_paid)),
   notes text,
   created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
