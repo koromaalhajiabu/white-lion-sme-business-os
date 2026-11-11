@@ -55,6 +55,17 @@
         <div id="wluEnableArea" hidden><p>This specialist module is not enabled for this business.</p><button id="wluEnable" type="button">Enable Phone Unlocking</button></div>
         <div id="wluApp" hidden>
           <div class="wlu-kpis" id="wluKpis"></div>
+          <details open class="wlu-catalogue">
+            <summary><strong>Service catalogue &amp; pricing</strong></summary>
+            <p class="wlu-muted">Add and manage the services your business offers and their standard customer prices. Saved services appear in the order form.</p>
+            <form id="wluServiceForm" class="wlu-grid">
+              <input name="service_name" required minlength="2" maxlength="120" placeholder="Service name">
+              <input name="default_price" type="number" required min="0" step="0.01" placeholder="Default customer price">
+              <input name="description" maxlength="240" placeholder="Description (optional)">
+              <button type="submit">Add service</button>
+            </form>
+            <div id="wluServices"></div>
+          </details>
           <details open>
             <summary><strong>Create unlocking order</strong></summary>
             <p class="wlu-muted">Record only devices you are authorised to service. IMEI is restricted to business owners, administrators and managers.</p>
@@ -76,16 +87,6 @@
               </div>
               <button type="submit">Save unlocking order</button>
             </form>
-          </details>
-          <details>
-            <summary><strong>Service catalogue &amp; pricing</strong></summary>
-            <form id="wluServiceForm" class="wlu-grid">
-              <input name="service_name" required minlength="2" maxlength="120" placeholder="Service name">
-              <input name="default_price" type="number" required min="0" step="0.01" placeholder="Default customer price">
-              <input name="description" maxlength="240" placeholder="Description (optional)">
-              <button type="submit">Add service</button>
-            </form>
-            <div id="wluServices"></div>
           </details>
           <details>
             <summary><strong>Record customer payment</strong></summary>
