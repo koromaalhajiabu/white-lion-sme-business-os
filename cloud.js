@@ -224,7 +224,7 @@
         <button id="wlDevResetData" class="danger">Reset all business data</button>
       </div>
       <div id="wlDevBusinesses"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New business registrations</h3><button id="wlDevBusinessRegistrationsRefresh" type="button">Refresh businesses</button></div><div id="wlDevBusinessRegistrations" class="dev-meta">Business registration notifications load after developer verification.</div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">New business registrations</h3><button id="wlDevBusinessRegistrationsRefresh" type="button">Refresh businesses</button></div><div id="wlDevBusinessRegistrations" class="dev-meta">Business registration notifications load after developer verification.</div><section class="dev-role-manager" id="wlDevAccountInvitePanel"><h3 style="margin:0 0 6px;color:#f0d28b">Invite administrator account</h3><div class="dev-role-help">Send a secure email invitation and grant access to one selected business workspace. The invited person sets their own password.</div><div class="dev-role-grid"><div><label for="wlDevInviteName">Full name</label><input id="wlDevInviteName" type="text" autocomplete="name" placeholder="Administrator full name"></div><div><label for="wlDevInviteEmail">Email address</label><input id="wlDevInviteEmail" type="email" autocomplete="email" placeholder="admin@example.com"></div><div><label for="wlDevInviteBusiness">Business workspace</label><select id="wlDevInviteBusiness"><option value="">Loading workspaces…</option></select></div><div><label for="wlDevInviteRole">Business role</label><select id="wlDevInviteRole"><option value="admin" selected>Administrator</option><option value="manager">Manager</option><option value="accountant">Accountant</option><option value="storekeeper">Storekeeper</option><option value="cashier">Cashier</option><option value="viewer">Viewer</option></select></div></div><button id="wlDevInviteSubmit" type="button">Send administrator invitation</button><div id="wlDevInviteStatus" class="dev-role-help">Invitation is sent through Supabase Auth. No password is created or displayed here.</div></section><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:15px"><h3 style="margin:0">Registered accounts</h3><button id="wlDevAccountsRefresh">Refresh accounts</button></div>
       <div id="wlDevAccounts" class="dev-meta">Account directory loads after developer verification.</div>
       <div class="dev-meta" style="margin-top:10px">Deletion requests suspend access immediately. Accounts remain recoverable for 30 days. Business owners and developer accounts are protected. Permanent deletion is only available after the recovery period through the secure server-side function.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px"><h3 style="margin:0">30-day deletion &amp; recovery</h3><button id="wlDevDeletionRefresh">Refresh requests</button></div>
@@ -243,6 +243,7 @@
     $('wlDevRegistrationLimitRefresh').onclick = loadDeveloperRegistrationLimits;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
+    $('wlDevInviteSubmit').onclick = inviteDeveloperAccount;
     $('wlDevRegistrationsRefresh').onclick = loadDeveloperRegistrations;
     $('wlDevBusinessRegistrationsRefresh').onclick = loadDeveloperBusinessRegistrations;
     $('wlDevAlertSave').onclick = saveDeveloperAlertSettings;
@@ -435,6 +436,7 @@
     const { data, error } = await client.rpc('get_platform_dashboard');
     if (error) { status.textContent = 'Developer database setup required: ' + error.message; return; }
     window.__wlPlatformBusinesses = Array.isArray(data.businesses) ? data.businesses : [];
+    populateDeveloperInviteBusinesses();
     populateDeveloperRoleForm();
     const maintenance = data.maintenance || {enabled:false};
     $('wlDevStats').textContent = 'Businesses: ' + data.business_count + ' · Suspended: ' + data.suspended_count + ' · Registered accounts: ' + data.user_count + ' · Platform mode: ' + (maintenance.enabled ? 'MAINTENANCE' : 'LIVE');
@@ -695,6 +697,35 @@
       if (marked.error) host.insertAdjacentHTML('beforeend',
         '<div class="dev-meta">Could not mark business notifications as reviewed: ' + esc(marked.error.message) + '</div>');
     }
+  }
+
+  function populateDeveloperInviteBusinesses() {
+    const select = $('wlDevInviteBusiness');
+    if (!select) return;
+    const current = select.value;
+    const businesses = window.__wlPlatformBusinesses || [];
+    select.innerHTML = '<option value="">Choose a business workspace…</option>' + businesses.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + ' · ' + esc(b.owner_email || 'Owner unknown') + '</option>').join('');
+    if (businesses.some(b => b.id === current)) select.value = current;
+  }
+
+  async function inviteDeveloperAccount() {
+    const name = $('wlDevInviteName')?.value.trim() || '';
+    const email = $('wlDevInviteEmail')?.value.trim().toLowerCase() || '';
+    const businessId = $('wlDevInviteBusiness')?.value || '';
+    const role = $('wlDevInviteRole')?.value || 'admin';
+    const status = $('wlDevInviteStatus');
+    const button = $('wlDevInviteSubmit');
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !businessId) { if (status) status.textContent = 'Enter a full name, valid email and business workspace.'; return; }
+    if (!confirm('Invite ' + name + ' (' + email + ') as ' + role.toUpperCase() + ' for the selected business?')) return;
+    button.disabled = true; if (status) status.textContent = 'Sending secure invitation…';
+    try {
+      const {data,error} = await client.functions.invoke('manage-platform-accounts',{body:{action:'invite',email,full_name:name,business_id:businessId,role}});
+      if (error) throw error; if (!data?.ok) throw new Error(data?.error || 'Invitation was not completed.');
+      if (status) status.textContent = data.message || 'Invitation sent. Ask the administrator to check their email.';
+      $('wlDevInviteName').value = ''; $('wlDevInviteEmail').value = '';
+      await loadDeveloperAccounts(); await loadDeveloperActivity();
+    } catch (error) { if (status) status.textContent = 'Invitation failed: ' + (error.message || 'Unknown error') + '. Confirm the manage-platform-accounts Edge Function is deployed.'; }
+    finally { button.disabled = false; }
   }
 
   async function loadDeveloperAccounts() {
