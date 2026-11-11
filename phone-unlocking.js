@@ -3,7 +3,7 @@
   'use strict';
   const MODULE_KEY = 'phone_unlocking';
   const ALLOWED_ROLES = ['owner','admin','manager'];
-  const STATUSES = ['received','quoted','awaiting_payment','processing','completed','failed','cancelled','refunded'];
+  const STATUSES = ['received','quoted','awaiting_payment','processing','completed','failed','cancelled'];
   const STATUS_LABELS = {
     received:'Received', quoted:'Quoted', awaiting_payment:'Awaiting payment',
     processing:'Processing', completed:'Completed', failed:'Failed',
@@ -97,6 +97,16 @@
               <button type="submit">Record payment</button>
             </form>
           </details>
+          <details>
+            <summary><strong>Record a customer refund</strong></summary>
+            <form id="wluRefundForm" class="wlu-grid">
+              <select name="order_id" id="wluRefundOrder" required><option value="">Choose paid order</option></select>
+              <input name="amount" type="number" min="0.01" step="0.01" required placeholder="Refund amount">
+              <select name="refund_method"><option value="cash">Cash</option><option value="mobile_money">Mobile money</option><option value="bank_transfer">Bank transfer</option><option value="card">Card</option><option value="other">Other</option></select>
+              <input name="refund_reference" maxlength="160" placeholder="Refund reference (optional)">
+              <button type="submit">Record refund</button>
+            </form>
+          </details>
           <h4>Unlocking order register</h4>
           <div class="wlu-scroll" id="wluOrders">Loading orders…</div>
           <div class="wlu-muted" style="margin-top:9px">Provider API automation is not active. Orders can be processed manually and provider references recorded here. Any future provider integration must use a verified provider API through a server-side secret, never a key embedded in this browser app.</div>
@@ -106,6 +116,7 @@
       $('wluOrderForm').addEventListener('submit', createOrder);
       $('wluServiceForm').addEventListener('submit', createService);
       $('wluPaymentForm').addEventListener('submit', recordPayment);
+      $('wluRefundForm').addEventListener('submit', recordRefund);
       $('wluServiceSelect').addEventListener('change', () => {
         const service = services.find(item => item.id === $('wluServiceSelect').value);
         if (service) $('wluOrderForm').elements.service_price.value = Number(service.default_price).toFixed(2);
@@ -170,6 +181,16 @@
     if(error) return say('Payment was not recorded: '+error.message,true);
     form.reset(); await load(); say('Customer payment recorded and order balance updated.');
   }
+  async function recordRefund(event) {
+    event.preventDefault();
+    const form=event.currentTarget,data=Object.fromEntries(new FormData(form).entries());
+    const {error}=await client.rpc('record_phone_unlocking_refund',{
+      p_business_id:business.id,p_order_id:data.order_id,p_amount:Number(data.amount),
+      p_refund_method:data.refund_method,p_refund_reference:data.refund_reference.trim()||null,p_notes:null
+    });
+    if(error) return say('Refund was not recorded: '+error.message,true);
+    form.reset(); await load(); say('Refund recorded and net receipts updated.');
+  }
   async function updateOrderStatus(event) {
     const button=event.target.closest('[data-wlu-status]'); if(!button) return;
     const order=orders.find(item=>item.id===button.dataset.id); if(!order) return;
@@ -190,17 +211,20 @@
     $('wluServices').innerHTML=services.map(item=>'<div class="wlu-service-row"><span><strong>'+esc(item.service_name)+'</strong><br><small class="wlu-muted">'+esc(item.description||'')+'</small></span><strong>'+esc(money(item.default_price))+'</strong></div>').join('')||'<p class="wlu-muted">No services yet. Add the services you offer and their default prices.</p>';
   }
   async function loadOrders() {
-    const {data,error}=await client.from('phone_unlocking_orders').select('id,reference,customer_name,customer_phone,device_brand,device_model,imei,network_name,service_name,provider_name,provider_reference,provider_cost,service_price,amount_paid,status,created_at').eq('business_id',business.id).order('created_at',{ascending:false}).limit(60);
+    const {data,error}=await client.from('phone_unlocking_orders').select('id,reference,customer_name,customer_phone,device_brand,device_model,imei,network_name,service_name,provider_name,provider_reference,provider_cost,service_price,amount_paid,amount_refunded,status,created_at').eq('business_id',business.id).order('created_at',{ascending:false}).limit(60);
     if(error) throw error;
     orders=data||[];
     const total=orders.length, open=orders.filter(o=>!['completed','failed','cancelled','refunded'].includes(o.status)).length;
-    const revenue=orders.reduce((sum,o)=>sum+Number(o.amount_paid||0),0);
-    $('wluKpis').innerHTML='<div class="wlu-kpi">Orders in register<b>'+total+'</b></div><div class="wlu-kpi">Active orders<b>'+open+'</b></div><div class="wlu-kpi">Payments received<b>'+esc(money(revenue))+'</b></div>';
+    const revenue=orders.reduce((sum,o)=>sum+Number(o.amount_paid||0)-Number(o.amount_refunded||0),0);
+    const estimatedMargin=orders.reduce((sum,o)=>sum+Math.max(0,Number(o.service_price||0)-Number(o.provider_cost||0)-Number(o.amount_refunded||0)),0);
+    $('wluKpis').innerHTML='<div class="wlu-kpi">Orders in register<b>'+total+'</b></div><div class="wlu-kpi">Active orders<b>'+open+'</b></div><div class="wlu-kpi">Net receipts<b>'+esc(money(revenue))+'</b></div><div class="wlu-kpi">Estimated gross margin<b>'+esc(money(estimatedMargin))+'</b></div>';
     $('wluPaymentOrder').innerHTML='<option value="">Choose outstanding order</option>'+orders.filter(o=>Number(o.service_price)>Number(o.amount_paid)&&!['cancelled','refunded','failed'].includes(o.status)).map(o=>'<option value="'+esc(o.id)+'">'+esc(o.reference)+' · '+esc(o.customer_name)+' · '+esc(money(Number(o.service_price)-Number(o.amount_paid)))+'</option>').join('');
+    $('wluRefundOrder').innerHTML='<option value="">Choose paid order</option>'+orders.filter(o=>Number(o.amount_paid)>Number(o.amount_refunded||0)&&o.status!=='cancelled').map(o=>'<option value="'+esc(o.id)+'">'+esc(o.reference)+' · '+esc(o.customer_name)+' · refundable '+esc(money(Number(o.amount_paid)-Number(o.amount_refunded||0)))+'</option>').join('');
     $('wluOrders').innerHTML=orders.length?'<table><thead><tr><th>Order / customer</th><th>Device &amp; IMEI</th><th>Network / service</th><th>Provider</th><th>Price / paid / balance</th><th>Status</th><th>Update</th></tr></thead><tbody>'+orders.map(o=>{
       const balance=Math.max(0,Number(o.service_price)-Number(o.amount_paid));
+      const netPaid=Number(o.amount_paid)-Number(o.amount_refunded||0);
       const options=STATUSES.map(s=>'<option value="'+s+'" '+(s===o.status?'selected':'')+'>'+STATUS_LABELS[s]+'</option>').join('');
-      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Manual')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Paid: '+esc(money(o.amount_paid))+'<br>Due: '+esc(money(balance))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td><select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="selected" data-id="'+esc(o.id)+'">Update</button></td></tr>';
+      return '<tr><td><strong>'+esc(o.reference)+'</strong><br>'+esc(o.customer_name)+'<br><small>'+esc(o.customer_phone||'')+'</small></td><td>'+esc(o.device_brand)+' '+esc(o.device_model)+'<br><small>IMEI: '+esc(o.imei)+'</small></td><td>'+esc(o.network_name)+'<br>'+esc(o.service_name)+'</td><td>'+esc(o.provider_name||'Manual')+'<br><small>'+esc(o.provider_reference||'No provider ref')+'</small></td><td>'+esc(money(o.service_price))+'<br>Net paid: '+esc(money(netPaid))+'<br>Due: '+esc(money(balance))+'<br>Refunded: '+esc(money(o.amount_refunded))+'<br><small>Provider cost: '+esc(money(o.provider_cost))+'</small></td><td>'+esc(STATUS_LABELS[o.status]||o.status)+'</td><td><select aria-label="Status for '+esc(o.reference)+'" data-status-select="'+esc(o.id)+'">'+options+'</select><button type="button" class="secondary" data-wlu-status="'+esc(o.status)+'" data-id="'+esc(o.id)+'">Update</button></td></tr>'
     }).join('')+'</tbody></table>':'<p class="wlu-muted">No unlocking orders yet. Create the first order above.</p>';
     $('wluOrders').querySelectorAll('[data-status-select]').forEach(select=>select.addEventListener('change',()=>{
       const btn=$('wluOrders').querySelector('[data-id="'+select.dataset.statusSelect+'"]');
