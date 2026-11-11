@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return Response.json({ error: "POST required" }, { status: 405, headers: cors });
 
   try {
-    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "");
+    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     if (!token) return Response.json({ error: "Authentication required" }, { status: 401, headers: cors });
 
     const url = Deno.env.get("SUPABASE_URL")!;
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       const fullName = String(body.full_name || "").trim();
       const businessId = String(body.business_id || "");
       const role = String(body.role || "admin");
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !fullName || !businessId || !ALLOWED_ROLES.has(role)) {
+      if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email) || !fullName || !businessId || !ALLOWED_ROLES.has(role)) {
         return Response.json({ error: "Provide a valid email, full name, business workspace and permitted role." }, { status: 400, headers: cors });
       }
       if (email === DEVELOPER_EMAIL) return Response.json({ error: "The developer account cannot be invited or replaced." }, { status: 403, headers: cors });
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       const userId = String(body.user_id || "");
       const fullName = String(body.full_name || "").trim();
       const email = String(body.email || "").trim().toLowerCase();
-      if (!userId || !fullName || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      if (!userId || !fullName || !/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email)) {
         return Response.json({ error: "Provide the account ID, full name and a valid email address." }, { status: 400, headers: cors });
       }
       if (userId === actorId || email === DEVELOPER_EMAIL) {
@@ -103,9 +103,10 @@ Deno.serve(async (req) => {
       const { error: profileError } = await admin.from("profiles").update({ full_name: fullName }).eq("id", userId);
       if (profileError) throw profileError;
       const metadata = { ...(targetData.user.user_metadata || {}), full_name: fullName };
-      const attributes: Record<string, unknown> = { user_metadata: metadata };
-      if (email !== oldEmail) attributes.email = email;
-      const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(userId, attributes);
+      const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
+        user_metadata: metadata,
+        email: email !== oldEmail ? email : undefined
+      });
       if (updateError) throw updateError;
 
       await audit("platform_account_profile_updated", userId, {
