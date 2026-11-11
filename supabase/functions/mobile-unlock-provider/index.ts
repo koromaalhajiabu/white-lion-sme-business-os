@@ -70,40 +70,84 @@ Deno.serve(async (req) => {
     if (authError || !authData.user) return json({ ok: false, error: "Your session is invalid. Sign in again." }, 401);
 
     const body = await req.json();
-    if (body?.action !== "test_connection") return json({ ok: false, error: "Unsupported action." }, 400);
+    const action = String(body?.action || "");
+    if (!["test_connection", "sync_catalogue"].includes(action)) return json({ ok: false, error: "Unsupported action." }, 400);
     const businessId = String(body.business_id || "");
     if (!businessId) return json({ ok: false, error: "Business ID is required." }, 400);
 
     const { data: membership, error: membershipError } = await userClient
-      .from("business_members")
-      .select("role,is_active")
-      .eq("business_id", businessId)
-      .eq("user_id", authData.user.id)
-      .eq("is_active", true)
-      .maybeSingle();
+      .from("business_members").select("role,is_active")
+      .eq("business_id", businessId).eq("user_id", authData.user.id).eq("is_active", true).maybeSingle();
     if (membershipError) throw membershipError;
     if (!membership || !["owner", "admin", "manager"].includes(String(membership.role).toLowerCase())) {
       return json({ ok: false, error: "Business owner, administrator or manager access is required." }, 403);
     }
 
-    const [accountPayload, servicesPayload] = await Promise.all([
-      callProvider("accountinfo", providerKey),
-      callProvider("imeiservicelist", providerKey),
+    if (action === "test_connection") {
+      const [accountPayload, servicesPayload] = await Promise.all([
+        callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
+      ]);
+      const account = successItem(accountPayload);
+      const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
+      const serviceItem = successItem(servicesPayload);
+      const serviceData = serviceItem.LIST || serviceItem.data || serviceItem;
+      const balance = accountData.credit ?? accountData.balance ?? accountData.CREDIT ?? null;
+      const currency = accountData.currency ?? accountData.CURRENCY ?? null;
+      return json({ ok: true, balance: balance == null ? null : String(balance), currency: currency == null ? null : String(currency),
+        service_count: countServices(serviceData), checked_at: new Date().toISOString() });
+    }
+
+    const syncedAt = new Date().toISOString();
+    const [accountPayload, imeiPayload, serverPayload] = await Promise.all([
+      callProvider("accountinfo", providerKey), callProvider("imeiservicelist", providerKey),
+      callProvider("getserverservicelist", providerKey),
     ]);
     const account = successItem(accountPayload);
-    const accountData = account.Account || account.LIST || account.data || account;
-    const serviceItem = successItem(servicesPayload);
-    const serviceData = serviceItem.LIST || serviceItem.data || serviceItem;
-    const balance = accountData.credit ?? accountData.balance ?? accountData.CREDIT ?? null;
+    const accountData = account.AccoutInfo || account.AccountInfo || account.Account || account.LIST || account.data || account;
     const currency = accountData.currency ?? accountData.CURRENCY ?? null;
-
-    return json({
-      ok: true,
-      balance: balance == null ? null : String(balance),
-      currency: currency == null ? null : String(currency),
-      service_count: countServices(serviceData),
-      checked_at: new Date().toISOString(),
-    });
+    const normalise = (payload: any, fallback: string) => {
+      const item = successItem(payload), groups = item.LIST || item.list || item.data || {};
+      const rows: any[] = [];
+      if (!groups || typeof groups !== "object") return rows;
+      for (const [groupKey, groupValue] of Object.entries(groups as Record<string, any>)) {
+        const group = groupValue || {}, services = group.SERVICES || group.services || {};
+        const entries: Array<[string, any]> = Array.isArray(services)
+          ? services.map((v: any, i: number) => [String(v?.SERVICEID ?? i), v])
+          : Object.entries(services);
+        for (const [key, raw] of entries) {
+          const v = raw || {}, id = String(v.SERVICEID ?? v.service_id ?? key);
+          const name = String(v.SERVICENAME ?? v.service_name ?? v.name ?? "").trim();
+          if (!id || !name) continue;
+          const credit = v.CREDIT ?? v.credit ?? null, numericCredit = credit == null || credit === "" ? null : Number(credit);
+          rows.push({
+            business_id: businessId, provider_service_id: id,
+            provider_service_type: String(v.SERVICETYPE ?? group.GROUPTYPE ?? fallback).toUpperCase(),
+            provider_group: String(group.GROUPNAME ?? groupKey), service_name: name,
+            provider_credit: Number.isFinite(numericCredit) ? numericCredit : null,
+            provider_currency: currency == null ? null : String(currency),
+            delivery_time: v.TIME == null ? null : String(v.TIME),
+            description: v.INFO == null ? null : String(v.INFO),
+            quantity: Number.isFinite(Number(v.QNT)) ? Number(v.QNT) : null,
+            requires_custom: Array.isArray(v["Requires.Custom"]) ? v["Requires.Custom"] : [],
+            is_active: true, last_synced_at: syncedAt, updated_at: syncedAt,
+          });
+        }
+      }
+      return rows;
+    };
+    const rows = [...normalise(imeiPayload, "IMEI"), ...normalise(serverPayload, "SERVER")];
+    if (!rows.length) throw new Error("Provider returned no readable services. Existing catalogue records were left unchanged.");
+    const { error: upsertError } = await userClient.from("phone_unlocking_provider_services")
+      .upsert(rows, { onConflict: "business_id,provider_service_type,provider_service_id" });
+    if (upsertError) throw upsertError;
+    const { error: staleError } = await userClient.from("phone_unlocking_provider_services")
+      .update({ is_active: false, updated_at: syncedAt }).eq("business_id", businessId).lt("last_synced_at", syncedAt);
+    if (staleError) throw staleError;
+    return json({ ok: true, synced_count: rows.length,
+      imei_count: rows.filter(r => r.provider_service_type === "IMEI").length,
+      server_count: rows.filter(r => r.provider_service_type !== "IMEI").length,
+      provider_currency: currency == null ? null : String(currency), synced_at: syncedAt,
+      note: "Catalogue synchronised only. No order was submitted and no provider credit was spent." });
   } catch (error) {
     return json({ ok: false, error: error?.message || "Provider connection test failed." }, 502);
   }

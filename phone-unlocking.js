@@ -66,6 +66,13 @@
               <button type="submit">Add service</button>
             </form>
             <div id="wluServices"></div>
+            <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e8eee9">
+              <h4>Live Mobile-Unlock provider catalogue</h4>
+              <p class="wlu-muted">Sync the provider's current IMEI and server services. Provider credit is separate from your customer selling price. Adding a service here does not place an order.</p>
+              <button id="wluSyncCatalogue" type="button" class="secondary">Sync live provider catalogue</button>
+              <span id="wluCatalogueStatus" class="wlu-muted" role="status">No live catalogue sync yet.</span>
+              <div id="wluLiveServices"></div>
+            </div>
           </details>
           <details open>
             <summary><strong>Create unlocking order</strong></summary>
@@ -116,6 +123,8 @@
       host.appendChild(root);
       $('wluEnable').addEventListener('click', enableModule);
       $('wluTestProvider').addEventListener('click', testProviderConnection);
+      $('wluSyncCatalogue').addEventListener('click', syncProviderCatalogue);
+      $('wluLiveServices').addEventListener('click', importProviderService);
       $('wluOrderForm').addEventListener('submit', createOrder);
       $('wluServiceForm').addEventListener('submit', createService);
       $('wluPaymentForm').addEventListener('submit', recordPayment);
@@ -165,6 +174,70 @@
     } finally {
       button.disabled=false; button.textContent='Test Mobile-Unlock API connection';
     }
+  }
+  async function syncProviderCatalogue() {
+    const button=$('wluSyncCatalogue'), status=$('wluCatalogueStatus');
+    if(!client||!business?.id) return say('Select a business workspace first.',true);
+    if(!canManage()) return say('Only an owner, administrator or manager can sync the provider catalogue.',true);
+    button.disabled=true; button.textContent='Syncing provider catalogue…'; status.textContent='Fetching current IMEI and server services…';
+    try {
+      const {data,error}=await client.functions.invoke('mobile-unlock-provider',{body:{action:'sync_catalogue',business_id:business.id}});
+      if(error) {
+        let detail=error.message||'Supabase function request failed.';
+        const response=error.context;
+        if(response&&typeof response.clone==='function') {
+          try { const payload=await response.clone().json(); if(payload?.error) detail=String(payload.error); } catch (_) {}
+        }
+        throw new Error(detail);
+      }
+      if(!data?.ok) throw new Error(data?.error||'Catalogue sync failed.');
+      await loadProviderCatalogue();
+      status.textContent=Number(data.synced_count||0)+' services synced · '+Number(data.imei_count||0)+' IMEI · '+Number(data.server_count||0)+' server/remote · Provider currency: '+(data.provider_currency||'not supplied')+'.';
+      say('Live Mobile-Unlock catalogue synchronised. No order was submitted and no provider credit was spent.');
+    } catch(error) {
+      status.textContent='Catalogue sync failed: '+(error.message||String(error));
+      say('Provider catalogue sync failed: '+(error.message||String(error)),true);
+    } finally {
+      button.disabled=false; button.textContent='Sync live provider catalogue';
+    }
+  }
+  async function loadProviderCatalogue() {
+    if(!client||!business?.id||!$('wluLiveServices')) return;
+    const {data,error}=await client.from('phone_unlocking_provider_services')
+      .select('id,provider_service_id,provider_service_type,provider_group,service_name,provider_credit,provider_currency,delivery_time,description,quantity,requires_custom,is_active,last_synced_at')
+      .eq('business_id',business.id).eq('is_active',true)
+      .order('provider_group').order('service_name').limit(500);
+    if(error) throw error;
+    const rows=data||[];
+    $('wluLiveServices').innerHTML=rows.length?'<div class="wlu-scroll"><table><thead><tr><th>Group / service</th><th>Type</th><th>Provider credit</th><th>Delivery</th><th>Action</th></tr></thead><tbody>'+rows.map(item=>{
+      const credit=item.provider_credit==null?'Not supplied':esc(item.provider_currency||'')+' '+Number(item.provider_credit).toFixed(4);
+      return '<tr><td><strong>'+esc(item.service_name)+'</strong><br><small>'+esc(item.provider_group||'')+'</small><br><small>'+esc(item.description||'')+'</small></td><td>'+esc(item.provider_service_type)+'</td><td>'+credit+'</td><td>'+esc(item.delivery_time||'Not specified')+'</td><td><button type="button" class="secondary" data-wlu-import-provider-service="'+esc(item.id)+'">Add to customer catalogue</button></td></tr>';
+    }).join('')+'</tbody></table></div>':'<p class="wlu-muted">No live services saved yet. Select Sync live provider catalogue to fetch them.</p>';
+    window.__wluProviderCatalogue=rows;
+  }
+  async function importProviderService(event) {
+    const button=event.target.closest('[data-wlu-import-provider-service]'); if(!button) return;
+    if(!canManage()) return say('Only an owner, administrator or manager can add provider services.',true);
+    const item=(window.__wluProviderCatalogue||[]).find(row=>row.id===button.dataset.wluImportProviderService);
+    if(!item) return say('Provider service not found. Sync the catalogue again.',true);
+    const currency=business?.currency_code||'SLE';
+    const entered=prompt('Enter the CUSTOMER SELLING PRICE in '+currency+' for "'+item.service_name+'". Provider credit ('+(item.provider_currency||'provider currency')+') is separate; do not copy it unless the currencies match.','0');
+    if(entered===null) return;
+    const price=Number(entered);
+    if(!Number.isFinite(price)||price<0) return say('Enter a valid non-negative customer selling price.',true);
+    const {error}=await client.from('phone_unlocking_services').insert({
+      business_id:business.id,service_name:item.service_name,
+      description:[item.provider_group,item.description,item.delivery_time?'Delivery: '+item.delivery_time:null].filter(Boolean).join(' · ').slice(0,240)||null,
+      default_price:price,provider_service_id:item.provider_service_id,provider_service_type:item.provider_service_type,
+      provider_group:item.provider_group,provider_cost:item.provider_credit,provider_currency:item.provider_currency,
+      provider_delivery_time:item.delivery_time,provider_info:item.description,provider_requires_custom:item.requires_custom
+    });
+    if(error) {
+      if(error.code==='23505') return say('This service name or provider service is already in your customer catalogue.',true);
+      return say('Could not add provider service: '+error.message,true);
+    }
+    await loadServices();
+    say('Provider service added to your customer catalogue at '+money(price)+'. No provider order was placed.');
   }
   async function enableModule() {
     if (!client || !business?.id || !['owner','admin'].includes(role)) return say('Only the business owner or administrator can enable this module.',true);
@@ -250,11 +323,11 @@
     await load(); say('Order '+order.reference+' updated to '+STATUS_LABELS[next]+'.');
   }
   async function loadServices() {
-    const {data,error}=await client.from('phone_unlocking_services').select('id,service_name,description,default_price,is_active').eq('business_id',business.id).eq('is_active',true).order('service_name');
+    const {data,error}=await client.from('phone_unlocking_services').select('id,service_name,description,default_price,is_active,provider_service_id,provider_service_type,provider_group,provider_cost,provider_currency').eq('business_id',business.id).eq('is_active',true).order('service_name');
     if(error) throw error;
     services=data||[];
     $('wluServiceSelect').innerHTML='<option value="">Choose service / price</option>'+services.map(item=>'<option value="'+esc(item.id)+'">'+esc(item.service_name)+' — '+esc(money(item.default_price))+'</option>').join('');
-    $('wluServices').innerHTML=services.map(item=>'<div class="wlu-service-row"><span><strong>'+esc(item.service_name)+'</strong><br><small class="wlu-muted">'+esc(item.description||'')+'</small></span><span><strong>'+esc(money(item.default_price))+'</strong> <button type="button" class="secondary" data-wlu-service-edit="'+esc(item.id)+'">Change price</button></span></div>').join('')||'<p class="wlu-muted">No services yet. Add the services you offer and their default prices.</p>';
+    $('wluServices').innerHTML=services.map(item=>'<div class="wlu-service-row"><span><strong>'+esc(item.service_name)+'</strong><br><small class="wlu-muted">'+esc(item.description||'')+'</small>'+(item.provider_service_id?'<br><small class="wlu-muted">Mobile-Unlock '+esc(item.provider_service_type)+' ID: '+esc(item.provider_service_id)+' · Provider cost: '+(item.provider_cost==null?'not supplied':esc(item.provider_currency||'')+' '+Number(item.provider_cost).toFixed(4))+'</small>':'')+'</span><span><strong>'+esc(money(item.default_price))+'</strong> <button type="button" class="secondary" data-wlu-service-edit="'+esc(item.id)+'">Change price</button></span></div>').join('')||'<p class="wlu-muted">No services yet. Add the services you offer and their default prices.</p>';
   }
   async function loadOrders() {
     const {data,error}=await client.from('phone_unlocking_orders').select('id,reference,customer_name,customer_phone,device_brand,device_model,imei,network_name,service_name,provider_name,provider_reference,provider_cost,service_price,amount_paid,amount_refunded,status,created_at').eq('business_id',business.id).order('created_at',{ascending:false}).limit(60);
@@ -279,7 +352,7 @@
   }
   async function load() {
     if(!client||!business?.id) return;
-    try { await Promise.all([loadServices(),loadOrders()]); }
+    try { await Promise.all([loadServices(),loadOrders(),loadProviderCatalogue()]); }
     catch(error){say('Could not load phone unlocking records: '+error.message,true);}
   }
   async function refreshWorkspace(detail={}) {
