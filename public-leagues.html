@@ -9,7 +9,7 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f3f8f4;color:#203b2b;font:15px/1.55 system-ui,Arial,sans-serif}
 .wrap{max-width:1000px;margin:auto;padding:20px 16px 45px}.hero{padding:25px 22px;border-radius:19px;background:linear-gradient(120deg,#075b35,#0c8f52);color:#fff;margin-bottom:18px}
-.kicker{font-size:10px;font-weight:850;letter-spacing:1.6px;text-transform:uppercase;opacity:.85}.hero h1{font-size:clamp(25px,5vw,36px);margin:7px 0}.hero p{font-size:13px;opacity:.9;margin:0;max-width:650px}
+.kicker{font-size:10px;font-weight:850;letter-spacing:1.6px;text-transform:uppercase;opacity:.85}.hero h1{font-size:clamp(25px,5vw,36px);margin:7px 0}.hero p{font-size:13px;opacity:.9;margin:0;max-width:650px}.hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.install-btn{border:1px solid #ffffff70;border-radius:10px;padding:10px 14px;background:#fff;color:#075b35;font-weight:850;font-size:12px;cursor:pointer}.install-help{display:none;margin-top:12px;padding:12px 14px;border-radius:11px;background:#ffffff18;color:#fff;font-size:12px}.install-help.show{display:block}
 .tools{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 15px}.tools input,.tools select{flex:1;min-width:180px;min-height:44px;padding:10px 12px;border:1px solid #d9e8df;border-radius:10px;background:white;color:#203b2b;font:inherit}
 .count{font-size:12px;color:#718078;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .league{background:#fff;border:1px solid #e0eae3;border-radius:15px;padding:17px;box-shadow:0 6px 20px #075b350a;min-width:0}
@@ -20,7 +20,7 @@
 </style>
 </head>
 <body><main class="wrap">
-<header class="hero"><div class="kicker">White Lion · Football & Community</div><h1>Public Leagues Directory</h1><p>Find published football leagues and competitions. Open any league to view its fixtures, results, table and player statistics — no account required.</p></header>
+<header class="hero"><div class="kicker">White Lion · Football & Community</div><h1>Public Leagues Directory</h1><p>Find published football leagues and competitions. Open any league to view its fixtures, results, table and player statistics — no account required.</p><div class="hero-actions"><button class="install-btn" id="installDirectory" type="button">Install Leagues Directory</button></div><div class="install-help" id="installHelp" role="status"><b>Android:</b> Open this page in Chrome and choose Install app. If prompted, confirm installation.<br><b>iPhone:</b> Open this page in Safari, tap Share, choose Add to Home Screen, then tap Add.<br><b>Computer:</b> Use the install icon in the browser address bar or menu when available.</div></header>
 <div class="tools"><input id="search" type="search" placeholder="Search league, region or organiser…" aria-label="Search leagues"><select id="type" aria-label="Filter by competition type"><option value="">All competition types</option></select></div>
 <p class="count" id="count">Loading published leagues…</p><section class="grid" id="grid"><div class="state">Loading public leagues…</div></section>
 <p class="foot"><a href="./index.html">White Lion SME</a> · Public information only</p>
@@ -53,4 +53,25 @@ async function load(){
 document.getElementById('search').addEventListener('input',render);
 document.getElementById('type').addEventListener('change',render);
 load();
+
+// Install this public directory as its own home-screen app (not the private business workspace).
+(function(){
+ const button=document.getElementById('installDirectory');
+ const help=document.getElementById('installHelp');
+ let installPrompt=null;
+ const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ if(standalone){button.hidden=true;return;}
+ window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;button.textContent='Install Leagues Directory';});
+ button.addEventListener('click',async()=>{
+  if(!installPrompt){help.classList.toggle('show');return;}
+  button.disabled=true;
+  try{await installPrompt.prompt();const choice=await installPrompt.userChoice;button.textContent=choice&&choice.outcome==='accepted'?'Installation accepted':'Install Leagues Directory';}
+  catch(e){help.classList.add('show');}
+  installPrompt=null;button.disabled=false;
+ });
+ window.addEventListener('appinstalled',()=>{button.textContent='Directory installed';button.disabled=true;});
+ if('serviceWorker' in navigator && location.protocol!=='file:'){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>{}));
+ }
+})();
 </script></body></html>
