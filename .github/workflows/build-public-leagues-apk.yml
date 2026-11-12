@@ -6,6 +6,7 @@ on:
     paths:
       - 'public-leagues-android/**'
       - 'public-leagues.html'
+      - 'icons/white-lion-512.png'
       - '.github/workflows/build-public-leagues-apk.yml'
 
 permissions:
@@ -26,6 +27,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Install the actual White Lion crest from the repository
+        run: |
+          mkdir -p public-leagues-android/app/src/main/res/drawable-nodpi
+          cp icons/white-lion-512.png public-leagues-android/app/src/main/res/drawable-nodpi/white_lion_crest.png
       - name: Build APK
         working-directory: public-leagues-android
         run: gradle --no-daemon assembleDebug
