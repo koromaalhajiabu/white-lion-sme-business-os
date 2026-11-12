@@ -388,7 +388,7 @@ $$;
 
 create or replace function public.accounting_workflow_version()
 returns integer language sql immutable security definer set search_path=''
-as $ select 1; $;
+as $$ select 1; $$;
 
 revoke all on function public.accounting_workflow_version() from public,anon;
 revoke all on function public.guard_closed_accounting_period() from public;
