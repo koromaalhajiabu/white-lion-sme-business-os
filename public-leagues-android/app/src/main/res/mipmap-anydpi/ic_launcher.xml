@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="512dp"
-    android:height="512dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
-    <path android:fillColor="#101A2D" android:pathData="M0,0h512v512h-512z" />
-    <path android:pathData="M28,28 L484,28 L484,484 L28,484 Z"
-        android:strokeColor="#CDA85D" android:strokeWidth="12"
-        android:fillColor="#00000000" />
-    <path android:fillColor="#F1D99F"
-        android:pathData="M150,355 L150,155 L203,155 L256,239 L309,155 L362,155 L362,355 L305,355 L305,246 L256,318 L207,246 L207,355 Z" />
-    <path android:strokeColor="#CDA85D" android:strokeWidth="12"
-        android:strokeLineCap="round" android:fillColor="#00000000"
-        android:pathData="M105,405 L407,405" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_background" />
+    <item>
+        <bitmap
+            android:src="@drawable/white_lion_crest"
+            android:gravity="center"
+            android:filter="true" />
+    </item>
+</layer-list>
