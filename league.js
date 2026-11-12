@@ -12,7 +12,7 @@
     ['overview','Overview'],['settings','League Settings'],['clubs','Clubs'],['players','Players'],['fixtures','Fixtures & Results'],
     ['table','League Table'],['stats','Player Statistics'],['discipline','Discipline'],['access','Access & Roles']
   ];
-  const frozenNotice = () => '<div class="wl-league-notice" style="background:#fff4df;border-color:#f0dfb8;color:#75571c">This league is frozen. Unfreeze it in League Settings to make changes.</div>';
+  const frozenNotice = () => '<div class="wl-league-notice" style="background:#fff4df;border-color:#f0dfb8;color:#75571c">Editing is temporarily unavailable for this league. Contact support if you need this resolved.</div>';
   const currentCompetition = () => (cache.competitions||[]).find(x=>x.id===competitionId);
   const roleLabel = r => ({competition_admin:'League admin',club_manager:'Club manager',referee:'Referee',disciplinary_officer:'Disciplinary officer',viewer:'Viewer'}[r] || r.replaceAll('_',' '));
   const publicLink = token => location.origin+location.pathname.replace(/[^/]*$/,'')+'public-league.html?t='+token;
@@ -63,8 +63,7 @@
   }
   function base(title,sub,body){
     const c=currentCompetition();
-    const frozenBanner=(c&&c.is_frozen)?'<div class="wl-league-notice" style="background:#fff4df;border-color:#f0dfb8;color:#75571c">🔒 This league is frozen. No records can be added, edited or deleted until it is unfrozen from League Settings.</div>':'';
-    return '<div class="wl-league"><div class="wl-league-hero"><div><div class="wl-league-kicker">White Lion · Community & Sports</div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div><div class="wl-league-mark">WL</div></div><div id="wlLeagueNotice" class="wl-league-notice" hidden></div>'+frozenBanner+
+    return '<div class="wl-league"><div class="wl-league-hero"><div><div class="wl-league-kicker">White Lion · Community & Sports</div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div><div class="wl-league-mark">WL</div></div><div id="wlLeagueNotice" class="wl-league-notice" hidden></div>'+
       '<div class="wl-league-toolbar"><select id="wlLeagueCompetition">'+selectOptions(cache.competitions||[],'id','name','Choose a league')+'</select>'+
       (c?'<select id="wlLeagueSeason">'+selectOptions(cache.seasons||[],'id','name','Choose a season')+'</select>':'')+
       button('＋ New league','primary','id="wlLeagueNewCompetition"')+'</div>'+
@@ -163,10 +162,8 @@
   }
   function settingsView(){
     const c=currentCompetition(),frozen=c.is_frozen;
-    return '<div class="wl-league-panel"><h3>League status</h3><div class="wl-league-sub">Freezing a league blocks any new or edited seasons, clubs, players, fixtures, results, match events and disciplinary records. Only the White Lion platform developer can freeze or unfreeze a league — contact support if you need this league frozen or unfrozen.</div>'+
-      '<div class="wl-league-inline"><span class="wl-league-badge'+(frozen?' warn':'')+'">'+(frozen?'Frozen':'Active')+'</span></div></div>'+
-      '<div class="wl-league-panel"><h3>Edit league details</h3><div class="wl-league-sub">Update this league\'s name, type, region, organiser, points rules and status.</div>'+
-      (frozen?empty('This league is frozen. Contact the platform developer to unfreeze it before editing.'):editCompetitionForm(c))+'</div>';
+    return '<div class="wl-league-panel"><h3>Edit league details</h3><div class="wl-league-sub">Update this league\'s name, type, region, organiser, points rules and status.</div>'+
+      (frozen?empty('Editing is temporarily unavailable for this league. Contact support if you need this resolved.'):editCompetitionForm(c))+'</div>';
   }
   function accessView(){
     return '<div class="wl-league-panel"><h3>League access & roles</h3><div class="wl-league-sub">Assign existing members of this White Lion business to a league. Use their Supabase user UUID. The person must already be an active member of this business.</div>'+
