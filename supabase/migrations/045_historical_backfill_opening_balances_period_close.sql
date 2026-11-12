@@ -98,11 +98,11 @@ begin
     select coalesce(sum(round(i.quantity*i.unit_cost,2)),0) into v_cogs
     from public.sale_items i where i.business_id=r.business_id and i.sale_id=r.id;
     v_lines:='[]'::jsonb;
-    if coalesce(r.amount_paid,0)>0 then
-      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',r.amount_paid,'credit',0,'description','Cash received'));
+    if least(coalesce(r.amount_paid,0),r.total)>0 then
+      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',least(r.amount_paid,r.total),'credit',0,'description','Cash received'));
     end if;
-    if greatest(r.total-coalesce(r.amount_paid,0),0)>0 then
-      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1100','debit',greatest(r.total-coalesce(r.amount_paid,0),0),'credit',0,'description','Customer receivable'));
+    if greatest(r.total-least(coalesce(r.amount_paid,0),r.total),0)>0 then
+      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1100','debit',greatest(r.total-least(coalesce(r.amount_paid,0),r.total),0),'credit',0,'description','Customer receivable'));
     end if;
     v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','4000','debit',0,'credit',r.total,'description','Historical sales revenue'));
     if v_cogs>0 then
@@ -152,11 +152,11 @@ begin
   loop
     if r.total>0 then
       v_lines:=jsonb_build_array(jsonb_build_object('code','1200','debit',r.total,'credit',0,'description','Historical inventory purchased'));
-      if coalesce(r.amount_paid,0)>0 then
-        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',0,'credit',r.amount_paid,'description','Supplier payment'));
+      if least(coalesce(r.amount_paid,0),r.total)>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',0,'credit',least(r.amount_paid,r.total),'description','Supplier payment'));
       end if;
-      if greatest(r.total-coalesce(r.amount_paid,0),0)>0 then
-        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','2000','debit',0,'credit',greatest(r.total-coalesce(r.amount_paid,0),0),'description','Supplier payable'));
+      if greatest(r.total-least(coalesce(r.amount_paid,0),r.total),0)>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','2000','debit',0,'credit',greatest(r.total-least(coalesce(r.amount_paid,0),r.total),0),'description','Supplier payable'));
       end if;
       v_journal:=public.post_system_journal(r.business_id,r.created_at::date,
         'Historical purchase · '||r.reference,'legacy_purchase',r.id::text,v_lines);
@@ -180,6 +180,19 @@ begin
     else v_skipped:=v_skipped+1; end if;
   end loop;
 
+  for r in select rt.* from public.offline_sale_returns rt
+    where rt.business_id=p_business_id and rt.refund_total>0
+      and not exists(select 1 from public.journal_entries j where j.business_id=rt.business_id and j.source_type='sale_return' and j.source_id=rt.id::text)
+    order by rt.created_at,rt.id
+  loop
+    v_journal:=public.post_system_journal(r.business_id,r.created_at::date,
+      'Historical sales return · '||r.reason,'sale_return',r.id::text,
+      jsonb_build_array(
+        jsonb_build_object('code','4050','debit',r.refund_total,'credit',0,'description','Historical sales return'),
+        jsonb_build_object('code','1000','debit',0,'credit',r.refund_total,'description','Historical refund paid')
+      ));
+  end loop;
+
   for r in select e.* from public.expenses e
     where e.business_id=p_business_id
       and not exists(select 1 from public.journal_entries j where j.business_id=e.business_id and j.source_type='expense' and j.source_id=e.id::text)
@@ -198,7 +211,7 @@ begin
   values(p_business_id,auth.uid(),'accounting_history_backfilled','journal_entries',
     jsonb_build_object('sales',v_done_sales,'purchases',v_done_purchases,'expenses',v_done_expenses,'skipped',v_skipped));
   return jsonb_build_object('status','completed','sales_posted',v_done_sales,
-    'purchases_posted',v_done_purchases,'expenses_posted',v_done_expenses,'zero_value_skipped',v_skipped,
+    'purchases_posted',v_done_purchases,'expenses_posted',v_done_expenses,'historical_returns_processed',true,'zero_value_skipped',v_skipped,
     'note','Historical COGS is included only where a recorded cost exists; missing historical cost is not estimated.');
 end;
 $$;
