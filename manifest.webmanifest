@@ -15,7 +15,7 @@
   "description": "Multi-industry business operations platform by White Lion Tech Solutions.",
   "icons": [
     {
-      "src": "./icons/white-lion-official.webp?v=1",
+      "src": "./icons/white-lion-official.webp",
       "sizes": "160x160",
       "type": "image/webp",
       "purpose": "any"
