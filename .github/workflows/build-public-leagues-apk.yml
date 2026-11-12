@@ -1,14 +1,15 @@
-name: Build Public Leagues Android APK
+name: Build and Publish Public Leagues Android APK
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'public-leagues-android/**'
+      - 'public-leagues.html'
       - '.github/workflows/build-public-leagues-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -32,10 +33,19 @@ jobs:
         run: |
           mkdir -p output
           cp public-leagues-android/app/build/outputs/apk/debug/app-debug.apk output/WhiteLion-Public-Leagues.apk
-      - name: Upload downloadable APK
+      - name: Upload downloadable APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: WhiteLion-Public-Leagues-APK
           path: output/WhiteLion-Public-Leagues.apk
           if-no-files-found: error
           retention-days: 90
+      - name: Publish APK as a public GitHub Release download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="public-leagues-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" output/WhiteLion-Public-Leagues.apk \
+            --title "White Lion Public Leagues Android App" \
+            --notes "Standalone Android app for the public read-only leagues directory. Built from the koromaalhajiabu/white-lion-sme-business-os repository." \
+            --latest
