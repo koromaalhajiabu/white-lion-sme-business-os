@@ -50,7 +50,7 @@ Apply `supabase/migrations/045_historical_backfill_opening_balances_period_close
 - `reverse_accounting_journal(business_id, journal_id, reversal_date, reason)` — creates an immutable equal-and-opposite journal; it never edits the original.
 - `close_accounting_period(business_id, period_start, period_end)` — transfers period income/expenses to retained earnings and blocks new journals dated in the closed period.
 
-The migration provides database workflows, not a dedicated visual accounting-workflow screen. Test the functions in a non-production business first and reconcile source records to bank, supplier, customer and inventory evidence before posting.
+The migration also enables the Accounting workflow controls panel in Business Intelligence for eligible finance users. Test the controls in a non-production business first and reconcile source records to bank, supplier, customer and inventory evidence before posting.
 
 ### Bank and mobile-money reconciliation
 
