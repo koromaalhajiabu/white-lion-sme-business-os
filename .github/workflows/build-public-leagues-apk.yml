@@ -6,7 +6,7 @@ on:
     paths:
       - 'public-leagues-android/**'
       - 'public-leagues.html'
-      - 'icons/white-lion-512.png'
+      - 'icons/public-leagues-app-icon.jpg'
       - '.github/workflows/build-public-leagues-apk.yml'
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
           python - <<'PY'
           from PIL import Image
           from pathlib import Path
-          source = Image.open("icons/white-lion-512.png").convert("RGBA")
+          source = Image.open("icons/public-leagues-app-icon.jpg").convert("RGBA")
           sizes = {"mdpi":48,"hdpi":72,"xhdpi":96,"xxhdpi":144,"xxxhdpi":192}
           for density, size in sizes.items():
               folder = Path(f"public-leagues-android/app/src/main/res/mipmap-{density}")
