@@ -1,5 +1,5 @@
 /* White Lion SME OS — network-first application updates with offline fallback. */
-const CACHE_NAME='white-lion-sme-v146';
+const CACHE_NAME='white-lion-sme-v147';
 const APP_SHELL=[
   './',
   './index.html',
@@ -73,6 +73,11 @@ self.addEventListener('fetch', event => {
         }
         if (fresh) return fresh;
       } catch (_) {}
+      // Keep the public leagues app on its own entry page, including offline launches.
+      if (request.mode === 'navigate' && /\/public-leagues\.html$/i.test(url.pathname)) {
+        const publicPage = await cache.match('./public-leagues.html', {ignoreSearch:true});
+        return publicPage || Response.error();
+      }
       const cached = await cache.match(request) ||
         (request.mode === 'navigate' ? await cache.match('./index.html') : null);
       return cached || Response.error();
