@@ -9,9 +9,10 @@
   const notice = msg => { const el=document.getElementById('wlLeagueNotice'); if(el){el.textContent=msg;el.hidden=false;} };
   const hideNotice = () => { const el=document.getElementById('wlLeagueNotice'); if(el)el.hidden=true; };
   const tabs = [
-    ['overview','Overview'],['clubs','Clubs'],['players','Players'],['fixtures','Fixtures & Results'],
+    ['overview','Overview'],['settings','League Settings'],['clubs','Clubs'],['players','Players'],['fixtures','Fixtures & Results'],
     ['table','League Table'],['stats','Player Statistics'],['discipline','Discipline'],['access','Access & Roles']
   ];
+  const frozenNotice = () => '<div class="wl-league-notice" style="background:#fff4df;border-color:#f0dfb8;color:#75571c">This league is frozen. Unfreeze it in League Settings to make changes.</div>';
   const currentCompetition = () => (cache.competitions||[]).find(x=>x.id===competitionId);
   const roleLabel = r => ({competition_admin:'League admin',club_manager:'Club manager',referee:'Referee',disciplinary_officer:'Disciplinary officer',viewer:'Viewer'}[r] || r.replaceAll('_',' '));
   const publicLink = token => location.origin+location.pathname.replace(/[^/]*$/,'')+'public-league.html?t='+token;
@@ -62,7 +63,8 @@
   }
   function base(title,sub,body){
     const c=currentCompetition();
-    return '<div class="wl-league"><div class="wl-league-hero"><div><div class="wl-league-kicker">White Lion · Community & Sports</div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div><div class="wl-league-mark">WL</div></div><div id="wlLeagueNotice" class="wl-league-notice" hidden></div>'+
+    const frozenBanner=(c&&c.is_frozen)?'<div class="wl-league-notice" style="background:#fff4df;border-color:#f0dfb8;color:#75571c">🔒 This league is frozen. No records can be added, edited or deleted until it is unfrozen from League Settings.</div>':'';
+    return '<div class="wl-league"><div class="wl-league-hero"><div><div class="wl-league-kicker">White Lion · Community & Sports</div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div><div class="wl-league-mark">WL</div></div><div id="wlLeagueNotice" class="wl-league-notice" hidden></div>'+frozenBanner+
       '<div class="wl-league-toolbar"><select id="wlLeagueCompetition">'+selectOptions(cache.competitions||[],'id','name','Choose a league')+'</select>'+
       (c?'<select id="wlLeagueSeason">'+selectOptions(cache.seasons||[],'id','name','Choose a season')+'</select>':'')+
       button('＋ New league','primary','id="wlLeagueNewCompetition"')+'</div>'+
@@ -70,13 +72,13 @@
       body+'</div>';
   }
   function overview(){
-    const c=currentCompetition(),s=currentSeason(),clubs=cache.clubs||[],players=cache.players||[],fixtures=(cache.fixtures||[]).filter(x=>!seasonId||x.season_id===seasonId);
+    const c=currentCompetition(),s=currentSeason(),clubs=cache.clubs||[],players=cache.players||[],fixtures=(cache.fixtures||[]).filter(x=>!seasonId||x.season_id===seasonId),frozen=c.is_frozen;
     const completed=fixtures.filter(x=>x.status==='completed').length,upcoming=fixtures.filter(x=>x.status==='scheduled').length;
     return '<div class="wl-league-grid"><div class="wl-league-card"><small>Registered clubs</small><strong>'+clubs.length+'</strong><small>In this league</small></div><div class="wl-league-card"><small>Registered players</small><strong>'+players.length+'</strong><small>Across all clubs</small></div><div class="wl-league-card"><small>Fixtures completed</small><strong>'+completed+'</strong><small>'+upcoming+' scheduled fixtures</small></div></div>'+
       '<div class="wl-league-panel"><h3>'+esc(c.name)+' · '+esc(s?.name||'No season selected')+'</h3><div class="wl-league-sub">'+esc(c.competition_type)+' · '+esc(c.region||'Region not set')+' · '+esc(c.organiser||'Organiser not set')+'</div>'+
       (s?'Season dates: '+esc(s.starts_on||'TBC')+' to '+esc(s.ends_on||'TBC')+' · <span class="wl-league-badge">'+esc(s.status)+'</span>':'Create a season to start scheduling fixtures.')+
-      '<form class="wl-league-form" data-league-form="season" style="margin-top:14px">'+field('Season name','name','text',true)+field('Start date','starts_on','date')+field('End date','ends_on','date')+selectField('Season status','status',['planned','active','completed','archived'].map(x=>'<option value="'+x+'">'+x+'</option>').join(''))+'<div class="wl-league-field full">'+button('Save season','primary')+'</div></form>'+
-      '<div class="wl-league-actions">'+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div></div>'+
+      (frozen?frozenNotice():'<form class="wl-league-form" data-league-form="season" style="margin-top:14px">'+field('Season name','name','text',true)+field('Start date','starts_on','date')+field('End date','ends_on','date')+selectField('Season status','status',['planned','active','completed','archived'].map(x=>'<option value="'+x+'">'+x+'</option>').join(''))+'<div class="wl-league-field full">'+button('Save season','primary')+'</div></form>'+
+      '<div class="wl-league-actions">'+button('Register club','', 'data-league-action="new-club"')+button('Create fixture','blue','data-league-action="new-fixture"')+'</div>')+'</div>'+
       '<div class="wl-league-panel"><h3>League workflow</h3><div class="wl-league-sub">Set up a league, create its season, register participating clubs and squads, then publish fixtures and enter verified results. League standings and player statistics are calculated from completed match records.</div><div class="wl-league-muted">Data is separated by the active White Lion business. Access is controlled by Supabase roles and row-level security.</div></div>'+
       sharePanel(c);
   }
@@ -90,27 +92,30 @@
       '</div>';
   }
   function clubsView(){
+    const frozen=currentCompetition()?.is_frozen;
     const rows=(cache.clubs||[]).map(x=>'<tr><td><b>'+esc(x.name)+'</b><br><small>'+esc(x.short_name||'')+'</small></td><td>'+esc(x.home_venue||'—')+'</td><td>'+esc(x.manager_name||'—')+'</td><td><span class="wl-league-badge">'+esc(x.status)+'</span></td></tr>').join('');
-    return '<div class="wl-league-panel"><h3>Club register</h3><div class="wl-league-sub">Add clubs, home grounds and club contacts to this league.</div><form class="wl-league-form" data-league-form="club">'+field('Club name','name','text',true)+field('Short name / abbreviation','short_name')+field('Home venue','home_venue')+field('Club manager','manager_name')+field('Contact phone','contact_phone','tel')+field('Club crest URL (optional)','crest_url','url')+'<div class="wl-league-field full">'+button('Save club','primary')+'</div></form></div><div class="wl-league-panel"><h3>Registered clubs · '+(cache.clubs||[]).length+'</h3>'+table(['Club','Home venue','Manager','Status'],rows)+'</div>';
+    return '<div class="wl-league-panel"><h3>Club register</h3><div class="wl-league-sub">Add clubs, home grounds and club contacts to this league.</div>'+(frozen?frozenNotice():'<form class="wl-league-form" data-league-form="club">'+field('Club name','name','text',true)+field('Short name / abbreviation','short_name')+field('Home venue','home_venue')+field('Club manager','manager_name')+field('Contact phone','contact_phone','tel')+field('Club crest URL (optional)','crest_url','url')+'<div class="wl-league-field full">'+button('Save club','primary')+'</div></form>')+'</div><div class="wl-league-panel"><h3>Registered clubs · '+(cache.clubs||[]).length+'</h3>'+table(['Club','Home venue','Manager','Status'],rows)+'</div>';
   }
   function playersView(){
+    const frozen=currentCompetition()?.is_frozen;
     const rows=(cache.players||[]).map(p=>'<tr><td><b>'+esc(p.full_name)+'</b></td><td>'+esc((cache.clubs||[]).find(c=>c.id===p.club_id)?.name||'—')+'</td><td>'+esc(p.shirt_number??'—')+'</td><td>'+esc(p.position||'—')+'</td><td>'+esc(p.nationality||'—')+'</td><td>'+esc(p.status)+'</td></tr>').join('');
     return '<div class="wl-league-panel"><h3>Player registration</h3><div class="wl-league-sub">Register players under their club. Shirt numbers must be between 1 and 99.</div>'+
-      (cache.clubs?.length?'<form class="wl-league-form" data-league-form="player">'+field('Player full name','full_name','text',true)+selectField('Club','club_id',selectOptions(cache.clubs))+
+      (frozen?frozenNotice():(cache.clubs?.length?'<form class="wl-league-form" data-league-form="player">'+field('Player full name','full_name','text',true)+selectField('Club','club_id',selectOptions(cache.clubs))+
       field('Shirt number','shirt_number','number',false,'min="1" max="99"')+selectField('Position','position',['<option value="">Select position…</option>',...['Goalkeeper','Defender','Midfielder','Forward'].map(x=>'<option>'+x+'</option>')].join(''))+
-      field('Date of birth','date_of_birth','date')+field('Nationality','nationality')+'<div class="wl-league-field full">'+button('Register player','primary')+'</div></form>':empty('Register a club before adding players.'))+'</div>'+
+      field('Date of birth','date_of_birth','date')+field('Nationality','nationality')+'<div class="wl-league-field full">'+button('Register player','primary')+'</div></form>':empty('Register a club before adding players.')))+'</div>'+
       '<div class="wl-league-panel"><h3>Player register · '+(cache.players||[]).length+'</h3>'+table(['Player','Club','No.','Position','Nationality','Status'],rows)+'</div>';
   }
   function fixturesView(){
+    const frozen=currentCompetition()?.is_frozen;
     const rows=(cache.fixtures||[]).filter(f=>!seasonId||f.season_id===seasonId).map(f=>{
       const home=cache.clubs.find(c=>c.id===f.home_club_id)?.name||'Home',away=cache.clubs.find(c=>c.id===f.away_club_id)?.name||'Away';
       const score=f.status==='completed'?'<b>'+f.home_score+' - '+f.away_score+'</b>':'—';
-      const resultForm=f.status==='completed'?'':('<form class="wl-league-inline" data-league-result="'+f.id+'"><input type="number" name="home_score" min="0" placeholder="H" required><b>:</b><input type="number" name="away_score" min="0" placeholder="A" required><button class="wl-league-btn primary">Save result</button></form>');
+      const resultForm=(f.status==='completed'||frozen)?'':('<form class="wl-league-inline" data-league-result="'+f.id+'"><input type="number" name="home_score" min="0" placeholder="H" required><b>:</b><input type="number" name="away_score" min="0" placeholder="A" required><button class="wl-league-btn primary">Save result</button></form>');
       return '<tr><td>'+esc(moneylessDate(f.kickoff_at))+'</td><td>'+esc(home)+'</td><td>'+esc(away)+'</td><td>'+score+'</td><td>'+esc(f.venue||'—')+'</td><td>'+esc(f.status)+'</td><td>'+resultForm+'</td></tr>';
     }).join('');
     return '<div class="wl-league-panel"><h3>Fixture scheduling</h3><div class="wl-league-sub">Create fixtures for the selected season. Enter a final score to complete a match and update the league table.</div>'+
-      (cache.seasons?.length&&cache.clubs?.length>=2?'<form class="wl-league-form" data-league-form="fixture">'+selectField('Home club','home_club_id',selectOptions(cache.clubs))+
-      selectField('Away club','away_club_id',selectOptions(cache.clubs))+field('Kick-off date and time','kickoff_at','datetime-local',true)+field('Venue','venue')+field('Matchweek / round','matchweek')+field('Referee','referee_name')+'<div class="wl-league-field full">'+button('Create fixture','primary')+'</div></form>':empty('Create a season and register at least two clubs before scheduling fixtures.'))+'</div>'+
+      (frozen?frozenNotice():(cache.seasons?.length&&cache.clubs?.length>=2?'<form class="wl-league-form" data-league-form="fixture">'+selectField('Home club','home_club_id',selectOptions(cache.clubs))+
+      selectField('Away club','away_club_id',selectOptions(cache.clubs))+field('Kick-off date and time','kickoff_at','datetime-local',true)+field('Venue','venue')+field('Matchweek / round','matchweek')+field('Referee','referee_name')+'<div class="wl-league-field full">'+button('Create fixture','primary')+'</div></form>':empty('Create a season and register at least two clubs before scheduling fixtures.')))+'</div>'+
       '<div class="wl-league-panel"><h3>Fixtures & results</h3>'+table(['Date','Home team','Away team','Score','Venue','Status','Enter result'],rows)+'</div>';
   }
   async function tableView(){
@@ -121,24 +126,48 @@
     return '<div class="wl-league-panel"><h3>Official league table</h3><div class="wl-league-sub">Automatically calculated from completed fixtures using this league’s points rules. Teams with no completed matches remain on the table.</div>'+table(['Pos','Club','P','W','D','L','GF','GA','GD','Pts'],rows)+'</div>';
   }
   async function statsView(){
+    const frozen=currentCompetition()?.is_frozen;
     const {data,error}=await client().from('league_player_statistics').select('*').eq('business_id',business().id).eq('competition_id',competitionId).order('goals',{ascending:false}).order('assists',{ascending:false});
     if(error)throw error;
     const rows=(data||[]).map((p,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(p.full_name)+'</b></td><td>'+esc(p.club_name)+'</td><td>'+p.goals+'</td><td>'+p.assists+'</td><td>'+p.yellow_cards+'</td><td>'+p.red_cards+'</td></tr>').join('');
     return '<div class="wl-league-panel"><h3>Player statistics</h3><div class="wl-league-sub">Goals, assists and cards are calculated from recorded match events. Record events after a result has been verified.</div>'+table(['#','Player','Club','Goals','Assists','Yellow','Red'],rows)+'</div>'+
-      (cache.players?.length?'<div class="wl-league-panel"><h3>Record match event</h3><form class="wl-league-form" data-league-form="event">'+selectField('Club','club_id',selectOptions(cache.clubs))+
+      (frozen?'<div class="wl-league-panel">'+frozenNotice()+'</div>':(cache.players?.length?'<div class="wl-league-panel"><h3>Record match event</h3><form class="wl-league-form" data-league-form="event">'+selectField('Club','club_id',selectOptions(cache.clubs))+
       selectField('Player','player_id',selectOptions(cache.players,'id','full_name'))+selectField('Event type','event_type',['goal','own_goal','assist','yellow_card','red_card','substitution_on','substitution_off','penalty_scored','penalty_missed'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
       field('Minute','minute','number',false,'min="0" max="150"')+selectField('Fixture','fixture_id',selectOptions((cache.fixtures||[]).filter(f=>f.status==='completed').map(f=>({id:f.id,name:(cache.clubs.find(c=>c.id===f.home_club_id)?.name||'Home')+' v '+(cache.clubs.find(c=>c.id===f.away_club_id)?.name||'Away')+' · '+moneylessDate(f.kickoff_at)})),'id','name','Select completed match'))+
-      field('Notes','notes')+'<div class="wl-league-field full">'+button('Save match event','primary')+'</div></form></div>':'');
+      field('Notes','notes')+'<div class="wl-league-field full">'+button('Save match event','primary')+'</div></form></div>':''));
   }
   function disciplineView(){
+    const frozen=currentCompetition()?.is_frozen;
     const rows=(cache.discipline||[]).map(d=>'<tr><td>'+esc(d.full_name||'—')+'</td><td>'+esc(d.club_name||'—')+'</td><td>'+esc(d.action_type)+'</td><td>'+esc(d.details)+'</td><td>'+esc(d.status)+'</td></tr>').join('');
     return '<div class="wl-league-panel"><h3>Disciplinary register</h3><div class="wl-league-sub">Record warnings, cards, suspensions and other league decisions.</div>'+
-      (cache.players?.length?'<form class="wl-league-form" data-league-form="discipline">'+selectField('Player','player_id',selectOptions(cache.players,'id','full_name'))+
+      (frozen?frozenNotice():(cache.players?.length?'<form class="wl-league-form" data-league-form="discipline">'+selectField('Player','player_id',selectOptions(cache.players,'id','full_name'))+
       selectField('Action','action_type',['warning','yellow_card','red_card','suspension','fine','other'].map(x=>'<option value="'+x+'">'+x.replaceAll('_',' ')+'</option>').join(''))+
       field('Matches suspended','matches_suspended','number',false,'min="0" value="0"')+field('Start date','starts_on','date')+field('End date','ends_on','date')+
       '<label class="wl-league-field full"><span>Decision / details</span><textarea name="details" required></textarea></label>'+
-      '<div class="wl-league-field full">'+button('Save disciplinary record','primary')+'</div></form>':empty('Register players before adding disciplinary records.'))+'</div>'+
+      '<div class="wl-league-field full">'+button('Save disciplinary record','primary')+'</div></form>':empty('Register players before adding disciplinary records.')))+'</div>'+
       '<div class="wl-league-panel"><h3>Recent decisions</h3>'+table(['Player','Club','Action','Details','Status'],rows)+'</div>';
+  }
+  function editCompetitionForm(c){
+    const typeOpts=['League','Cup','Tournament','School League','Community League','Other'].map(x=>'<option'+(c.competition_type===x?' selected':'')+'>'+x+'</option>').join('');
+    const statusOpts=['active','inactive','archived'].map(x=>'<option value="'+x+'"'+(c.status===x?' selected':'')+'>'+x+'</option>').join('');
+    return '<form class="wl-league-form" data-league-form="edit-competition">'+
+      field('League name','name','text',true,'value="'+esc(c.name)+'"')+
+      selectField('League type','competition_type',typeOpts)+
+      field('Region / district','region','text',false,'value="'+esc(c.region||'')+'"')+
+      field('Organiser','organiser','text',false,'value="'+esc(c.organiser||'')+'"')+
+      field('Points for a win','points_win','number',true,'min="0" max="10" value="'+esc(c.points_win)+'"')+
+      field('Points for a draw','points_draw','number',true,'min="0" max="10" value="'+esc(c.points_draw)+'"')+
+      field('Points for a loss','points_loss','number',true,'min="0" max="10" value="'+esc(c.points_loss)+'"')+
+      selectField('League status','status',statusOpts)+
+      '<div class="wl-league-field full">'+button('Save league details','primary')+'</div></form>';
+  }
+  function settingsView(){
+    const c=currentCompetition(),frozen=c.is_frozen;
+    return '<div class="wl-league-panel"><h3>League status</h3><div class="wl-league-sub">Freezing a league blocks any new or edited seasons, clubs, players, fixtures, results, match events and disciplinary records. You can unfreeze it at any time, and league admin assignment is unaffected.</div>'+
+      '<div class="wl-league-inline"><span class="wl-league-badge'+(frozen?' warn':'')+'">'+(frozen?'Frozen':'Active')+'</span>'+
+      (frozen?button('Unfreeze league','primary','type="button" id="wlLeagueUnfreeze"'):button('Freeze league','','type="button" id="wlLeagueFreeze"'))+'</div></div>'+
+      '<div class="wl-league-panel"><h3>Edit league details</h3><div class="wl-league-sub">Update this league\'s name, type, region, organiser, points rules and status.</div>'+
+      (frozen?empty('Unfreeze this league to edit its details.'):editCompetitionForm(c))+'</div>';
   }
   function accessView(){
     return '<div class="wl-league-panel"><h3>League access & roles</h3><div class="wl-league-sub">Assign existing members of this White Lion business to a league. Use their Supabase user UUID. The person must already be an active member of this business.</div>'+
@@ -172,6 +201,7 @@
         body='<div class="wl-league-panel"><h3>Create your first league</h3><div class="wl-league-sub">Start with a district league, cup, school league, regional championship or community football tournament.</div>'+competitionForm()+'</div>';
       }else{
         if(activeTab==='overview')body=overview();
+        else if(activeTab==='settings')body=settingsView();
         else if(activeTab==='clubs')body=clubsView();
         else if(activeTab==='players')body=playersView();
         else if(activeTab==='fixtures')body=fixturesView();
@@ -221,6 +251,12 @@
       const input=document.getElementById('wlLeagueShareLink');
       try{await navigator.clipboard.writeText(input.value);notice('Link copied.');}catch(e){input.select();notice('Select and copy the link above.');}
     });
+    document.getElementById('wlLeagueFreeze')?.addEventListener('click',()=>{
+      save(async()=>{const {error}=await client().from('league_competitions').update({is_frozen:true,frozen_at:new Date().toISOString(),frozen_by:cloud().getSession()?.user?.id}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'League frozen. No records can be added, edited or deleted until it is unfrozen.');
+    });
+    document.getElementById('wlLeagueUnfreeze')?.addEventListener('click',()=>{
+      save(async()=>{const {error}=await client().from('league_competitions').update({is_frozen:false,frozen_at:null,frozen_by:null}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'League unfrozen. Changes are allowed again.');
+    });
     document.querySelectorAll('[data-league-result]').forEach(f=>f.addEventListener('submit',async e=>{
       e.preventDefault();const data=Object.fromEntries(new FormData(f).entries());
       await save(async()=>{const {error}=await client().from('league_fixtures').update({home_score:Number(data.home_score),away_score:Number(data.away_score),status:'completed',finalised_at:new Date().toISOString(),finalised_by:cloud().getSession()?.user?.id}).eq('id',f.dataset.leagueResult).eq('business_id',business().id);if(error)throw error},'Final score saved. League table updated.');
@@ -230,6 +266,13 @@
     document.querySelectorAll('[data-league-form="event"]').forEach(f=>{if(f.dataset.leagueEventBound==='1')return;f.dataset.leagueEventBound='1';const club=f.querySelector('[name="club_id"]'),player=f.querySelector('[name="player_id"]');club?.addEventListener('change',()=>{const rows=(cache.players||[]).filter(p=>p.club_id===club.value);player.innerHTML=selectOptions(rows,'id','full_name','Select player');});});
     document.querySelectorAll('[data-league-form]').forEach(f=>{if(f.dataset.leagueBound==='1')return;f.dataset.leagueBound='1';f.addEventListener('submit',async e=>{
       e.preventDefault();const kind=f.dataset.leagueForm,d=Object.fromEntries(new FormData(f).entries()),b=business(),c=client();
+      if(kind==='edit-competition'){
+        await save(async()=>{
+          const payload={name:d.name,competition_type:d.competition_type,region:d.region||null,organiser:d.organiser||null,points_win:Number(d.points_win),points_draw:Number(d.points_draw),points_loss:Number(d.points_loss),status:d.status};
+          const {error}=await c.from('league_competitions').update(payload).eq('id',competitionId).eq('business_id',b.id);if(error)throw error;
+        },'League details updated.');
+        return;
+      }
       await save(async()=>{
         let payload={...d,business_id:b.id};
         if(kind==='competition'){payload.points_win=Number(d.points_win);payload.points_draw=Number(d.points_draw);payload.points_loss=Number(d.points_loss);payload.created_by=cloud().getSession()?.user?.id;payload.is_publicly_shared=true;payload.public_share_token=crypto.randomUUID()}
