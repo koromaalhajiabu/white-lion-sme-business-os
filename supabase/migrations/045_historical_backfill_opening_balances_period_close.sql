@@ -97,11 +97,14 @@ begin
     v_cogs:=0;
     select coalesce(sum(round(i.quantity*i.unit_cost,2)),0) into v_cogs
     from public.sale_items i where i.business_id=r.business_id and i.sale_id=r.id;
-    v_lines:=jsonb_build_array(
-      jsonb_build_object('code','1000','debit',coalesce(r.amount_paid,0),'credit',0,'description','Cash received'),
-      jsonb_build_object('code','1100','debit',greatest(r.total-coalesce(r.amount_paid,0),0),'credit',0,'description','Customer receivable'),
-      jsonb_build_object('code','4000','debit',0,'credit',r.total,'description','Historical sales revenue')
-    );
+    v_lines:='[]'::jsonb;
+    if coalesce(r.amount_paid,0)>0 then
+      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',r.amount_paid,'credit',0,'description','Cash received'));
+    end if;
+    if greatest(r.total-coalesce(r.amount_paid,0),0)>0 then
+      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1100','debit',greatest(r.total-coalesce(r.amount_paid,0),0),'credit',0,'description','Customer receivable'));
+    end if;
+    v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','4000','debit',0,'credit',r.total,'description','Historical sales revenue'));
     if v_cogs>0 then
       v_lines:=v_lines||jsonb_build_array(
         jsonb_build_object('code','5000','debit',v_cogs,'credit',0,'description','Recorded historical cost of goods sold'),
@@ -148,11 +151,13 @@ begin
     order by p.created_at,p.id
   loop
     if r.total>0 then
-      v_lines:=jsonb_build_array(
-        jsonb_build_object('code','1200','debit',r.total,'credit',0,'description','Historical inventory purchased'),
-        jsonb_build_object('code','1000','debit',0,'credit',coalesce(r.amount_paid,0),'description','Supplier payment'),
-        jsonb_build_object('code','2000','debit',0,'credit',greatest(r.total-coalesce(r.amount_paid,0),0),'description','Supplier payable')
-      );
+      v_lines:=jsonb_build_array(jsonb_build_object('code','1200','debit',r.total,'credit',0,'description','Historical inventory purchased'));
+      if coalesce(r.amount_paid,0)>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','1000','debit',0,'credit',r.amount_paid,'description','Supplier payment'));
+      end if;
+      if greatest(r.total-coalesce(r.amount_paid,0),0)>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code','2000','debit',0,'credit',greatest(r.total-coalesce(r.amount_paid,0),0),'description','Supplier payable'));
+      end if;
       v_journal:=public.post_system_journal(r.business_id,r.created_at::date,
         'Historical purchase · '||r.reference,'legacy_purchase',r.id::text,v_lines);
       v_done_purchases:=v_done_purchases+1;
