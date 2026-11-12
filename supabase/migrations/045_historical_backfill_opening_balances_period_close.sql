@@ -351,10 +351,18 @@ begin
     order by a.account_code
   loop
     if r.account_type='income' then
-      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',r.balance,'credit',0,'description','Period close · '||r.account_name));
+      if r.balance>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',r.balance,'credit',0,'description','Period close · '||r.account_name));
+      else
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',0,'credit',abs(r.balance),'description','Period close · '||r.account_name));
+      end if;
       v_profit:=v_profit+r.balance;
     else
-      v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',0,'credit',r.balance,'description','Period close · '||r.account_name));
+      if r.balance>0 then
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',0,'credit',r.balance,'description','Period close · '||r.account_name));
+      else
+        v_lines:=v_lines||jsonb_build_array(jsonb_build_object('code',r.account_code,'debit',abs(r.balance),'credit',0,'description','Period close · '||r.account_name));
+      end if;
       v_profit:=v_profit-r.balance;
     end if;
   end loop;
