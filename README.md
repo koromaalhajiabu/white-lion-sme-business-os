@@ -41,6 +41,17 @@ This is a legacy operations installer, not a complete installer for every migrat
 
 The installer includes the business operations, inventory/finance controls and the bank/mobile-money statement reconciliation foundation. Review the SQL and execute it in the correct Supabase project. A GitHub commit does not execute database migrations automatically.
 
+### Historical accounting, opening balances and period controls
+
+Apply `supabase/migrations/045_historical_backfill_opening_balances_period_close.sql` in the Supabase SQL Editor after migrations 018, 019 and 028 are installed and verified. This migration does not automatically post historical data. An authorised owner, administrator or accountant must explicitly call the secured RPCs from an authenticated application session:
+
+- `backfill_accounting_history(business_id)` — posts eligible historical cloud sales, offline sales, purchases, expenses and recorded offline refunds once. Local-only device transactions must be synchronised first. Historical COGS is included only when a recorded cost exists; missing costs are not estimated.
+- `post_accounting_opening_balances(business_id, effective_date, balances_json)` — posts one opening-balance journal and calculates the Owner capital balancing line.
+- `reverse_accounting_journal(business_id, journal_id, reversal_date, reason)` — creates an immutable equal-and-opposite journal; it never edits the original.
+- `close_accounting_period(business_id, period_start, period_end)` — transfers period income/expenses to retained earnings and blocks new journals dated in the closed period.
+
+The migration provides database workflows, not a dedicated visual accounting-workflow screen. Test the functions in a non-production business first and reconcile source records to bank, supplier, customer and inventory evidence before posting.
+
 ### Bank and mobile-money reconciliation
 
 Migration 017 adds:
@@ -54,7 +65,7 @@ This is a manual statement import and matching foundation. It does not connect d
 
 ## Accounting, security and backup limitations
 
-- Migrations 018 and 019 provide the double-entry ledger, chart of accounts, balanced journals, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting, moving weighted-average stock valuation and COGS posting foundation. Historical sales are not backfilled; opening balances and controlled period close/reversal workflows still require further work and acceptance testing.
+- Migrations 018 and 019 provide the double-entry ledger, chart of accounts, balanced journals, trial balance, Profit & Loss, Balance Sheet, cash-flow reporting, moving weighted-average stock valuation and COGS posting foundation. Migration 045 adds explicit historical transaction backfill, one-time opening balances, immutable journal reversals and accounting-period close locks. Migration 045 is a separate SQL migration and must be applied manually in Supabase; GitHub Pages commits do not execute database migrations. Review the business data and cutover date before invoking its backfill or opening-balance RPCs.
 - Existing operational dashboard totals are not audited net profit or available cash. Do not use the platform as the sole statutory accounting record until independent accounting acceptance tests are complete.
 - The browser JSON export is a local-device backup, not a full Supabase backup.
 - A scheduled encrypted logical JSON + Auth metadata + private Storage backup workflow is in `.github/workflows/supabase-backup.yml`. It reads the `SUPABASE_SERVICE_ROLE_KEY` and `BACKUP_ENCRYPTION_PASSPHRASE` GitHub Actions secrets. It is not a physical PostgreSQL dump; a full recovery test in a separate Supabase project is still required.
