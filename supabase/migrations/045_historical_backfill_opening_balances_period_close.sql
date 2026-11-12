@@ -378,12 +378,16 @@ begin
 end;
 $$;
 
-revoke all on function public.guard_closed_accounting_period() from public;
+create or replace function public.accounting_workflow_version()
+returns integer language sql immutable security definer set search_path=''
+as $ select 1; $;
+
+revoke all on function public.accounting_workflow_version() from public,anon;\nrevoke all on function public.guard_closed_accounting_period() from public;
 revoke all on function public.backfill_accounting_history(uuid) from public;
 revoke all on function public.post_accounting_opening_balances(uuid,date,jsonb) from public;
 revoke all on function public.reverse_accounting_journal(uuid,uuid,date,text) from public;
 revoke all on function public.close_accounting_period(uuid,date,date) from public;
-grant execute on function public.backfill_accounting_history(uuid) to authenticated;
+grant execute on function public.accounting_workflow_version() to authenticated;\ngrant execute on function public.backfill_accounting_history(uuid) to authenticated;
 grant execute on function public.post_accounting_opening_balances(uuid,date,jsonb) to authenticated;
 grant execute on function public.reverse_accounting_journal(uuid,uuid,date,text) to authenticated;
 grant execute on function public.close_accounting_period(uuid,date,date) to authenticated;
