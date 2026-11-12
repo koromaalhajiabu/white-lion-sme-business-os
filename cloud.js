@@ -213,6 +213,22 @@
         <div id="wlDevRegistrationLimitStatus" class="dev-role-help">No additional-business permissions loaded yet.</div>
         <div id="wlDevRegistrationLimits" class="dev-meta">Loading permissions…</div>
       </section>
+      <section class="dev-role-manager" id="wlDevLeagueManager">
+        <h3 style="margin:0 0 5px;color:#f0d28b">League administration (every business)</h3>
+        <div class="dev-role-help">Total control over every football league on the platform: assign, edit or remove any league admin, and freeze or unfreeze any league directly — no business membership required. Suspending a person's whole account is done in "Registered accounts" below.</div>
+        <div class="dev-role-grid">
+          <div><label for="wlDevLeagueSelect">League</label><select id="wlDevLeagueSelect"><option value="">Loading leagues…</option></select></div>
+          <div><label for="wlDevLeagueEmail">Account email</label><input id="wlDevLeagueEmail" type="email" placeholder="admin@example.com"></div>
+          <div><label for="wlDevLeagueRole">League role</label><select id="wlDevLeagueRole"><option value="competition_admin" selected>League admin</option><option value="club_manager">Club manager</option><option value="referee">Referee</option><option value="disciplinary_officer">Disciplinary officer</option><option value="viewer">Viewer</option></select></div>
+          <div><label for="wlDevLeagueActive">Access</label><select id="wlDevLeagueActive"><option value="true" selected>Active</option><option value="false">Inactive</option></select></div>
+        </div>
+        <button id="wlDevLeagueAssignSave" type="button">Assign / update league admin</button>
+        <div id="wlDevLeagueAssignStatus" class="dev-role-help">Choose a league and enter the account's email to continue.</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px"><h3 style="margin:0;color:#f0d28b;font-size:13px">All leagues</h3><button id="wlDevLeaguesRefresh" type="button">Refresh leagues</button></div>
+        <div id="wlDevLeagues" class="dev-meta">Loading leagues…</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px"><h3 style="margin:0;color:#f0d28b;font-size:13px">All league admins &amp; roles</h3><button id="wlDevLeagueAdminsRefresh" type="button">Refresh assignments</button></div>
+        <div id="wlDevLeagueAdmins" class="dev-meta">Loading league role assignments…</div>
+      </section>
       <div class="dev-actions">
         <button id="wlDevRefresh">Refresh dashboard</button>
         <button id="wlDevFreeze">Freeze platform</button>
@@ -241,6 +257,9 @@
     $('wlDevRoleSave').onclick = saveDeveloperBusinessRole;
     $('wlDevRegistrationLimitSave').onclick = saveDeveloperRegistrationLimit;
     $('wlDevRegistrationLimitRefresh').onclick = loadDeveloperRegistrationLimits;
+    $('wlDevLeagueAssignSave').onclick = saveDeveloperLeagueAdmin;
+    $('wlDevLeaguesRefresh').onclick = loadDeveloperLeagues;
+    $('wlDevLeagueAdminsRefresh').onclick = loadDeveloperLeagueAdmins;
     $('wlDevResetData').onclick = resetDeveloperBusinessData;
     $('wlDevAccountsRefresh').onclick = loadDeveloperAccounts;
     $('wlDevInviteSubmit').onclick = inviteDeveloperAccount;
@@ -464,6 +483,8 @@
     await loadDeveloperRegistrationLimits();
     await loadDeveloperDeletionRequests();
     await loadDeveloperActivity();
+    await loadDeveloperLeagues();
+    await loadDeveloperLeagueAdmins();
   }
   async function loadDeveloperActivity() {
     const host = $('wlDevAudit');
@@ -490,6 +511,84 @@
       const details = event.details && Object.keys(event.details).length ? JSON.stringify(event.details) : '';
       return '<div class="dev-row"><div style="min-width:0"><strong>' + esc(String(event.action || 'Platform event').replaceAll('_',' ')) + '</strong><div class="dev-meta">' + esc(event.actor_email || 'System / unknown actor') + ' · ' + esc(when) + '</div><div class="dev-meta">' + esc(event.business_name || 'Platform-wide') + (event.entity_table ? ' · ' + esc(event.entity_table) : '') + (event.entity_id ? ' · ' + esc(event.entity_id) : '') + '</div>' + (details ? '<div class="dev-meta">' + esc(details) + '</div>' : '') + '</div></div>';
     }).join('') || '<div class="dev-meta">No matching audit events found in the latest 150 records.</div>';
+  }
+  async function loadDeveloperLeagues() {
+    const host = $('wlDevLeagues');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading leagues…';
+    const { data, error } = await client.rpc('get_platform_leagues');
+    if (error) { host.textContent = 'Leagues unavailable: ' + error.message + '. Run migration 043 first.'; return; }
+    const leagues = Array.isArray(data) ? data : [];
+    window.__wlPlatformLeagues = leagues;
+    const select = $('wlDevLeagueSelect');
+    if (select) {
+      const selected = select.value;
+      select.innerHTML = '<option value="">Choose a league…</option>' +
+        leagues.map(l => '<option value="' + esc(l.id) + '">' + esc(l.business_name) + ' — ' + esc(l.name) + (l.is_frozen ? ' (frozen)' : '') + '</option>').join('');
+      if (leagues.some(l => l.id === selected)) select.value = selected;
+    }
+    host.innerHTML = leagues.map(l => `
+      <div class="dev-row">
+        <div style="min-width:0"><strong>${esc(l.name)}</strong><div class="dev-meta">${esc(l.business_name)} · ${esc(l.competition_type)} · ${l.admin_count} league admin(s)</div><div class="dev-meta">${l.is_frozen ? 'FROZEN' : esc((l.status||'active').toUpperCase())}${l.is_publicly_shared ? ' · Publicly shared' : ''}</div></div>
+        <div class="dev-actions"><button data-dev-league="${esc(l.id)}" data-frozen="${l.is_frozen ? 'true':'false'}">${l.is_frozen ? 'Unfreeze':'Freeze'}</button></div>
+      </div>`).join('') || '<div class="dev-meta">No leagues have been created yet.</div>';
+    host.querySelectorAll('[data-dev-league]').forEach(button => {
+      button.onclick = async () => {
+        const freeze = button.dataset.frozen !== 'true';
+        if (!confirm((freeze ? 'Freeze' : 'Unfreeze') + ' this league? ' + (freeze ? 'All seasons, clubs, players, fixtures, results, events and disciplinary records become read-only until unfrozen.' : 'Changes will be allowed again.'))) return;
+        button.disabled = true;
+        const result = await client.rpc('set_platform_league_freeze', { p_competition_id: button.dataset.devLeague, p_is_frozen: freeze });
+        if (result.error) { host.textContent = result.error.message; button.disabled = false; return; }
+        await loadDeveloperLeagues();
+      };
+    });
+  }
+  async function loadDeveloperLeagueAdmins() {
+    const host = $('wlDevLeagueAdmins');
+    if (!host || !session || session.user.email?.toLowerCase() !== 'koromaalhajiabu0@gmail.com') return;
+    host.textContent = 'Loading league role assignments…';
+    const { data, error } = await client.rpc('get_platform_league_admins');
+    if (error) { host.textContent = 'League admins unavailable: ' + error.message + '. Run migration 043 first.'; return; }
+    const admins = Array.isArray(data) ? data : [];
+    host.innerHTML = admins.map(a => `
+      <div class="dev-row">
+        <div style="min-width:0"><strong>${esc(a.email || a.user_id)}</strong><div class="dev-meta">${esc(a.business_name)} · ${esc(a.league_name)} · ${esc(roleLabelForDev(a.role))}${a.club_name ? ' · ' + esc(a.club_name) : ''}</div><div class="dev-meta">${a.is_active ? 'ACTIVE' : 'INACTIVE'}</div></div>
+        <div class="dev-actions"><button class="danger" data-dev-league-admin="${esc(a.id)}">Remove</button></div>
+      </div>`).join('') || '<div class="dev-meta">No league admins or roles have been assigned yet.</div>';
+    host.querySelectorAll('[data-dev-league-admin]').forEach(button => {
+      button.onclick = async () => {
+        if (!confirm('Remove this person\'s league role? They will lose access to manage that league immediately.')) return;
+        button.disabled = true;
+        const result = await client.rpc('remove_platform_league_admin', { p_member_id: button.dataset.devLeagueAdmin });
+        if (result.error) { host.textContent = result.error.message; button.disabled = false; return; }
+        await loadDeveloperLeagueAdmins();
+        await loadDeveloperLeagues();
+      };
+    });
+  }
+  function roleLabelForDev(role) {
+    return ({competition_admin:'League admin',club_manager:'Club manager',referee:'Referee',disciplinary_officer:'Disciplinary officer',viewer:'Viewer'})[role] || String(role||'').replaceAll('_',' ');
+  }
+  async function saveDeveloperLeagueAdmin() {
+    const status = $('wlDevLeagueAssignStatus');
+    const competitionId = $('wlDevLeagueSelect')?.value || '';
+    const email = $('wlDevLeagueEmail')?.value.trim() || '';
+    const role = $('wlDevLeagueRole')?.value || 'competition_admin';
+    const isActive = $('wlDevLeagueActive')?.value === 'true';
+    if (!competitionId) { if (status) status.textContent = 'Choose a league first.'; return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (status) status.textContent = 'Enter a valid account email.'; return; }
+    const button = $('wlDevLeagueAssignSave');
+    button.disabled = true;
+    if (status) status.textContent = 'Saving league admin assignment…';
+    const result = await client.rpc('set_platform_league_admin', {
+      p_competition_id: competitionId, p_email: email, p_role: role, p_club_id: null, p_is_active: isActive
+    });
+    button.disabled = false;
+    if (result.error) { if (status) status.textContent = result.error.message; return; }
+    if (status) status.textContent = 'League role assigned/updated for ' + email + '.';
+    $('wlDevLeagueEmail').value = '';
+    await loadDeveloperLeagueAdmins();
+    await loadDeveloperLeagues();
   }
   function populateDeveloperRoleForm() {
     const businessSelect = $('wlDevRoleBusiness');
