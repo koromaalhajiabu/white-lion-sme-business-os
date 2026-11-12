@@ -41,6 +41,10 @@ jobs:
               icon = source.resize((size, size), Image.Resampling.LANCZOS)
               icon.save(folder / "ic_launcher.png", optimize=True)
           PY
+      - name: Provide launcher crest resource for legacy icon reference
+        run: |
+          mkdir -p public-leagues-android/app/src/main/res/drawable-nodpi
+          cp icons/public-leagues-app-icon.jpg public-leagues-android/app/src/main/res/drawable-nodpi/white_lion_crest.jpg
       - name: Build APK
         working-directory: public-leagues-android
         run: gradle --no-daemon assembleDebug
