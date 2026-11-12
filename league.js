@@ -163,11 +163,10 @@
   }
   function settingsView(){
     const c=currentCompetition(),frozen=c.is_frozen;
-    return '<div class="wl-league-panel"><h3>League status</h3><div class="wl-league-sub">Freezing a league blocks any new or edited seasons, clubs, players, fixtures, results, match events and disciplinary records. You can unfreeze it at any time, and league admin assignment is unaffected.</div>'+
-      '<div class="wl-league-inline"><span class="wl-league-badge'+(frozen?' warn':'')+'">'+(frozen?'Frozen':'Active')+'</span>'+
-      (frozen?button('Unfreeze league','primary','type="button" id="wlLeagueUnfreeze"'):button('Freeze league','','type="button" id="wlLeagueFreeze"'))+'</div></div>'+
+    return '<div class="wl-league-panel"><h3>League status</h3><div class="wl-league-sub">Freezing a league blocks any new or edited seasons, clubs, players, fixtures, results, match events and disciplinary records. Only the White Lion platform developer can freeze or unfreeze a league — contact support if you need this league frozen or unfrozen.</div>'+
+      '<div class="wl-league-inline"><span class="wl-league-badge'+(frozen?' warn':'')+'">'+(frozen?'Frozen':'Active')+'</span></div></div>'+
       '<div class="wl-league-panel"><h3>Edit league details</h3><div class="wl-league-sub">Update this league\'s name, type, region, organiser, points rules and status.</div>'+
-      (frozen?empty('Unfreeze this league to edit its details.'):editCompetitionForm(c))+'</div>';
+      (frozen?empty('This league is frozen. Contact the platform developer to unfreeze it before editing.'):editCompetitionForm(c))+'</div>';
   }
   function accessView(){
     return '<div class="wl-league-panel"><h3>League access & roles</h3><div class="wl-league-sub">Assign existing members of this White Lion business to a league. Use their Supabase user UUID. The person must already be an active member of this business.</div>'+
@@ -250,12 +249,6 @@
     document.getElementById('wlLeagueShareCopy')?.addEventListener('click',async()=>{
       const input=document.getElementById('wlLeagueShareLink');
       try{await navigator.clipboard.writeText(input.value);notice('Link copied.');}catch(e){input.select();notice('Select and copy the link above.');}
-    });
-    document.getElementById('wlLeagueFreeze')?.addEventListener('click',()=>{
-      save(async()=>{const {error}=await client().from('league_competitions').update({is_frozen:true,frozen_at:new Date().toISOString(),frozen_by:cloud().getSession()?.user?.id}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'League frozen. No records can be added, edited or deleted until it is unfrozen.');
-    });
-    document.getElementById('wlLeagueUnfreeze')?.addEventListener('click',()=>{
-      save(async()=>{const {error}=await client().from('league_competitions').update({is_frozen:false,frozen_at:null,frozen_by:null}).eq('id',competitionId).eq('business_id',business().id);if(error)throw error},'League unfrozen. Changes are allowed again.');
     });
     document.querySelectorAll('[data-league-result]').forEach(f=>f.addEventListener('submit',async e=>{
       e.preventDefault();const data=Object.fromEntries(new FormData(f).entries());
