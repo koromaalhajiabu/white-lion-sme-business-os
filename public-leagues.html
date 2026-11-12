@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#087a43">
 <meta name="description" content="Browse public football leagues and competitions published on White Lion.">
 <title>Public Leagues Directory · White Lion</title>
-<link rel="manifest" href="./public-leagues.webmanifest?v=1">
+<link rel="manifest" href="./public-leagues.webmanifest?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/white-lion-192.png">
 <link rel="apple-touch-icon" href="./icons/white-lion-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -59,24 +59,46 @@ document.getElementById('search').addEventListener('input',render);
 document.getElementById('type').addEventListener('change',render);
 load();
 
-// Install this public directory as its own home-screen app (not the private business workspace).
+// Install this public directory as a separate home-screen app.
 (function(){
  const button=document.getElementById('installDirectory');
  const help=document.getElementById('installHelp');
  let installPrompt=null;
  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
  if(standalone){button.hidden=true;return;}
- window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;button.textContent='Install Leagues Directory';});
- button.addEventListener('click',async()=>{
-  if(!installPrompt){help.classList.toggle('show');return;}
-  button.disabled=true;
-  try{await installPrompt.prompt();const choice=await installPrompt.userChoice;button.textContent=choice&&choice.outcome==='accepted'?'Installation accepted':'Install Leagues Directory';}
-  catch(e){help.classList.add('show');}
-  installPrompt=null;button.disabled=false;
+ window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  installPrompt=event;
  });
- window.addEventListener('appinstalled',()=>{button.textContent='Directory installed';button.disabled=true;});
+ function showInstallHelp(){
+  help.classList.add('show');
+  help.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }
+ button.addEventListener('click',async()=>{
+  // Do not attempt to launch an app when Chrome has not supplied an install prompt.
+  if(!installPrompt){showInstallHelp();return;}
+  const promptEvent=installPrompt;
+  installPrompt=null;
+  button.disabled=true;
+  try{
+   await promptEvent.prompt();
+   const choice=await promptEvent.userChoice;
+   if(choice&&choice.outcome==='accepted')button.textContent='Installation accepted';
+   else{button.textContent='Install Leagues Directory';showInstallHelp();}
+  }catch(error){
+   button.textContent='Install Leagues Directory';
+   showInstallHelp();
+  }finally{button.disabled=false;}
+ });
+ window.addEventListener('appinstalled',()=>{
+  button.textContent='Directory installed';
+  button.disabled=true;
+  help.classList.remove('show');
+ });
  if('serviceWorker' in navigator && location.protocol!=='file:'){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>{}));
+  window.addEventListener('load',()=>{
+   navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>showInstallHelp());
+  });
  }
 })();
 </script></body></html>
