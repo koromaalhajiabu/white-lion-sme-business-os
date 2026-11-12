@@ -1,8 +1,8 @@
 {
   "name": "White Lion Public Leagues Directory",
   "short_name": "WL Leagues",
-  "id": "./public-leagues.html?app=wl-public-leagues-v1",
-  "start_url": "./public-leagues.html?app=wl-public-leagues-v1",
+  "id": "./public-leagues.html",
+  "start_url": "./public-leagues.html",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -24,12 +24,6 @@
       "src": "./icons/white-lion-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/white-lion-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
