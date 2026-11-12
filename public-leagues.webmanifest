@@ -1,0 +1,37 @@
+{
+  "name": "White Lion Public Leagues Directory",
+  "short_name": "WL Leagues",
+  "id": "./public-leagues.html?app=wl-public-leagues-v1",
+  "start_url": "./public-leagues.html?app=wl-public-leagues-v1",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#f3f8f4",
+  "theme_color": "#087a43",
+  "description": "Public football leagues and competitions published on White Lion. Browse fixtures, results, standings and player statistics.",
+  "icons": [
+    {
+      "src": "./icons/white-lion-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/white-lion-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/white-lion-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "prefer_related_applications": false
+}
