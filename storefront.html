@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#075b35">
+<title>Online Store | White Lion SME</title>
+<style>
+:root{--green:#087a43;--deep:#102b20;--gold:#d4b36b;--bg:#f4f8f5;--line:#e0eae3;--muted:#718078}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#172a22;font:15px/1.5 Inter,system-ui,Arial,sans-serif}
+header{background:linear-gradient(135deg,#075b35,#0d7544);color:#fff;padding:25px 18px 35px}
+.head{max-width:1100px;margin:auto;display:flex;justify-content:space-between;gap:20px;align-items:center}
+.brand{font-size:12px;letter-spacing:2px;font-weight:900}.brand small{display:block;font-size:10px;letter-spacing:1px;color:#d7e9dc;margin-top:4px}
+.hero{max-width:1100px;margin:28px auto 0}.hero h1{font-size:clamp(26px,5vw,42px);line-height:1.1;margin:0 0 10px}.hero p{margin:0;color:#e0f0e5;max-width:650px}
+main{max-width:1100px;margin:-15px auto 50px;padding:0 16px;position:relative}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:18px;box-shadow:0 10px 28px rgba(7,91,53,.06);margin-bottom:16px}
+.panel h2{font-size:17px;margin:0 0 14px}.muted{color:var(--muted);font-size:12px}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.product{border:1px solid #e8eee9;border-radius:14px;padding:14px;background:linear-gradient(145deg,#fff,#fbfdfb);display:flex;flex-direction:column;gap:8px}
+.product h3{font-size:14px;margin:0}.product .sku{font-size:10px;color:#8a988f}.product .price{font-size:19px;font-weight:850;color:var(--green);margin-top:auto}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 13px;font-weight:750}
+.primary{background:var(--green);color:#fff}.soft{background:#eaf5ed;color:var(--green)}button:disabled{opacity:.45;cursor:not-allowed}
+input,textarea{width:100%;border:1px solid #dce7df;border-radius:10px;padding:11px;background:#fff;font:inherit}
+.field{display:grid;gap:6px;margin:10px 0}.field label{font-size:11px;font-weight:750;color:#53665a}
+.cart-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #edf2ee;font-size:12px}.cart-row:last-child{border:0}
+.qty{display:flex;align-items:center;gap:7px;margin-top:6px}.qty button{padding:4px 9px;background:#edf5ef;color:var(--green)}
+.total{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:13px;margin-top:10px;font-weight:850}
+.notice{padding:12px;border-radius:11px;background:#f0f8f2;color:#45634f;font-size:11px;margin:12px 0}
+#message{margin:10px 0;font-size:12px;overflow-wrap:anywhere}.success{color:#087a43}.error{color:#b33d45}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.cart-panel{order:-1}.products{grid-template-columns:repeat(2,minmax(0,1fr))}.product{padding:11px}.hero{margin-top:22px}}
+@media(max-width:390px){.products{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="brand">WHITE LION <small>SME BUSINESS STOREFRONT</small></div><a href="https://koromaalhajiabu.github.io/white-lion-sme-business-os/" style="color:#fff;font-size:11px">Business platform ↗</a></div><div class="hero"><h1 id="storeName">Online Store</h1><p id="storeDescription">Browse available products and place an order directly with this business.</p></div></header>
+<main>
+<div id="message" role="status"></div>
+<div class="layout">
+<section class="panel"><h2>Shop products</h2><div id="products" class="products"><p class="muted">Loading products…</p></div></section>
+<aside class="panel cart-panel"><h2>Your basket</h2><div id="cart"><p class="muted">Your basket is empty.</p></div><div class="total"><span>Total</span><span id="cartTotal">SLE 0.00</span></div>
+<form id="checkout">
+<div class="field"><label>Your name *</label><input name="customer_name" required minlength="2" autocomplete="name"></div>
+<div class="field"><label>Phone number *</label><input name="customer_phone" required minlength="5" autocomplete="tel"></div>
+<div class="field"><label>Email (optional)</label><input name="customer_email" type="email" autocomplete="email"></div>
+<div class="field"><label>Delivery address (optional)</label><textarea name="delivery_address" rows="2"></textarea></div>
+<div class="field"><label>Order notes (optional)</label><textarea name="customer_notes" rows="2"></textarea></div>
+<div class="notice">Submitting an order does not take payment. The business will contact you to confirm payment and fulfilment.</div>
+<button class="primary" id="submitOrder" type="submit" style="width:100%">Place order</button>
+</form></aside>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./storefront-public.js?v=1"></script>
+</body></html>
