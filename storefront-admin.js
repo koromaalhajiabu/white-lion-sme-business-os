@@ -72,7 +72,7 @@
       '<div class="field"><label><input style="width:auto;min-height:0" type="checkbox" name="is_published" '+(s.is_published?'checked':'')+'> Publish storefront</label></div>'+
       '<div class="field"><label><input style="width:auto;min-height:0" type="checkbox" name="accepts_orders" '+(s.accepts_orders?'checked':'')+'> Accept customer orders</label></div>'+
       '</div><div class="modal-actions"><button class="btn primary" type="submit">Save store settings</button></div></form>'+
-      (publicUrl?'<div class="notice" style="margin-top:15px"><b>Public storefront link</b><br><a href="'+esc(publicUrl)+'" target="_blank" rel="noopener">'+esc(publicUrl)+'</a><br><button class="btn small" type="button" id="copyStoreLink">Copy storefront link</button></div>':'')+
+      (publicUrl?'<div class="notice" style="margin-top:15px"><b>Public storefront link</b><br><a href="'+esc(publicUrl)+'" target="_blank" rel="noopener">'+esc(publicUrl)+'</a><br><div class="toolbar" style="margin-top:9px"><button class="btn small" type="button" id="copyStoreLink">Copy link</button><button class="btn small" type="button" id="shareStoreWhatsApp">WhatsApp</button><button class="btn small" type="button" id="shareStoreFacebook">Facebook</button><button class="btn small" type="button" id="shareStoreSMS">SMS</button><button class="btn small" type="button" id="shareStoreEmail">Email</button><button class="btn small" type="button" id="shareStoreNative">More sharing options</button></div><small>Share this address with customers through WhatsApp, Facebook, SMS, email or your phone sharing menu.</small></div>':'')+
       '</div>';
   }
   function bizName() { return business()?.name || 'My Business'; }
@@ -135,8 +135,15 @@
       notify('Store settings saved.');
       await render();
     });
+    const storeShareUrl=()=>new URL('storefront.html?store='+encodeURIComponent(currentStore.slug),location.href).href;
+    const storeShareText=()=> 'Shop online at '+(currentStore.display_name||bizName())+': '+storeShareUrl();
+    document.getElementById('shareStoreWhatsApp')?.addEventListener('click',()=>window.open('https://wa.me/?text='+encodeURIComponent(storeShareText()),'_blank','noopener'));
+    document.getElementById('shareStoreFacebook')?.addEventListener('click',()=>window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(storeShareUrl()),'_blank','noopener'));
+    document.getElementById('shareStoreSMS')?.addEventListener('click',()=>location.href='sms:?body='+encodeURIComponent(storeShareText()));
+    document.getElementById('shareStoreEmail')?.addEventListener('click',()=>location.href='mailto:?subject='+encodeURIComponent('Shop online at '+(currentStore.display_name||bizName()))+'&body='+encodeURIComponent(storeShareText()));
+    document.getElementById('shareStoreNative')?.addEventListener('click',async()=>{const data={title:currentStore.display_name||bizName(),text:storeShareText(),url:storeShareUrl()};if(navigator.share){try{await navigator.share(data)}catch(e){}}else{try{await navigator.clipboard.writeText(storeShareText());notify('Store link copied.')}}});
     document.getElementById('copyStoreLink')?.addEventListener('click',async()=>{
-      const url=new URL('storefront.html?store='+encodeURIComponent(currentStore.slug),location.href).href;
+      const url=storeShareUrl();
       try{await navigator.clipboard.writeText(url);notify('Storefront link copied.')}catch(e){notify(url)}
     });
     document.querySelectorAll('[data-save-product]').forEach(b=>b.addEventListener('click',async()=>{
