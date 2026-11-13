@@ -166,15 +166,22 @@
     }));
   }
   window.whiteLionStorefront = {open:openPage,render};
-  document.addEventListener('DOMContentLoaded',()=>{
+  function attachStorefrontNavigation(){
     const nav=document.getElementById('nav');
-    if(nav&&!document.getElementById('storefrontNavLink')){
-      const button=document.createElement('button');
+    if(!nav)return;
+    let button=document.getElementById('storefrontNavLink');
+    if(!button){
+      button=document.createElement('button');
       button.id='storefrontNavLink';button.type='button';button.innerHTML='<span class="ico">🛍</span>Online Store';
       nav.appendChild(button);
+    }
+    if(button.dataset.storefrontBound!=='yes'){
+      button.dataset.storefrontBound='yes';
       button.addEventListener('click',openPage);
     }
-  });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attachStorefrontNavigation);
+  else attachStorefrontNavigation();
   window.addEventListener('whiteLionCloudReady',()=>{if(typeof state!=='undefined'&&state.page==='storefront')render()});
   window.addEventListener('whiteLionWorkspaceChanged',()=>{if(typeof state!=='undefined'&&state.page==='storefront')render()});
 })();
