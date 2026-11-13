@@ -56,6 +56,13 @@ alter table public.delivery_events enable row level security;
 drop policy if exists delivery_riders_member_read on public.delivery_riders;
 create policy delivery_riders_member_read on public.delivery_riders for select to authenticated
 using (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid()));
+drop policy if exists delivery_riders_manager_insert on public.delivery_riders;
+create policy delivery_riders_manager_insert on public.delivery_riders for insert to authenticated
+with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')));
+drop policy if exists delivery_riders_manager_update on public.delivery_riders;
+create policy delivery_riders_manager_update on public.delivery_riders for update to authenticated
+using (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')))
+with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')));
 drop policy if exists delivery_jobs_member_read on public.delivery_jobs;
 create policy delivery_jobs_member_read on public.delivery_jobs for select to authenticated
 using (exists(select 1 from public.business_members bm where bm.business_id=delivery_jobs.business_id and bm.user_id=auth.uid()));
@@ -79,6 +86,12 @@ begin
   values(o.business_id,o.id,coalesce(nullif(trim(p_delivery_address),''),o.delivery_address),greatest(coalesce(p_delivery_fee,0),0),greatest(coalesce(p_cash_on_delivery,0),0),p_notes)
   on conflict(order_id) do update set delivery_address=excluded.delivery_address,delivery_fee=excluded.delivery_fee,cash_on_delivery=excluded.cash_on_delivery,delivery_notes=excluded.delivery_notes,updated_at=now()
   returning * into j;
+  update public.online_store_orders
+    set delivery_fee=j.delivery_fee,
+        delivery_address=j.delivery_address,
+        total_amount=greatest(coalesce(subtotal,0)+j.delivery_fee-coalesce(discount,0),0),
+        updated_at=now()
+    where id=o.id;
   insert into public.delivery_events(business_id,delivery_job_id,event_status,event_note)
   values(j.business_id,j.id,'awaiting_collection','Delivery job created');
   return jsonb_build_object('status','success','delivery_id',j.id,'tracking_code',j.tracking_code,'delivery_pin',j.delivery_pin);
