@@ -58,11 +58,11 @@ create policy delivery_riders_member_read on public.delivery_riders for select t
 using (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid()));
 drop policy if exists delivery_riders_manager_insert on public.delivery_riders;
 create policy delivery_riders_manager_insert on public.delivery_riders for insert to authenticated
-with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')));
+with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role::text) in ('owner','admin','manager')));
 drop policy if exists delivery_riders_manager_update on public.delivery_riders;
 create policy delivery_riders_manager_update on public.delivery_riders for update to authenticated
-using (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')))
-with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role) in ('owner','admin','manager')));
+using (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role::text) in ('owner','admin','manager')))
+with check (exists(select 1 from public.business_members bm where bm.business_id=delivery_riders.business_id and bm.user_id=auth.uid() and lower(bm.role::text) in ('owner','admin','manager')));
 drop policy if exists delivery_jobs_member_read on public.delivery_jobs;
 create policy delivery_jobs_member_read on public.delivery_jobs for select to authenticated
 using (exists(select 1 from public.business_members bm where bm.business_id=delivery_jobs.business_id and bm.user_id=auth.uid()));
@@ -78,7 +78,7 @@ declare o public.online_store_orders%rowtype; j public.delivery_jobs%rowtype; v_
 begin
   select * into o from public.online_store_orders where id=p_order_id for update;
   if not found then raise exception 'Online order not found'; end if;
-  if not exists(select 1 from public.business_members bm where bm.business_id=o.business_id and bm.user_id=v_uid and lower(bm.role) in ('owner','admin','manager')) then
+  if not exists(select 1 from public.business_members bm where bm.business_id=o.business_id and bm.user_id=v_uid and lower(bm.role::text) in ('owner','admin','manager')) then
     raise exception 'You do not have permission to create deliveries for this business';
   end if;
   if coalesce(nullif(trim(p_delivery_address),''),nullif(trim(o.delivery_address),'')) is null then raise exception 'A delivery address is required'; end if;
@@ -103,7 +103,7 @@ declare j public.delivery_jobs%rowtype; r public.delivery_riders%rowtype; v_uid 
 begin
  select * into j from public.delivery_jobs where id=p_delivery_id for update;
  if not found then raise exception 'Delivery job not found'; end if;
- if not exists(select 1 from public.business_members bm where bm.business_id=j.business_id and bm.user_id=v_uid and lower(bm.role) in ('owner','admin','manager')) then raise exception 'Permission denied'; end if;
+ if not exists(select 1 from public.business_members bm where bm.business_id=j.business_id and bm.user_id=v_uid and lower(bm.role::text) in ('owner','admin','manager')) then raise exception 'Permission denied'; end if;
  select * into r from public.delivery_riders where id=p_rider_id and business_id=j.business_id and is_active;
  if not found then raise exception 'Active rider not found for this business'; end if;
  update public.delivery_jobs set rider_id=r.id,assigned_at=now(),updated_at=now() where id=j.id;
@@ -118,7 +118,7 @@ declare j public.delivery_jobs%rowtype; v_uid uuid:=auth.uid(); v_status text:=l
 begin
  select * into j from public.delivery_jobs where id=p_delivery_id for update;
  if not found then raise exception 'Delivery job not found'; end if;
- if not exists(select 1 from public.business_members bm where bm.business_id=j.business_id and bm.user_id=v_uid and lower(bm.role) in ('owner','admin','manager','cashier')) then raise exception 'Permission denied'; end if;
+ if not exists(select 1 from public.business_members bm where bm.business_id=j.business_id and bm.user_id=v_uid and lower(bm.role::text) in ('owner','admin','manager','cashier')) then raise exception 'Permission denied'; end if;
  if v_status not in ('awaiting_collection','collected','in_transit','delivered','failed','returned','cancelled') then raise exception 'Invalid delivery status'; end if;
  if v_status='delivered' and (p_delivery_pin is null or p_delivery_pin<>j.delivery_pin) then raise exception 'A valid customer delivery PIN is required'; end if;
  update public.delivery_jobs set delivery_status=v_status,updated_at=now(),
